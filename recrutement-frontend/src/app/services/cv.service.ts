@@ -5,9 +5,13 @@ import { Observable } from 'rxjs';
 export interface CVResponse {
   id: number;
   candidateId: number;
-  fileName: string;
-  fileSize: number;
-  uploadDate: Date;
+  fileName?: string;
+  originalFilename?: string;
+  storedFilename?: string;
+  filePath?: string;
+  fileUrl?: string;
+  fileSize?: number;
+  uploadDate?: Date;
   downloadUrl?: string;
 }
 
@@ -58,6 +62,25 @@ export class CVService {
 
   candidateHasCV(candidateId: number): Observable<boolean> {
     return this.http.get<boolean>(`${this.apiUrl}/candidate/${candidateId}/exists`);
+  }
+
+  /**
+   * Récupère un fichier via une requête HTTP authentifiée (retourne un Blob)
+   */
+  getFileBlob(fileUrl: string): Observable<Blob> {
+    return this.http.get(fileUrl, { responseType: 'blob' });
+  }
+
+  /**
+   * Télécharge un fichier via une requête HTTP authentifiée
+   */
+  downloadFile(fileUrl: string): Observable<Blob> {
+    return this.http.get(fileUrl, { 
+      responseType: 'blob',
+      headers: new HttpHeaders({
+        'Accept': 'application/octet-stream'
+      })
+    });
   }
 }
 

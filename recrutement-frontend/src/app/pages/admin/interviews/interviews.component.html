@@ -180,6 +180,7 @@
                 <i [class]="getSortIcon('status')" class="me-2"></i>
                 Statut
               </th>
+              <th class="text-center" *ngIf="userCanViewCV">CV</th>
               <th class="text-center">Actions</th>
             </tr>
           </thead>
@@ -222,6 +223,23 @@
                 <span [class]="getStatusBadgeClass(interview.status)">
                   {{ getStatusText(interview.status) }}
                 </span>
+              </td>
+              <!-- Colonne CV -->
+              <td class="text-center" *ngIf="userCanViewCV">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-outline-info"
+                          (click)="viewCandidateCV(interview.candidateId)"
+                          title="Voir le CV"
+                          [disabled]="!interview.candidateId">
+                    <i class="fas fa-file-pdf"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary"
+                          (click)="downloadCandidateCV(interview.candidateId, interview.candidateName || 'Candidat')"
+                          title="Télécharger le CV"
+                          [disabled]="!interview.candidateId">
+                    <i class="fas fa-download"></i>
+                  </button>
+                </div>
               </td>
               <td class="text-center">
                 <div class="btn-group" role="group">
@@ -292,7 +310,7 @@
               </td>
             </tr>
             <tr *ngIf="getPaginatedInterviews().length === 0">
-              <td colspan="8" class="text-center py-4 text-muted">
+              <td [attr.colspan]="userCanViewCV ? 9 : 8" class="text-center py-4 text-muted">
                 <i class="fas fa-calendar-times fa-2x mb-3"></i>
                 <p class="mb-0">Aucun entretien trouvé</p>
               </td>
@@ -410,8 +428,8 @@
                   <i class="fas fa-calendar-alt me-2"></i>
                   Date et heure <span class="text-danger">*</span>
                 </label>
-                <input type="datetime-local" class="form-control" formControlName="scheduledDate">
-                <div *ngIf="interviewForm.get('scheduledDate')?.invalid && interviewForm.get('scheduledDate')?.touched" 
+                <input type="datetime-local" class="form-control" formControlName="interviewDate">
+                <div *ngIf="interviewForm.get('interviewDate')?.invalid && interviewForm.get('interviewDate')?.touched" 
                      class="invalid-feedback d-block">
                   La date et l'heure sont requises
                 </div>

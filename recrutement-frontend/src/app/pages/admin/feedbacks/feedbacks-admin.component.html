@@ -418,7 +418,7 @@
               <select class="form-select" id="interviewId" formControlName="interviewId">
                 <option value="">Aucun entretien</option>
                 <option *ngFor="let interview of interviews" [value]="interview.id">
-                  Entretien du {{ formatDate(interview.scheduledDate) }} - {{ interview.candidateName }}
+                  Entretien du {{ formatDate(interview.interviewDate) }} - {{ interview.candidateName }}
                 </option>
               </select>
             </div>

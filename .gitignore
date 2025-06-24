@@ -1,20 +1,16 @@
-# Backend - Java / Spring Boot
-.metadata/
-target/
-*.class
-*.jar
-*.war
-*.log
-
-# Frontend - Angular
+# Node modules & Angular build
 node_modules/
 dist/
-
-# IDEs & OS
-.vscode/
-.idea/
+# Java target directory
+target/
+# OS-specific
 .DS_Store
 Thumbs.db
-
-# Env files
-.env
+# Logs
+*.log
+# IDEs
+.vscode/
+.idea/
+# PowerShell or batch files (si tu veux pas les versionner)
+*.ps1
+*.bat

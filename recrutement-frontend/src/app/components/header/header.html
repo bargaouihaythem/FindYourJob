@@ -42,6 +42,24 @@
           </ul>
         </li>
         
+        <!-- Menu Manager/Équipe -->
+        <li class="nav-item dropdown" *ngIf="isAuthenticated() && isManager()">
+          <a class="nav-link dropdown-toggle" href="#" id="managerDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-users-cog me-1"></i>
+            Équipe
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" routerLink="/admin/interviews">
+              <i class="fas fa-calendar-alt me-2"></i>
+              Entretiens à réaliser
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/feedbacks">
+              <i class="fas fa-comments me-2"></i>
+              Mes feedbacks
+            </a></li>
+          </ul>
+        </li>
+        
         <!-- Menu Admin/RH -->
         <li class="nav-item dropdown" *ngIf="isAuthenticated() && (isAdmin() || isHR())">
           <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">

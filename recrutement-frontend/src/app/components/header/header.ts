@@ -35,8 +35,12 @@ export class HeaderComponent {
     return this.authService.isHR();
   }
 
+  isManager(): boolean {
+    return this.authService.isManager();
+  }
+
   isCandidate(): boolean {
-    return this.isAuthenticated() && !this.isAdmin() && !this.isHR();
+    return this.isAuthenticated() && !this.isAdmin() && !this.isHR() && !this.isManager();
   }
 
   logout(): void {

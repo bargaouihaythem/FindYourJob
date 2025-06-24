@@ -8,6 +8,7 @@ import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { AuthService } from '../../../services/auth';
 import { FeedbackService } from '../../../services/feedback.service';
+import { CVService } from '../../../services/cv.service';
 import { ToastrService } from 'ngx-toastr';
 
 @Component({
@@ -24,6 +25,9 @@ export class InterviewsComponent implements OnInit {
   interviewers: any[] = [];
   loading = true;
   error: string | null = null;
+  
+  // Propriété pour le contrôle d'accès aux CVs
+  userCanViewCV = false;
   
   // Pagination
   currentPage = 1;
@@ -69,6 +73,7 @@ export class InterviewsComponent implements OnInit {
     private jobOfferService: JobOfferService,
     private authService: AuthService,
     private feedbackService: FeedbackService,
+    private cvService: CVService,
     private fb: FormBuilder,
     private toastr: ToastrService
   ) {
@@ -83,7 +88,7 @@ export class InterviewsComponent implements OnInit {
       candidateId: ['', Validators.required],
       jobOfferId: ['', Validators.required],
       interviewerId: ['', Validators.required],
-      scheduledDate: ['', Validators.required],
+      interviewDate: ['', Validators.required],
       duration: [60, [Validators.required, Validators.min(15)]],
       location: ['', Validators.required],
       type: ['VIDEO', Validators.required],
@@ -106,11 +111,18 @@ export class InterviewsComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    // Initialiser la propriété d'accès aux CVs
+    this.userCanViewCV = this.canViewCV();
+    console.log('Debug ngOnInit - userCanViewCV:', this.userCanViewCV);
+    
     this.loadInterviews();
     this.loadCandidates();
     this.loadJobOffers();
     this.loadInterviewers();
     this.setupSearchSubscription();
+    
+    // Debug pour vérifier canViewCV au chargement
+    console.log('Debug ngOnInit - canViewCV:', this.canViewCV());
   }
 
   loadInterviews(): void {
@@ -124,6 +136,10 @@ export class InterviewsComponent implements OnInit {
         this.totalPages = Math.ceil(this.totalInterviews / this.pageSize);
         this.applyFilters();
         this.loading = false;
+        
+        // Debug pour vérifier les données des entretiens
+        console.log('Debug loadInterviews - interviews:', interviews);
+        console.log('Debug loadInterviews - first interview candidateId:', interviews[0]?.candidateId);
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des entretiens:', error);
@@ -277,7 +293,7 @@ export class InterviewsComponent implements OnInit {
       this.interviewForm.patchValue({
         candidateId: interview.candidateId,
         interviewerId: interview.interviewerId,
-        scheduledDate: formattedDate,
+        interviewDate: formattedDate,
         duration: interview.durationMinutes,
         location: interview.location,
         type: interview.type,
@@ -305,7 +321,7 @@ export class InterviewsComponent implements OnInit {
       const interviewData = this.interviewForm.value;
       
       // Validation des champs obligatoires
-      if (!interviewData.candidateId || !interviewData.interviewerId || !interviewData.scheduledDate) {
+      if (!interviewData.candidateId || !interviewData.interviewerId || !interviewData.interviewDate) {
         this.toastr.error('Tous les champs obligatoires doivent être remplis');
         return;
       }
@@ -326,7 +342,7 @@ export class InterviewsComponent implements OnInit {
       
       // Conversion de la date au format compatible avec LocalDateTime
       // Format attendu: "2024-12-23T14:30:00"
-      const interviewDate = new Date(interviewData.scheduledDate);
+      const interviewDate = new Date(interviewData.interviewDate);
       const year = interviewDate.getFullYear();
       const month = String(interviewDate.getMonth() + 1).padStart(2, '0');
       const day = String(interviewDate.getDate()).padStart(2, '0');
@@ -861,6 +877,164 @@ L'équipe RH`;
       newStatus,
       currentUser.roles
     );
+  }
+
+  // ===== CV MANAGEMENT =====
+
+  /**
+   * Vérifie si le candidat a un CV
+   */
+  candidateHasCV(candidateId: number): Promise<boolean> {
+    return this.cvService.candidateHasCV(candidateId).toPromise()
+      .then(hasCV => hasCV || false)
+      .catch(() => false);
+  }
+
+  /**
+   * Ouvre le CV du candidat dans un nouvel onglet
+   */
+  viewCandidateCV(candidateId: number): void {
+    if (!candidateId) {
+      this.toastr.error('ID candidat manquant');
+      return;
+    }
+    
+    this.cvService.getCVByCandidate(candidateId).subscribe({
+      next: (cvResponse) => {
+        // Utiliser storedFilename en priorité, puis originalFilename en fallback
+        const fileName = cvResponse.storedFilename || cvResponse.originalFilename;
+        
+        if (cvResponse && fileName) {
+          this.viewFileAuthenticated(fileName);
+        } else {
+          this.toastr.error('Aucun CV trouvé pour ce candidat');
+        }
+      },
+      error: (error) => {
+        console.error('Erreur lors de l\'ouverture du CV:', error);
+        if (error.status === 403) {
+          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce CV');
+        } else if (error.status === 404) {
+          this.toastr.error('Aucun CV trouvé pour ce candidat');
+        } else {
+          this.toastr.error('Impossible d\'ouvrir le CV du candidat');
+        }
+      }
+    });
+  }
+
+  /**
+   * Visualise un fichier via une requête HTTP authentifiée
+   */
+  private viewFileAuthenticated(fileName: string): void {
+    const fileUrl = `http://localhost:8080/api/files/${fileName}`;
+    
+    this.cvService.getFileBlob(fileUrl).subscribe({
+      next: (blob: Blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+        this.toastr.success('CV ouvert dans un nouvel onglet');
+        
+        // Nettoyer l'URL après un délai
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la récupération du fichier:', error);
+        if (error.status === 403) {
+          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce fichier');
+        } else if (error.status === 404) {
+          this.toastr.error('Fichier non trouvé');
+        } else {
+          this.toastr.error('Impossible d\'ouvrir le fichier');
+        }
+      }
+    });
+  }
+
+  /**
+   * Télécharge le CV du candidat
+   */
+  downloadCandidateCV(candidateId: number, candidateName: string): void {
+    if (!candidateId) {
+      this.toastr.error('ID candidat manquant');
+      return;
+    }
+    
+    this.cvService.getCVByCandidate(candidateId).subscribe({
+      next: (cvResponse) => {        
+        // Utiliser storedFilename en priorité, puis originalFilename en fallback
+        const fileName = cvResponse.storedFilename || cvResponse.originalFilename;
+        
+        if (cvResponse && fileName) {
+          this.downloadFileAuthenticated(fileName, candidateName);
+        } else {
+          this.toastr.error('Aucun CV trouvé pour ce candidat');
+        }
+      },
+      error: (error: any) => {
+        console.error('Erreur lors du téléchargement du CV:', error);
+        if (error.status === 403) {
+          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce CV');
+        } else if (error.status === 404) {
+          this.toastr.error('Aucun CV trouvé pour ce candidat');
+        } else {
+          this.toastr.error('Impossible de télécharger le CV du candidat');
+        }
+      }
+    });
+  }
+
+  /**
+   * Télécharge un fichier via une requête HTTP authentifiée
+   */
+  private downloadFileAuthenticated(fileName: string, candidateName: string): void {
+    const fileUrl = `http://localhost:8080/api/files/${fileName}/download`;
+    
+    // Utiliser HttpClient avec l'intercepteur JWT pour télécharger le fichier
+    this.cvService.downloadFile(fileUrl).subscribe({
+      next: (blob: Blob) => {
+        // Créer un lien de téléchargement
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `CV_${candidateName.replace(/\s+/g, '_')}.pdf`;
+        link.click();
+        
+        // Nettoyer l'URL
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        
+        this.toastr.success('Téléchargement du CV démarré');
+      },
+      error: (error: any) => {
+        console.error('Erreur lors du téléchargement du fichier:', error);
+        if (error.status === 403) {
+          this.toastr.error('Vous n\'avez pas l\'autorisation de télécharger ce fichier');
+        } else if (error.status === 404) {
+          this.toastr.error('Fichier non trouvé');
+        } else {
+          this.toastr.error('Impossible de télécharger le fichier');
+        }
+      }
+    });
+  }
+
+  /**
+   * Vérifie si l'utilisateur actuel peut consulter les CVs
+   */
+  canViewCV(): boolean {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !currentUser.roles) return false;
+    
+    return currentUser.roles.includes('RH') || 
+           currentUser.roles.includes('MANAGER') || 
+           currentUser.roles.includes('ÉQUIPE') ||
+           currentUser.roles.includes('TEAM_LEAD') ||
+           currentUser.roles.includes('SENIOR_DEV') ||
+           currentUser.roles.includes('ROLE_HR') ||
+           currentUser.roles.includes('ROLE_MANAGER') ||
+           currentUser.roles.includes('ROLE_ÉQUIPE') ||
+           currentUser.roles.includes('ROLE_TEAM_LEAD') ||
+           currentUser.roles.includes('ROLE_SENIOR_DEV');
   }
 }
 

@@ -171,10 +171,10 @@ export interface InterviewRequest {
   candidateId: number;
   jobOfferId?: number;
   interviewerId: number;
-  scheduledDate: Date;
+  interviewDate: Date;
   duration?: number;
   location: string;
-  type: 'PHONE' | 'VIDEO' | 'IN_PERSON';
+  type: 'PHONE_SCREENING' | 'TECHNICAL' | 'HR' | 'MANAGER' | 'FINAL' | 'GROUP';
   notes?: string;
 }
 
