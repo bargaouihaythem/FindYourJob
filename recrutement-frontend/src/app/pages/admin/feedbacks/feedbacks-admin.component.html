@@ -1,0 +1,636 @@
+<div class="feedbacks-admin-page">
+  <!-- Header Section -->
+  <div class="feedbacks-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-0">
+          <i class="fas fa-comment-dots me-2 text-primary"></i>
+          Gestion des Feedbacks
+        </h1>
+        <p class="text-muted mb-0">
+          {{ totalFeedbacks }} feedback(s) au total
+          <span *ngIf="pendingFeedbacks.length > 0" class="badge bg-warning ms-2">
+            {{ pendingFeedbacks.length }} en attente
+          </span>
+        </p>
+      </div>
+      <div class="col-md-6 text-end">
+        <button class="btn btn-outline-secondary me-2" (click)="exportFeedbacks()">
+          <i class="fas fa-download me-2"></i>
+          Exporter
+        </button>
+        <button class="btn btn-primary" (click)="openFeedbackModal()">
+          <i class="fas fa-plus me-2"></i>
+          Nouveau Feedback
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <ul class="nav nav-tabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" [class.active]="activeTab === 'all'" 
+                  (click)="setActiveTab('all')" role="tab">
+            <i class="fas fa-list me-2"></i>Tous les feedbacks
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" [class.active]="activeTab === 'pending'" 
+                  (click)="setActiveTab('pending')" role="tab">
+            <i class="fas fa-clock me-2"></i>En attente
+            <span *ngIf="pendingFeedbacks.length > 0" 
+                  class="badge bg-warning ms-2">{{ pendingFeedbacks.length }}</span>
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" [class.active]="activeTab === 'approved'" 
+                  (click)="setActiveTab('approved')" role="tab">
+            <i class="fas fa-check-circle me-2"></i>Approuvés
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link" [class.active]="activeTab === 'rejected'" 
+                  (click)="setActiveTab('rejected')" role="tab">
+            <i class="fas fa-times-circle me-2"></i>Rejetés
+          </button>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form [formGroup]="searchForm" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" formControlName="searchTerm" 
+                   placeholder="Candidat, commentaires...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Candidat</label>
+          <select class="form-select" formControlName="candidateId">
+            <option value="">Tous les candidats</option>
+            <option *ngFor="let candidate of candidates" [value]="candidate.id">
+              {{ candidate.firstName }} {{ candidate.lastName }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Note</label>
+          <select class="form-select" formControlName="rating">
+            <option value="">Toutes les notes</option>
+            <option value="5">5 étoiles</option>
+            <option value="4">4 étoiles</option>
+            <option value="3">3 étoiles</option>
+            <option value="2">2 étoiles</option>
+            <option value="1">1 étoile</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Statut</label>
+          <select class="form-select" formControlName="status">
+            <option value="">Tous les statuts</option>
+            <option value="PENDING">En attente</option>
+            <option value="APPROVED">Approuvé</option>
+            <option value="REJECTED">Rejeté</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-secondary w-100" (click)="clearFilters()">
+            <i class="fas fa-times me-2"></i>
+            Effacer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3 text-muted">Chargement des feedbacks...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Feedbacks Table -->
+  <div *ngIf="!loading && !error" class="card table-card">
+    <div class="card-body table-card-body">
+      <div *ngIf="filteredFeedbacks.length === 0" class="text-center py-5">
+        <i class="fas fa-comment-slash fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Aucun feedback trouvé</h5>
+        <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+      </div>
+
+      <div *ngIf="filteredFeedbacks.length > 0" class="table-responsive table-dropdown-container">
+        <table class="table table-hover table-with-dropdowns">
+          <thead>
+            <tr>
+              <th (click)="changeSort('candidateId')" class="sortable">
+                <i [class]="getSortIcon('candidateId')" class="me-2"></i>
+                Candidat
+              </th>
+              <th (click)="changeSort('rating')" class="sortable">
+                <i [class]="getSortIcon('rating')" class="me-2"></i>
+                Note
+              </th>
+              <th>Commentaires</th>
+              <th>Entretien</th>
+              <th (click)="changeSort('status')" class="sortable">
+                <i [class]="getSortIcon('status')" class="me-2"></i>
+                Statut
+              </th>
+              <th (click)="changeSort('createdAt')" class="sortable">
+                <i [class]="getSortIcon('createdAt')" class="me-2"></i>
+                Date de création
+              </th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let feedback of getPaginatedFeedbacks()">
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar avatar-sm rounded-circle bg-primary text-white me-3">
+                    {{ getCandidateName(feedback.candidateId).charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="fw-bold">{{ getCandidateName(feedback.candidateId) }}</div>
+                    <div class="text-muted small">Candidat #{{ feedback.candidateId }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div class="rating-display">
+                  <span [class]="getRatingColor(feedback.rating)" class="rating-stars">
+                    {{ getRatingStars(feedback.rating) }}
+                  </span>
+                  <div class="small text-muted">{{ feedback.rating }}/5</div>
+                </div>
+              </td>
+              <td>
+                <div class="feedback-comments">
+                  <p class="mb-0 text-truncate" style="max-width: 200px;" [title]="feedback.content">
+                    {{ feedback.content }}
+                  </p>
+                </div>
+              </td>
+              <td>
+                <span class="text-muted small">
+                  {{ getInterviewInfo(feedback.interviewId) }}
+                </span>
+              </td>
+              <td>
+                <span [class]="getStatusBadgeClass(feedback.status || 'PENDING')">
+                  {{ getStatusText(feedback.status || 'PENDING') }}
+                </span>
+              </td>
+              <td>
+                <span class="text-muted">{{ formatDate(feedback.createdAt) }}</span>
+                <div class="small text-muted">
+                  Par {{ feedback.createdBy }}
+                </div>
+              </td>              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-outline-info" 
+                          (click)="openViewModal(feedback)"
+                          title="Consulter">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary" 
+                          (click)="openFeedbackModal(feedback)"
+                          title="Modifier">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button *ngIf="feedback.status === 'PENDING'" 
+                          class="btn btn-sm btn-outline-warning" 
+                          (click)="openValidationModal(feedback)"
+                          title="Valider">
+                    <i class="fas fa-check"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-success" 
+                          (click)="sendManualNotification(feedback)"
+                          title="Envoyer notification">
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" 
+                          (click)="openDeleteModal(feedback)"
+                          title="Supprimer">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <nav *ngIf="totalPages > 1" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" (click)="changePage(currentPage - 1)">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <li *ngFor="let page of [].constructor(totalPages); let i = index" 
+              class="page-item" 
+              [class.active]="currentPage === i + 1">
+            <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" (click)="changePage(currentPage + 1)">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+        <div class="text-center text-muted">
+          Page {{ currentPage }} sur {{ totalPages }} 
+          ({{ filteredFeedbacks.length }} feedback(s))
+        </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- View Modal (Consultation) -->
+<div class="modal fade" [class.show]="showViewModal" [style.display]="showViewModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-info" id="viewModalLabel">
+          <i class="fas fa-eye me-2"></i>
+          Consultation du feedback
+        </h5>
+        <button type="button" class="btn-close" (click)="closeViewModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="selectedFeedback" class="feedback-details">
+          <!-- Informations générales -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Informations générales</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <strong>Candidat :</strong><br>
+                    <div class="d-flex align-items-center mt-1">
+                      <div class="avatar avatar-sm rounded-circle bg-primary text-white me-2">
+                        {{ getCandidateName(selectedFeedback.candidateId).charAt(0) }}
+                      </div>
+                      {{ getCandidateName(selectedFeedback.candidateId) }}
+                    </div>
+                  </div>
+                  <div class="mb-3">
+                    <strong>Type de feedback :</strong><br>
+                    <span class="badge bg-secondary">{{ getFeedbackTypeLabel(selectedFeedback.type || 'GENERAL') }}</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <strong>Note :</strong><br>
+                    <span [class]="getRatingColor(selectedFeedback.rating)" class="rating-stars fs-5">
+                      {{ getRatingStars(selectedFeedback.rating) }}
+                    </span>
+                    <span class="ms-2 text-muted">({{ selectedFeedback.rating }}/5)</span>
+                  </div>
+                  <div class="mb-3">
+                    <strong>Statut :</strong><br>
+                    <span [class]="getStatusBadgeClass(selectedFeedback.status || 'PENDING')">
+                      {{ getStatusText(selectedFeedback.status || 'PENDING') }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Entretien associé -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>Entretien associé</h6>
+            </div>
+            <div class="card-body">
+              <p class="mb-0">{{ getInterviewInfo(selectedFeedback.interviewId) }}</p>
+            </div>
+          </div>
+
+          <!-- Commentaires -->
+          <div class="card mb-3">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fas fa-comment-dots me-2"></i>Commentaires</h6>
+            </div>
+            <div class="card-body">
+              <div class="feedback-content">
+                <p class="mb-0">{{ selectedFeedback.content }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Métadonnées -->
+          <div class="card">
+            <div class="card-header bg-light">
+              <h6 class="mb-0"><i class="fas fa-info me-2"></i>Métadonnées</h6>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-2">
+                    <strong>Créé par :</strong><br>
+                    <span class="text-muted">{{ selectedFeedback.createdBy || 'Inconnu' }}</span>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-2">
+                    <strong>Date de création :</strong><br>
+                    <span class="text-muted">{{ formatDate(selectedFeedback.createdAt) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeViewModal()">
+          Fermer
+        </button>        <button type="button" class="btn btn-primary" (click)="closeViewModal(); openFeedbackModal(selectedFeedback || undefined)">
+          <i class="fas fa-edit me-2"></i>
+          Modifier
+        </button>
+        <button type="button" class="btn btn-success" (click)="sendManualNotification(selectedFeedback!)">
+          <i class="fas fa-envelope me-2"></i>
+          Envoyer notification
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div class="modal fade" [class.show]="showFeedbackModal" [style.display]="showFeedbackModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="feedbackModalLabel">
+          <i class="fas fa-comment-dots me-2"></i>
+          {{ selectedFeedback ? 'Modifier le feedback' : 'Nouveau feedback' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeFeedbackModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="feedbackForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="candidateId" class="form-label">Candidat *</label>
+              <select class="form-select" id="candidateId" formControlName="candidateId">
+                <option value="">Sélectionner un candidat</option>
+                <option *ngFor="let candidate of candidates" [value]="candidate.id">
+                  {{ candidate.firstName }} {{ candidate.lastName }}
+                </option>
+              </select>
+              <div *ngIf="feedbackForm.get('candidateId')?.invalid && feedbackForm.get('candidateId')?.touched" 
+                   class="text-danger small">
+                Veuillez sélectionner un candidat
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="interviewId" class="form-label">Entretien associé</label>
+              <select class="form-select" id="interviewId" formControlName="interviewId">
+                <option value="">Aucun entretien</option>
+                <option *ngFor="let interview of interviews" [value]="interview.id">
+                  Entretien du {{ formatDate(interview.scheduledDate) }} - {{ interview.candidateName }}
+                </option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="rating" class="form-label">Note (1-5 étoiles) *</label>
+            <div class="rating-input">
+              <select class="form-select" id="rating" formControlName="rating" style="width: auto; display: inline-block;">
+                <option value="">Sélectionner une note</option>
+                <option value="1">1 étoile - Très insuffisant</option>
+                <option value="2">2 étoiles - Insuffisant</option>
+                <option value="3">3 étoiles - Satisfaisant</option>
+                <option value="4">4 étoiles - Bien</option>
+                <option value="5">5 étoiles - Excellent</option>
+              </select>
+              <span *ngIf="feedbackForm.get('rating')?.value" 
+                    [class]="getRatingColor(+feedbackForm.get('rating')?.value)" 
+                    class="ms-3 rating-stars">
+                {{ getRatingStars(+feedbackForm.get('rating')?.value) }}
+              </span>
+            </div>
+            <div *ngIf="feedbackForm.get('rating')?.invalid && feedbackForm.get('rating')?.touched" 
+                 class="text-danger small">
+              Veuillez attribuer une note
+            </div>
+          </div>
+            <div class="mb-3">
+            <label for="type" class="form-label">Type de feedback *</label>
+            <select class="form-select" id="type" formControlName="type" required>
+              <option value="">Sélectionner un type</option>
+              <option *ngFor="let type of getFeedbackTypes()" [value]="type.value">
+                {{ type.label }}
+              </option>
+            </select>
+            <div *ngIf="feedbackForm.get('type')?.invalid && feedbackForm.get('type')?.touched" class="text-danger small">
+              Le type de feedback est obligatoire
+            </div>
+          </div>
+            <div class="mb-3">
+            <label for="content" class="form-label">Commentaires *</label>
+            <textarea class="form-control" id="content" formControlName="content" 
+                      rows="4" placeholder="Ajoutez vos commentaires détaillés sur le candidat..."></textarea>
+            <div *ngIf="feedbackForm.get('content')?.invalid && feedbackForm.get('content')?.touched" 
+                 class="text-danger small">
+              Les commentaires sont obligatoires (min. 10 caractères)
+            </div>
+          </div>
+          
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="sendNotificationOnSave" #sendNotificationCheck>
+            <label class="form-check-label" for="sendNotificationOnSave">
+              <i class="fas fa-envelope me-2"></i>
+              Envoyer une notification au candidat après sauvegarde
+            </label>
+          </div>
+        </form>
+      </div>      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeFeedbackModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-outline-primary" (click)="saveFeedback()" 
+                [disabled]="feedbackForm.invalid">
+          <i class="fas fa-save me-2"></i>
+          {{ selectedFeedback ? 'Mettre à jour' : 'Créer' }} sans notification
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveFeedbackWithNotification(sendNotificationCheck.checked)" 
+                [disabled]="feedbackForm.invalid">
+          <i class="fas fa-paper-plane me-2"></i>
+          {{ selectedFeedback ? 'Mettre à jour' : 'Créer' }} et notifier
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Validation Modal -->
+<div class="modal fade" [class.show]="showValidationModal" [style.display]="showValidationModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="validationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-warning" id="validationModalLabel">
+          <i class="fas fa-clipboard-check me-2"></i>
+          Validation du feedback
+        </h5>
+        <button type="button" class="btn-close" (click)="closeValidationModal()"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="selectedFeedback" class="card mb-3">
+          <div class="card-body">
+            <h6 class="card-title">Feedback à valider</h6>
+            <div class="row">
+              <div class="col-md-6">
+                <strong>Candidat:</strong> {{ getCandidateName(selectedFeedback.candidateId) }}<br>
+                <strong>Note:</strong> 
+                <span [class]="getRatingColor(selectedFeedback.rating)" class="rating-stars">
+                  {{ getRatingStars(selectedFeedback.rating) }}
+                </span>
+                ({{ selectedFeedback.rating }}/5)
+              </div>
+              <div class="col-md-6">
+                <strong>Entretien:</strong> {{ getInterviewInfo(selectedFeedback.interviewId) }}<br>
+                <strong>Créé par:</strong> {{ selectedFeedback.createdBy }}
+              </div>
+            </div>
+            <div class="mt-2">
+              <strong>Commentaires:</strong>
+              <p class="text-muted">{{ selectedFeedback.content }}</p>
+            </div>
+          </div>
+        </div>
+
+        <form [formGroup]="validationForm">
+          <div class="mb-3">
+            <label class="form-label">Décision *</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" value="approve" formControlName="decision" id="approve">
+              <label class="form-check-label text-success" for="approve">
+                <i class="fas fa-check-circle me-2"></i>Approuver le feedback
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" value="reject" formControlName="decision" id="reject">
+              <label class="form-check-label text-danger" for="reject">
+                <i class="fas fa-times-circle me-2"></i>Rejeter le feedback
+              </label>
+            </div>
+            <div *ngIf="validationForm.get('decision')?.invalid && validationForm.get('decision')?.touched" 
+                 class="text-danger small">
+              Veuillez prendre une décision
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="validationContent" class="form-label">Commentaires de validation *</label>
+            <textarea class="form-control" id="validationContent" formControlName="content" 
+                      rows="3" placeholder="Justifiez votre décision..."></textarea>
+            <div *ngIf="validationForm.get('content')?.invalid && validationForm.get('content')?.touched" 
+                 class="text-danger small">
+              Veuillez justifier votre décision
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="nextSteps" class="form-label">Prochaines étapes</label>
+            <textarea class="form-control" id="nextSteps" formControlName="nextSteps" 
+                      rows="2" placeholder="Indiquez les prochaines étapes (optionnel)..."></textarea>
+          </div>
+          
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" formControlName="sendNotification" id="sendNotification">
+            <label class="form-check-label" for="sendNotification">
+              Envoyer une notification au candidat
+            </label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeValidationModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-warning" (click)="validateFeedback()" 
+                [disabled]="validationForm.invalid">
+          <i class="fas fa-check me-2"></i>
+          Valider
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="deleteModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDeleteModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer ce feedback ?</p>
+        <div *ngIf="selectedFeedback" class="card">
+          <div class="card-body">
+            <h6 class="card-title">{{ getCandidateName(selectedFeedback.candidateId) }}</h6>
+            <p class="card-text">
+              Note: {{ selectedFeedback.rating }}/5<br>
+              {{ selectedFeedback.content.substring(0, 100) }}...
+            </p>
+          </div>
+        </div>
+        <div class="alert alert-warning mt-3">
+          <i class="fas fa-warning me-2"></i>
+          Cette action est irréversible.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteFeedback()">
+          <i class="fas fa-trash me-2"></i>
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div *ngIf="showFeedbackModal || showValidationModal || showDeleteModal || showViewModal" class="modal-backdrop fade show"></div>

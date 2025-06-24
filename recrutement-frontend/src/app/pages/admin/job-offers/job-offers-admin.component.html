@@ -1,0 +1,401 @@
+<div class="job-offers-admin-page">
+  <!-- Header Section -->
+  <div class="job-offers-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-0">
+          <i class="fas fa-briefcase me-2 text-primary"></i>
+          Gestion des Offres d'Emploi
+        </h1>
+        <p class="text-muted mb-0">{{ totalJobOffers }} offre(s) au total</p>
+      </div>
+      <div class="col-md-6 text-end">
+        <button class="btn btn-outline-secondary me-2" (click)="exportJobOffers()">
+          <i class="fas fa-download me-2"></i>
+          Exporter
+        </button>
+        <button class="btn btn-primary" (click)="openJobOfferModal()">
+          <i class="fas fa-plus me-2"></i>
+          Nouvelle Offre
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form [formGroup]="searchForm" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" formControlName="searchTerm" 
+                   placeholder="Titre, localisation...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Statut</label>          <select class="form-select" formControlName="status">
+            <option value="">Tous les statuts</option>
+            <option value="ACTIVE">Active</option>
+            <option value="DRAFT">Brouillon</option>
+            <option value="CLOSED">Fermée</option>
+            <option value="EXPIRED">Expirée</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Type de contrat</label>
+          <select class="form-select" formControlName="contractType">
+            <option value="">Tous les types</option>
+            <option value="CDI">CDI</option>
+            <option value="CDD">CDD</option>
+            <option value="Stage">Stage</option>
+            <option value="Freelance">Freelance</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-secondary w-100" (click)="clearFilters()">
+            <i class="fas fa-times me-2"></i>
+            Effacer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3 text-muted">Chargement des offres d'emploi...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Job Offers Table -->
+  <div *ngIf="!loading && !error" class="card table-card">
+    <div class="card-body table-card-body">
+      <div *ngIf="filteredJobOffers.length === 0" class="text-center py-5">
+        <i class="fas fa-briefcase fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Aucune offre d'emploi trouvée</h5>
+        <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+      </div>
+
+      <div *ngIf="filteredJobOffers.length > 0" class="table-responsive table-dropdown-container">
+        <table class="table table-hover table-with-dropdowns">
+          <thead>
+            <tr>
+              <th (click)="changeSort('title')" class="sortable">
+                <i [class]="getSortIcon('title')" class="me-2"></i>
+                Titre
+              </th>
+              <th (click)="changeSort('location')" class="sortable">
+                <i [class]="getSortIcon('location')" class="me-2"></i>
+                Localisation
+              </th>
+              <th (click)="changeSort('contractType')" class="sortable">
+                <i [class]="getSortIcon('contractType')" class="me-2"></i>
+                Type de contrat
+              </th>
+              <th (click)="changeSort('status')" class="sortable">
+                <i [class]="getSortIcon('status')" class="me-2"></i>
+                Statut
+              </th>
+              <th>Salaire</th>
+              <th (click)="changeSort('createdAt')" class="sortable">
+                <i [class]="getSortIcon('createdAt')" class="me-2"></i>
+                Date de création
+              </th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let jobOffer of getPaginatedJobOffers()">
+              <td>
+                <div>
+                  <div class="fw-bold">{{ jobOffer.title }}</div>
+                  <div class="text-muted small text-truncate" style="max-width: 200px;">
+                    {{ jobOffer.description }}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <i class="fas fa-map-marker-alt text-muted me-1"></i>
+                {{ jobOffer.location }}
+              </td>
+              <td>
+                <span class="badge bg-info">{{ jobOffer.contractType }}</span>
+              </td>              <td>
+                <div class="dropdown position-relative">
+                  <button class="btn btn-sm dropdown-toggle p-2 border-0" 
+                          [class]="getStatusBadgeClass(jobOffer.status)"
+                          type="button" 
+                          (click)="toggleStatusDropdown(jobOffer.id)"
+                          [attr.aria-expanded]="isDropdownOpen(jobOffer.id)">
+                    {{ getStatusText(jobOffer.status) }}
+                  </button>                  <ul class="dropdown-menu" 
+                      [class.show]="isDropdownOpen(jobOffer.id)"
+                      style="position: absolute; z-index: 1000;">
+                    <li><a class="dropdown-item" 
+                           (click)="updateJobOfferStatus(jobOffer, 'ACTIVE')"
+                           [class.active]="jobOffer.status === 'ACTIVE'"
+                           [class.disabled]="jobOffer.status === 'ACTIVE'">
+                      <i class="fas fa-check-circle text-success me-2"></i>Active
+                      <span *ngIf="jobOffer.status === 'ACTIVE'" class="badge bg-primary ms-2">Actuel</span>
+                    </a></li>
+                    <li><a class="dropdown-item" 
+                           (click)="updateJobOfferStatus(jobOffer, 'DRAFT')"
+                           [class.active]="jobOffer.status === 'DRAFT'"
+                           [class.disabled]="jobOffer.status === 'DRAFT'">
+                      <i class="fas fa-edit text-warning me-2"></i>Brouillon
+                      <span *ngIf="jobOffer.status === 'DRAFT'" class="badge bg-primary ms-2">Actuel</span>
+                    </a></li>
+                    <li><a class="dropdown-item" 
+                           (click)="updateJobOfferStatus(jobOffer, 'CLOSED')"
+                           [class.active]="jobOffer.status === 'CLOSED'"
+                           [class.disabled]="jobOffer.status === 'CLOSED'">
+                      <i class="fas fa-times-circle text-danger me-2"></i>Fermée
+                      <span *ngIf="jobOffer.status === 'CLOSED'" class="badge bg-primary ms-2">Actuel</span>
+                    </a></li>
+                    <li><a class="dropdown-item" 
+                           (click)="updateJobOfferStatus(jobOffer, 'EXPIRED')"
+                           [class.active]="jobOffer.status === 'EXPIRED'"
+                           [class.disabled]="jobOffer.status === 'EXPIRED'">
+                      <i class="fas fa-clock text-secondary me-2"></i>Expirée
+                      <span *ngIf="jobOffer.status === 'EXPIRED'" class="badge bg-primary ms-2">Actuel</span>
+                    </a></li>
+                  </ul>
+                </div>
+              </td>
+              <td>
+                <span *ngIf="jobOffer.salary" class="text-success fw-bold">
+                  {{ jobOffer.salary | currency:'EUR':'symbol':'1.0-0' }}
+                </span>
+                <span *ngIf="!jobOffer.salary" class="text-muted">
+                  Non spécifié
+                </span>
+              </td>
+              <td>
+                <span class="text-muted">{{ formatDate(jobOffer.createdAt) }}</span>
+                <div class="small text-muted">
+                  Par {{ jobOffer.createdBy }}
+                </div>
+              </td>              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-outline-primary" 
+                          (click)="openJobOfferModal(jobOffer)"
+                          title="Modifier">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-info" 
+                          [routerLink]="['/job-offers', jobOffer.id]"
+                          title="Voir l'offre">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <!-- Bouton de test pour fermer l'offre -->
+                  <button 
+                    class="btn btn-sm btn-outline-warning" 
+                    (click)="updateJobOfferStatus(jobOffer, 'CLOSED')"
+                    [disabled]="jobOffer.status === 'CLOSED'"
+                    title="Fermer l'offre">
+                    <i class="fas fa-times-circle"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger" 
+                          (click)="openDeleteModal(jobOffer)"
+                          title="Supprimer">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <nav *ngIf="totalPages > 1" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" (click)="changePage(currentPage - 1)">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <li *ngFor="let page of [].constructor(totalPages); let i = index" 
+              class="page-item" 
+              [class.active]="currentPage === i + 1">
+            <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" (click)="changePage(currentPage + 1)">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+        <div class="text-center text-muted">
+          Page {{ currentPage }} sur {{ totalPages }} 
+          ({{ filteredJobOffers.length }} offre(s))
+        </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Job Offer Modal -->
+<div class="modal fade" [class.show]="showJobOfferModal" [style.display]="showJobOfferModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="jobOfferModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="jobOfferModalLabel">
+          <i class="fas fa-briefcase me-2"></i>
+          {{ selectedJobOffer ? 'Modifier l\'offre d\'emploi' : 'Nouvelle offre d\'emploi' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeJobOfferModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="jobOfferForm">
+          <div class="row">
+            <div class="col-md-8 mb-3">
+              <label for="title" class="form-label">Titre du poste *</label>
+              <input type="text" class="form-control" id="title" formControlName="title" 
+                     placeholder="Ex: Développeur Full Stack">
+              <div *ngIf="jobOfferForm.get('title')?.invalid && jobOfferForm.get('title')?.touched" 
+                   class="text-danger small">
+                Le titre est obligatoire (min. 3 caractères)
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="contractType" class="form-label">Type de contrat *</label>
+              <select class="form-select" id="contractType" formControlName="contractType">
+                <option value="CDI">CDI</option>
+                <option value="CDD">CDD</option>
+                <option value="Stage">Stage</option>
+                <option value="Freelance">Freelance</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-8 mb-3">
+              <label for="location" class="form-label">Localisation *</label>
+              <input type="text" class="form-control" id="location" formControlName="location" 
+                     placeholder="Ex: Paris, France">
+              <div *ngIf="jobOfferForm.get('location')?.invalid && jobOfferForm.get('location')?.touched" 
+                   class="text-danger small">
+                La localisation est obligatoire
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <label for="salary" class="form-label">Salaire (€)</label>
+              <input type="number" class="form-control" id="salary" formControlName="salary" 
+                     placeholder="Ex: 45000">
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="description" class="form-label">Description du poste *</label>
+            <textarea class="form-control" id="description" formControlName="description" 
+                      rows="4" placeholder="Décrivez le poste, les missions principales..."></textarea>
+            <div *ngIf="jobOfferForm.get('description')?.invalid && jobOfferForm.get('description')?.touched" 
+                 class="text-danger small">
+              La description est obligatoire (min. 10 caractères)
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="requirements" class="form-label">Exigences et qualifications *</label>
+            <textarea class="form-control" id="requirements" formControlName="requirements" 
+                      rows="4" placeholder="Listez les compétences requises, l'expérience..."></textarea>
+            <div *ngIf="jobOfferForm.get('requirements')?.invalid && jobOfferForm.get('requirements')?.touched" 
+                 class="text-danger small">
+              Les exigences sont obligatoires
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label for="requiredSkills" class="form-label">Compétences requises *</label>
+            <input type="text" class="form-control" id="requiredSkills" formControlName="requiredSkills" placeholder="Ex: Angular, Java, SQL">
+            <div *ngIf="jobOfferForm.get('requiredSkills')?.invalid && jobOfferForm.get('requiredSkills')?.touched" class="text-danger small">
+              Les compétences sont obligatoires
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="experienceLevel" class="form-label">Niveau d'expérience *</label>
+              <input type="text" class="form-control" id="experienceLevel" formControlName="experienceLevel" placeholder="Ex: Junior, Confirmé, Senior">
+              <div *ngIf="jobOfferForm.get('experienceLevel')?.invalid && jobOfferForm.get('experienceLevel')?.touched" class="text-danger small">
+                Le niveau d'expérience est obligatoire
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="deadline" class="form-label">Date limite *</label>
+              <input type="datetime-local" class="form-control" id="deadline" formControlName="deadline">
+              <div *ngIf="jobOfferForm.get('deadline')?.invalid && jobOfferForm.get('deadline')?.touched" class="text-danger small">
+                La date limite est obligatoire
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeJobOfferModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveJobOffer()" 
+                [disabled]="jobOfferForm.invalid">
+          <i class="fas fa-save me-2"></i>
+          {{ selectedJobOffer ? 'Mettre à jour' : 'Créer l\'offre' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'" 
+     tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger" id="deleteModalLabel">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDeleteModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer cette offre d'emploi ?</p>
+        <div *ngIf="selectedJobOffer" class="card">
+          <div class="card-body">
+            <h6 class="card-title">{{ selectedJobOffer.title }}</h6>
+            <p class="card-text text-muted">{{ selectedJobOffer.location }}</p>
+          </div>
+        </div>
+        <div class="alert alert-warning mt-3">
+          <i class="fas fa-warning me-2"></i>
+          Cette action est irréversible et supprimera toutes les candidatures associées.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteJobOffer()">
+          <i class="fas fa-trash me-2"></i>
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Backdrop -->
+<div *ngIf="showJobOfferModal || showDeleteModal" class="modal-backdrop fade show"></div>

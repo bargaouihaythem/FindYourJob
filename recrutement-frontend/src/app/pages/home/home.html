@@ -1,0 +1,333 @@
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center min-vh-75">
+      <div class="col-lg-6">
+        <div class="hero-content fade-in">
+          <h1 class="display-4 fw-bold text-white mb-4">
+            Trouvez votre 
+            <span class="text-warning">emploi idéal</span>
+          </h1>
+          <p class="lead text-white-50 mb-4">
+            Découvrez des milliers d'opportunités professionnelles et connectez-vous 
+            avec les meilleures entreprises. Votre carrière commence ici.
+          </p>
+          <div class="hero-actions">
+            <a routerLink="/job-offers" class="btn btn-warning btn-lg me-3">
+              <i class="fas fa-search me-2"></i>
+              Rechercher un emploi
+            </a>
+            
+            <!-- Utilisateur non connecté - Créer un compte OU Postuler -->
+            <ng-container *ngIf="!isAuthenticated()">
+              <a routerLink="/register" class="btn btn-outline-light btn-lg me-3">
+                <i class="fas fa-user-plus me-2"></i>
+                Créer un compte
+              </a>
+              <a routerLink="/job-offers" class="btn btn-outline-light btn-lg">
+                <i class="fas fa-briefcase me-2"></i>
+                Postuler à nos offres
+              </a>
+            </ng-container>
+            
+            <!-- Candidat connecté (rôle USER uniquement) -->
+            <a *ngIf="isAuthenticated() && canApplyToJob()" routerLink="/job-offers" class="btn btn-outline-light btn-lg">
+              <i class="fas fa-briefcase me-2"></i>
+              Postuler à nos offres
+            </a>
+            
+            <!-- Admin/RH connecté -->
+            <a *ngIf="isAuthenticated() && (isAdmin() || isHR())" routerLink="/admin/dashboard" class="btn btn-outline-light btn-lg">
+              <i class="fas fa-tachometer-alt me-2"></i>
+              Tableau de bord
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="hero-image text-center">
+          <i class="fas fa-users-cog hero-icon"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Search Section -->
+<section class="search-section py-5">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="search-card card shadow-lg">
+          <div class="card-body p-4">
+            <h3 class="text-center mb-4">Recherche rapide</h3>
+            <form class="row g-3">
+              <div class="col-md-4">
+                <div class="form-floating">
+                  <input type="text" class="form-control" id="keyword" placeholder="Mot-clé">
+                  <label for="keyword">
+                    <i class="fas fa-search me-2"></i>
+                    Mot-clé
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="form-floating">
+                  <input type="text" class="form-control" id="location" placeholder="Localisation">
+                  <label for="location">
+                    <i class="fas fa-map-marker-alt me-2"></i>
+                    Localisation
+                  </label>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100 h-100">
+                  <i class="fas fa-search me-2"></i>
+                  Rechercher
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Jobs Section -->
+<section class="featured-jobs py-5 bg-light">
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <div class="section-header text-center mb-5">
+          <h2 class="display-5 fw-bold">Offres en vedette</h2>
+          <p class="lead text-muted">Découvrez les dernières opportunités professionnelles</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Chargement...</span>
+      </div>
+      <p class="mt-3 text-muted">Chargement des offres d'emploi...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error" class="alert alert-danger text-center" role="alert">
+      <i class="fas fa-exclamation-triangle me-2"></i>
+      {{ error }}
+    </div>
+
+    <!-- Jobs Grid -->
+    <div *ngIf="!loading && !error" class="row">
+      <div class="col-lg-4 col-md-6 mb-4" *ngFor="let job of featuredJobs">
+        <div class="job-card card h-100">
+          <div class="card-body">
+            <div class="job-header mb-3">
+              <h5 class="card-title">{{ job.title }}</h5>
+              <span class="badge bg-primary">{{ getContractTypeLabel(job.contractType) }}</span>
+            </div>
+            
+            <div class="job-details mb-3">
+              <p class="text-muted mb-2">
+                <i class="fas fa-map-marker-alt me-2"></i>
+                {{ job.location }}
+              </p>
+              <p class="text-muted mb-2" *ngIf="job.salary">
+                <i class="fas fa-euro-sign me-2"></i>
+                {{ formatSalary(job.salary) }}
+              </p>
+              <p class="text-muted">
+                <i class="fas fa-calendar-alt me-2"></i>
+                {{ job.createdAt | date:'dd/MM/yyyy' }}
+              </p>
+            </div>
+            
+            <p class="card-text">
+              {{ job.description | slice:0:120 }}
+              <span *ngIf="job.description.length > 120">...</span>
+            </p>
+          </div>
+          
+          <div class="card-footer bg-transparent">
+            <a [routerLink]="['/job-offers', job.id]" class="btn btn-outline-primary w-100">
+              <i class="fas fa-eye me-2"></i>
+              Voir les détails
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View All Jobs Button -->
+    <div *ngIf="!loading && !error" class="text-center mt-4">
+      <a routerLink="/job-offers" class="btn btn-primary btn-lg">
+        <i class="fas fa-briefcase me-2"></i>
+        Voir toutes les offres
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Admin/HR Section - Visible uniquement pour les utilisateurs administratifs -->
+<section *ngIf="isAuthenticated() && (isAdmin() || isHR())" class="admin-section py-5 bg-light">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6">
+        <div class="admin-content">
+          <h2 class="display-5 fw-bold mb-4">
+            Gérez vos <span class="text-primary">recrutements</span>
+          </h2>
+          <p class="lead mb-4">
+            Accédez à tous vos outils de gestion des candidatures, des entretiens 
+            et des offres d'emploi depuis votre tableau de bord administrateur.
+          </p>
+          <div class="features-list mb-4">
+            <div class="feature-item d-flex align-items-center mb-3">
+              <div class="feature-icon bg-primary text-white rounded-circle me-3">
+                <i class="fas fa-users"></i>
+              </div>
+              <div>
+                <h6 class="mb-1">Gestion des candidats</h6>
+                <p class="text-muted mb-0">Consultez et gérez tous les dossiers de candidature</p>
+              </div>
+            </div>
+            <div class="feature-item d-flex align-items-center mb-3">
+              <div class="feature-icon bg-success text-white rounded-circle me-3">
+                <i class="fas fa-calendar-alt"></i>
+              </div>
+              <div>
+                <h6 class="mb-1">Planification d'entretiens</h6>
+                <p class="text-muted mb-0">Organisez et suivez vos entretiens facilement</p>
+              </div>
+            </div>
+            <div class="feature-item d-flex align-items-center mb-3">
+              <div class="feature-icon bg-warning text-white rounded-circle me-3">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <div>
+                <h6 class="mb-1">Statistiques avancées</h6>
+                <p class="text-muted mb-0">Suivez vos performances de recrutement</p>
+              </div>
+            </div>
+          </div>
+          <a routerLink="/admin/dashboard" class="btn btn-primary btn-lg">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            Accéder au tableau de bord
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="admin-visual text-center">
+          <div class="dashboard-preview-container">
+            <div class="dashboard-icon">
+              <i class="fas fa-chart-pie admin-icon"></i>
+              <p class="text-muted">Tableau de bord</p>
+            </div>
+            <div class="features-grid">
+              <div class="feature-grid-item">
+                <i class="fas fa-users text-primary"></i>
+              </div>
+              <div class="feature-grid-item">
+                <i class="fas fa-briefcase text-success"></i>
+              </div>
+              <div class="feature-grid-item">
+                <i class="fas fa-calendar-alt text-warning"></i>
+              </div>
+              <div class="feature-grid-item">
+                <i class="fas fa-comments text-info"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Statistics Section -->
+<section class="stats-section py-5">
+  <div class="container">
+    <div class="row text-center">
+      <div class="col-lg-3 col-md-6 mb-4">
+        <div class="stat-item">
+          <div class="stat-icon">
+            <i class="fas fa-briefcase"></i>
+          </div>
+          <h3 class="stat-number">1,250+</h3>
+          <p class="stat-label">Offres d'emploi</p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 mb-4">
+        <div class="stat-item">
+          <div class="stat-icon">
+            <i class="fas fa-users"></i>
+          </div>
+          <h3 class="stat-number">5,000+</h3>
+          <p class="stat-label">Candidats inscrits</p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 mb-4">
+        <div class="stat-item">
+          <div class="stat-icon">
+            <i class="fas fa-building"></i>
+          </div>
+          <h3 class="stat-number">800+</h3>
+          <p class="stat-label">Entreprises partenaires</p>
+        </div>
+      </div>
+      <div class="col-lg-3 col-md-6 mb-4">
+        <div class="stat-item">
+          <div class="stat-icon">
+            <i class="fas fa-handshake"></i>
+          </div>
+          <h3 class="stat-number">3,200+</h3>
+          <p class="stat-label">Recrutements réussis</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section py-5 bg-primary text-white">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-8">
+        <h3 class="mb-3" *ngIf="!isAuthenticated()">Prêt à commencer votre recherche d'emploi ?</h3>
+        <h3 class="mb-3" *ngIf="isAuthenticated() && canApplyToJob()">Continuez votre parcours professionnel</h3>
+        <h3 class="mb-3" *ngIf="isAuthenticated() && (isAdmin() || isHR())">Gérez vos recrutements efficacement</h3>
+        
+        <p class="lead mb-0" *ngIf="!isAuthenticated()">
+          Rejoignez des milliers de candidats qui ont trouvé leur emploi idéal grâce à notre plateforme.
+        </p>
+        <p class="lead mb-0" *ngIf="isAuthenticated() && canApplyToJob()">
+          Explorez de nouvelles opportunités et améliorez votre profil pour maximiser vos chances.
+        </p>
+        <p class="lead mb-0" *ngIf="isAuthenticated() && (isAdmin() || isHR())">
+          Accédez à tous vos outils de gestion des candidatures et des entretiens.
+        </p>
+      </div>
+      <div class="col-lg-4 text-lg-end">
+        <!-- Utilisateur non connecté -->
+        <a *ngIf="!isAuthenticated()" routerLink="/register" class="btn btn-warning btn-lg">
+          <i class="fas fa-rocket me-2"></i>
+          Commencer maintenant
+        </a>
+        <!-- Candidat connecté (rôle USER uniquement) -->
+        <a *ngIf="isAuthenticated() && canApplyToJob()" routerLink="/job-offers" class="btn btn-warning btn-lg">
+          <i class="fas fa-briefcase me-2"></i>
+          Postuler à nos offres
+        </a>
+        <!-- Admin/RH connecté -->
+        <a *ngIf="isAuthenticated() && (isAdmin() || isHR())" routerLink="/admin/candidates" class="btn btn-warning btn-lg">
+          <i class="fas fa-users me-2"></i>
+          Voir les candidats
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+

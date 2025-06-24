@@ -1,0 +1,569 @@
+<div class="candidates-page">
+  <!-- Header Section -->
+  <div class="candidates-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-0">
+          <i class="fas fa-users me-2 text-primary"></i>
+          Gestion des Candidats
+        </h1>
+        <p class="text-muted mb-0">{{ totalCandidates }} candidat(s) au total</p>
+      </div>
+      <div class="col-md-6 text-end">
+        <button class="btn btn-outline-secondary me-2" (click)="exportCandidates()">
+          <i class="fas fa-download me-2"></i>
+          Exporter
+        </button>
+        <button class="btn btn-primary" (click)="openCandidateModal()">
+          <i class="fas fa-plus me-2"></i>
+          Nouveau Candidat
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form [formGroup]="searchForm" class="row g-3">
+        <div class="col-md-4">
+          <label class="form-label">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" formControlName="searchTerm" 
+                   placeholder="Nom, prénom, email...">
+          </div>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Statut</label>
+          <select class="form-select" formControlName="status">
+            <option value="">Tous les statuts</option>
+            <option value="APPLIED">Candidature soumise</option>
+            <option value="CV_REVIEWED">CV examiné</option>
+            <option value="PHONE_SCREENING">Entretien téléphonique</option>
+            <option value="TECHNICAL_TEST">Test technique</option>
+            <option value="INTERVIEW">Entretien</option>
+            <option value="FINAL_INTERVIEW">Entretien final</option>
+            <option value="ACCEPTED">Accepté</option>
+            <option value="REJECTED">Rejeté</option>
+            <option value="WITHDRAWN">Candidature retirée</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Offre d'emploi</label>
+          <select class="form-select" formControlName="jobOffer">
+            <option value="">Toutes les offres</option>
+            <option *ngFor="let job of jobOffers" [value]="job.id">
+              {{ job.title }}
+            </option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-secondary w-100" (click)="clearFilters()">
+            <i class="fas fa-times me-2"></i>
+            Effacer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3 text-muted">Chargement des candidats...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Candidates Table -->
+  <div *ngIf="!loading && !error" class="card table-card">
+    <div class="card-body table-card-body">
+      <div *ngIf="filteredCandidates.length === 0" class="text-center py-5">
+        <i class="fas fa-user-slash fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Aucun candidat trouvé</h5>
+        <p class="text-muted">Essayez de modifier vos critères de recherche</p>
+      </div>
+
+      <div *ngIf="filteredCandidates.length > 0" class="table-responsive table-dropdown-container">
+        <table class="table table-hover table-with-dropdowns">
+          <thead>
+            <tr>
+              <th (click)="changeSort('firstName')" class="sortable">
+                <i [class]="getSortIcon('firstName')" class="me-2"></i>
+                Nom complet
+              </th>
+              <th (click)="changeSort('email')" class="sortable">
+                <i [class]="getSortIcon('email')" class="me-2"></i>
+                Contact
+              </th>
+              <th>Offre d'emploi</th>
+              <th (click)="changeSort('status')" class="sortable">
+                <i [class]="getSortIcon('status')" class="me-2"></i>
+                Statut
+              </th>
+              <th>CV</th>
+              <th (click)="changeSort('createdAt')" class="sortable">
+                <i [class]="getSortIcon('createdAt')" class="me-2"></i>
+                Date de création
+              </th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let candidate of getPaginatedCandidates()">
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar avatar-sm rounded-circle bg-primary text-white me-3">
+                    {{ candidate.firstName.charAt(0) }}{{ candidate.lastName.charAt(0) }}
+                  </div>
+                  <div>
+                    <div class="fw-bold">{{ candidate.firstName }} {{ candidate.lastName }}</div>
+                    <div class="text-muted small">{{ candidate.email }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <div>
+                  <div class="fw-bold">{{ candidate.email }}</div>
+                  <div class="text-muted small">{{ candidate.phone }}</div>
+                </div>
+              </td>
+              <td>
+                <span *ngIf="candidate.jobOfferTitle" class="badge bg-info">
+                  {{ candidate.jobOfferTitle }}
+                </span>
+                <span *ngIf="!candidate.jobOfferTitle" class="text-muted">
+                  Aucune offre
+                </span>
+              </td>
+              <td>
+                <div class="dropdown position-relative">
+                  <button class="btn btn-sm dropdown-toggle p-0 border-0" 
+                          [class]="getStatusBadgeClass(candidate.status)"
+                          type="button" 
+                          (click)="toggleStatusDropdown(candidate.id)"
+                          [attr.aria-expanded]="isStatusDropdownOpen(candidate.id)">
+                    {{ getStatusText(candidate.status) }}
+                  </button>
+                  <ul class="dropdown-menu" 
+                      [class.show]="isStatusDropdownOpen(candidate.id)"
+                      style="position: absolute; top: 100%; left: 0; z-index: 1050; min-width: 180px;">
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'APPLIED'); $event.stopPropagation()">
+                      <i class="fas fa-paper-plane text-primary me-2"></i>Candidature soumise
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'CV_REVIEWED'); $event.stopPropagation()">
+                      <i class="fas fa-eye text-info me-2"></i>CV examiné
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'PHONE_SCREENING'); $event.stopPropagation()">
+                      <i class="fas fa-phone text-warning me-2"></i>Entretien téléphonique
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'TECHNICAL_TEST'); $event.stopPropagation()">
+                      <i class="fas fa-code text-warning me-2"></i>Test technique
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'INTERVIEW'); $event.stopPropagation()">
+                      <i class="fas fa-comments text-primary me-2"></i>Entretien
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'FINAL_INTERVIEW'); $event.stopPropagation()">
+                      <i class="fas fa-handshake text-primary me-2"></i>Entretien final
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'ACCEPTED'); $event.stopPropagation()">
+                      <i class="fas fa-user-check text-success me-2"></i>Accepté
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'REJECTED'); $event.stopPropagation()">
+                      <i class="fas fa-user-times text-danger me-2"></i>Rejeté
+                    </a></li>
+                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'WITHDRAWN'); $event.stopPropagation()">
+                      <i class="fas fa-user-minus text-secondary me-2"></i>Candidature retirée
+                    </a></li>
+                  </ul>
+                </div>
+              </td>
+              <td>
+                <button *ngIf="candidate.cv && candidate.cv.fileUrl" 
+                        class="btn btn-sm btn-outline-primary" 
+                        (click)="downloadCV(candidate)"
+                        title="Télécharger le CV">
+                  <i class="fas fa-download"></i>
+                </button>
+                <span *ngIf="!candidate.cv || !candidate.cv.fileUrl" class="text-muted small">
+                  Aucun CV
+                </span>
+              </td>
+              <td>
+                <span class="text-muted">{{ formatDate(candidate.applicationDate) }}</span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-outline-primary" 
+                          (click)="openCandidateModal(candidate)"
+                          title="Modifier">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button class="btn btn-sm btn-outline-info" 
+                          (click)="viewCandidateDetails(candidate)"
+                          title="Voir détails">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <div class="dropdown position-relative">
+                    <button class="btn btn-sm btn-outline-success dropdown-toggle" 
+                            type="button" 
+                            (click)="toggleEmailDropdown(candidate.id)"
+                            [attr.aria-expanded]="isEmailDropdownOpen(candidate.id)"
+                            title="Envoyer email">
+                      <i class="fas fa-envelope"></i>
+                    </button>
+                    <ul class="dropdown-menu"
+                        [class.show]="isEmailDropdownOpen(candidate.id)"
+                        style="position: absolute; top: 100%; right: 0; left: auto; z-index: 1050; min-width: 220px;">
+                      <li><a class="dropdown-item" (click)="sendApplicationConfirmation(candidate); $event.stopPropagation()">
+                        <i class="fas fa-check-circle text-success me-2"></i>Confirmation candidature
+                      </a></li>
+                      <li><a class="dropdown-item" (click)="sendInterviewInvitation(candidate); $event.stopPropagation()">
+                        <i class="fas fa-calendar text-info me-2"></i>Invitation entretien
+                      </a></li>
+                      <li><a class="dropdown-item" (click)="sendFeedbackNotification(candidate); $event.stopPropagation()">
+                        <i class="fas fa-comment text-warning me-2"></i>Feedback
+                      </a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item" (click)="openEmailModal(candidate); $event.stopPropagation()">
+                        <i class="fas fa-edit text-primary me-2"></i>Email personnalisé
+                      </a></li>
+                    </ul>
+                  </div>
+                  <button class="btn btn-sm btn-outline-danger" 
+                          (click)="openDeleteModal(candidate)"
+                          title="Supprimer">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <nav *ngIf="totalPages > 1" class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" (click)="changePage(currentPage - 1)">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <li *ngFor="let page of [].constructor(totalPages); let i = index" 
+              class="page-item" 
+              [class.active]="currentPage === i + 1">
+            <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" (click)="changePage(currentPage + 1)">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+        <div class="text-center text-muted">
+          Page {{ currentPage }} sur {{ totalPages }} 
+          ({{ filteredCandidates.length }} candidat(s))
+        </div>
+      </nav>
+    </div>
+  </div>
+</div>
+
+<!-- Candidate Modal -->
+<div class="modal fade" [class.show]="showCandidateModal" [style.display]="showCandidateModal ? 'block' : 'none'">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-user me-2"></i>
+          {{ selectedCandidate ? 'Modifier le candidat' : 'Nouveau candidat' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeCandidateModal()"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="candidateForm">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Prénom *</label>
+              <input type="text" class="form-control" formControlName="firstName" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Nom *</label>
+              <input type="text" class="form-control" formControlName="lastName" required>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Email *</label>
+              <input type="email" class="form-control" formControlName="email" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Téléphone</label>
+              <input type="tel" class="form-control" formControlName="phone">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Adresse</label>
+            <textarea class="form-control" formControlName="address" rows="2"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Profil LinkedIn</label>
+            <input type="url" class="form-control" formControlName="linkedinProfile" placeholder="https://linkedin.com/in/votre-profil">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Lettre de motivation</label>
+            <textarea class="form-control" formControlName="coverLetter" rows="4" placeholder="Votre lettre de motivation..."></textarea>
+          </div>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Statut</label>
+              <select class="form-select" formControlName="status">
+                <option value="APPLIED">Candidature soumise</option>
+                <option value="CV_REVIEWED">CV examiné</option>
+                <option value="PHONE_SCREENING">Entretien téléphonique</option>
+                <option value="TECHNICAL_TEST">Test technique</option>
+                <option value="INTERVIEW">Entretien</option>
+                <option value="FINAL_INTERVIEW">Entretien final</option>
+                <option value="ACCEPTED">Accepté</option>
+                <option value="REJECTED">Rejeté</option>
+                <option value="WITHDRAWN">Candidature retirée</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Offre d'emploi</label>
+              <select class="form-select" formControlName="jobOfferId">
+                <option value="">Aucune offre</option>
+                <option *ngFor="let job of jobOffers" [value]="job.id">
+                  {{ job.title }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <div *ngIf="!selectedCandidate" class="mb-3">
+            <label class="form-label">CV (PDF, DOC, DOCX)</label>
+            <input type="file" class="form-control" (change)="onFileSelected($event)" 
+                   accept=".pdf,.doc,.docx">
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeCandidateModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveCandidate()" 
+                [disabled]="!candidateForm.valid">
+          <i class="fas fa-save me-2"></i>
+          {{ selectedCandidate ? 'Mettre à jour' : 'Créer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-danger">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDeleteModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>Êtes-vous sûr de vouloir supprimer le candidat 
+           <strong>{{ selectedCandidate?.firstName }} {{ selectedCandidate?.lastName }}</strong> ?</p>
+        <p class="text-muted small">Cette action est irréversible.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">
+          Annuler
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteCandidate()">
+          <i class="fas fa-trash me-2"></i>
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Détails Candidat -->
+<div *ngIf="showDetailsModal" class="modal fade show" style="display: block;" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-user me-2"></i>
+          Détails du Candidat
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDetailsModal()"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedCandidate">
+        <div class="row">
+          <!-- Informations personnelles -->
+          <div class="col-md-6">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-id-card me-2"></i>
+              Informations Personnelles
+            </h6>
+            <div class="mb-3">
+              <label class="form-label text-muted">Prénom</label>
+              <p class="fw-bold">{{ selectedCandidate.firstName }}</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Nom</label>
+              <p class="fw-bold">{{ selectedCandidate.lastName }}</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Email</label>
+              <p class="fw-bold">
+                <a [href]="'mailto:' + selectedCandidate.email" class="text-decoration-none">
+                  {{ selectedCandidate.email }}
+                </a>
+              </p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Téléphone</label>
+              <p class="fw-bold">{{ selectedCandidate.phone || 'Non renseigné' }}</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Adresse</label>
+              <p class="fw-bold">{{ selectedCandidate.address || 'Non renseignée' }}</p>
+            </div>
+          </div>
+
+          <!-- Informations professionnelles -->
+          <div class="col-md-6">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-briefcase me-2"></i>
+              Informations Professionnelles
+            </h6>
+            <div class="mb-3">
+              <label class="form-label text-muted">Profil LinkedIn</label>
+              <p class="fw-bold">
+                <a *ngIf="selectedCandidate.linkedinProfile" [href]="selectedCandidate.linkedinProfile" target="_blank" class="text-decoration-none">
+                  {{ selectedCandidate.linkedinProfile }}
+                </a>
+                <span *ngIf="!selectedCandidate.linkedinProfile" class="text-muted">Non renseigné</span>
+              </p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Lettre de motivation</label>
+              <p class="fw-bold">{{ selectedCandidate.coverLetter || 'Non renseignée' }}</p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Statut</label>
+              <p>
+                <span class="badge"
+                      [ngClass]="{
+                        'bg-primary': selectedCandidate.status === 'APPLIED',
+                        'bg-info': selectedCandidate.status === 'CV_REVIEWED',
+                        'bg-warning': selectedCandidate.status === 'PHONE_SCREENING' || selectedCandidate.status === 'TECHNICAL_TEST',
+                        'bg-secondary': selectedCandidate.status === 'INTERVIEW' || selectedCandidate.status === 'FINAL_INTERVIEW',
+                        'bg-success': selectedCandidate.status === 'ACCEPTED',
+                        'bg-danger': selectedCandidate.status === 'REJECTED',
+                        'bg-dark': selectedCandidate.status === 'WITHDRAWN'
+                      }">
+                  {{ getStatusLabel(selectedCandidate.status) }}
+                </span>
+              </p>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-muted">Date de candidature</label>
+              <p class="fw-bold">{{ formatDate(selectedCandidate.applicationDate) }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CV et documents -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-file-alt me-2"></i>
+              Documents
+            </h6>
+            <div class="d-flex gap-2">
+              <button *ngIf="selectedCandidate.cv && selectedCandidate.cv.fileUrl" 
+                      class="btn btn-outline-primary btn-sm"
+                      (click)="downloadCV(selectedCandidate)">
+                <i class="fas fa-download me-2"></i>
+                Télécharger CV
+              </button>
+              <span *ngIf="!selectedCandidate.cv || !selectedCandidate.cv.fileUrl" class="text-muted">
+                Aucun CV disponible
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historique des candidatures -->
+        <div class="row mt-4" *ngIf="selectedCandidate.jobOffers && selectedCandidate.jobOffers.length > 0">
+          <div class="col-12">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-history me-2"></i>
+              Offres d'emploi
+            </h6>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Poste</th>
+                    <th>Entreprise</th>
+                    <th>Date de candidature</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let jobOffer of selectedCandidate.jobOffers">
+                    <td>{{ jobOffer.title }}</td>
+                    <td>{{ jobOffer.company }}</td>
+                    <td>{{ formatDate(selectedCandidate.applicationDate) }}</td>
+                    <td>
+                      <span class="badge bg-info">
+                        {{ getStatusLabel(selectedCandidate.status) }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-primary" (click)="openCandidateModal(selectedCandidate)">
+          <i class="fas fa-edit me-2"></i>
+          Modifier
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">
+          Fermer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Composant Email -->
+<app-email-composer 
+  [candidate]="selectedCandidate" 
+  [isVisible]="showEmailModal"
+  (onClose)="closeEmailModal()"
+  (onEmailSent)="onEmailSent()">
+</app-email-composer>
+
+<!-- Modal Backdrop -->
+<div *ngIf="showCandidateModal || showDeleteModal || showDetailsModal" class="modal-backdrop fade show"></div>
+

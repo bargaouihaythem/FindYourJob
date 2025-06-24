@@ -1,0 +1,112 @@
+<div class="modal" [class.show]="isVisible" [style.display]="isVisible ? 'block' : 'none'">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-envelope me-2"></i>
+          Composer un email
+          <span *ngIf="candidate" class="text-muted ms-2">
+            - {{ candidate.firstName }} {{ candidate.lastName }}
+          </span>
+        </h5>
+        <button type="button" class="btn-close" (click)="close()"></button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Templates prédéfinis -->
+        <div class="mb-4">
+          <label class="form-label">Templates prédéfinis :</label>
+          <div class="d-flex flex-wrap gap-2">
+            <button 
+              *ngFor="let template of emailTemplates" 
+              class="btn btn-outline-primary btn-sm"
+              (click)="selectTemplate(template)">
+              {{ template.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Formulaire email -->
+        <form (ngSubmit)="sendEmail()" #emailForm="ngForm">
+          <div class="mb-3">
+            <label for="emailTo" class="form-label">Destinataire *</label>
+            <input 
+              type="email" 
+              class="form-control" 
+              id="emailTo"
+              [(ngModel)]="emailData.to" 
+              name="to"
+              required
+              [readonly]="!!candidate">
+          </div>
+
+          <div class="mb-3">
+            <label for="emailSubject" class="form-label">Objet *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="emailSubject"
+              [(ngModel)]="emailData.subject" 
+              name="subject"
+              required
+              placeholder="Objet de l'email">
+          </div>
+
+          <div class="mb-3">
+            <label for="emailContent" class="form-label">Contenu *</label>
+            <textarea 
+              class="form-control" 
+              id="emailContent"
+              [(ngModel)]="emailData.content" 
+              name="content"
+              rows="10"
+              required
+              placeholder="Contenu de l'email"></textarea>
+          </div>
+
+          <div class="mb-3 form-check">
+            <input 
+              type="checkbox" 
+              class="form-check-input" 
+              id="isHtml"
+              [(ngModel)]="emailData.isHtml" 
+              name="isHtml">
+            <label class="form-check-label" for="isHtml">
+              Contenu HTML
+            </label>
+          </div>
+
+          <!-- Messages d'erreur et de succès -->
+          <div *ngIf="errorMessage" class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            {{ errorMessage }}
+          </div>
+
+          <div *ngIf="successMessage" class="alert alert-success">
+            <i class="fas fa-check-circle me-2"></i>
+            {{ successMessage }}
+          </div>
+        </form>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="close()">
+          Annuler
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-primary" 
+          (click)="sendEmail()"
+          [disabled]="isLoading || !emailData.to || !emailData.subject || !emailData.content">
+          <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+          <i *ngIf="!isLoading" class="fas fa-paper-plane me-2"></i>
+          {{ isLoading ? 'Envoi en cours...' : 'Envoyer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop -->
+<div class="modal-backdrop" [class.show]="isVisible" *ngIf="isVisible" (click)="close()"></div>
+

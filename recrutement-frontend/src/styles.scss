@@ -1,0 +1,207 @@
+@import 'bootstrap/dist/css/bootstrap.min.css';
+@import '@fortawesome/fontawesome-free/css/all.min.css';
+
+/* Variables globales */
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --light-color: #f8f9fa;
+  --dark-color: #343a40;
+  --white: #ffffff;
+  --black: #000000;
+}
+
+/* Styles globaux */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--dark-color);
+  background-color: var(--light-color);
+}
+
+.container-fluid {
+  padding: 0;
+}
+
+/* Styles pour les cartes */
+.card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* Styles pour les boutons */
+.btn {
+  border-radius: 25px;
+  padding: 10px 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: linear-gradient(45deg, var(--primary-color), #0056b3);
+  border: none;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(45deg, #0056b3, var(--primary-color));
+  transform: translateY(-2px);
+}
+
+/* Styles pour les formulaires */
+.form-control {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 12px 15px;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Styles pour la navigation */
+.navbar {
+  background: linear-gradient(135deg, var(--primary-color), #0056b3);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  font-weight: bold;
+  font-size: 1.5rem;
+}
+
+.nav-link {
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.nav-link:hover {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Styles pour les alertes */
+.alert {
+  border-radius: 8px;
+  border: none;
+  padding: 15px 20px;
+}
+
+/* Styles pour les badges */
+.badge {
+  border-radius: 15px;
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+/* Styles pour les tables */
+.table {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.table thead th {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  font-weight: 600;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Styles pour les modales */
+.modal-content {
+  border-radius: 15px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  border-bottom: 1px solid #e0e0e0;
+  border-radius: 15px 15px 0 0;
+}
+
+.modal-footer {
+  border-top: 1px solid #e0e0e0;
+  border-radius: 0 0 15px 15px;
+}
+
+/* Styles pour les spinners de chargement */
+.spinner-border {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Styles pour les icônes */
+.icon {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+}
+
+/* Styles responsifs */
+@media (max-width: 768px) {
+  .container {
+    padding: 0 15px;
+  }
+  
+  .card {
+    margin-bottom: 20px;
+  }
+  
+  .btn {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+/* Styles pour les états de chargement */
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Styles pour les erreurs */
+.error-message {
+  color: var(--danger-color);
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+/* Styles pour les succès */
+.success-message {
+  color: var(--success-color);
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+

@@ -1,0 +1,49 @@
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 0.5rem;
+}
+
+.card-header {
+  border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+.table th {
+  font-weight: 600;
+  color: #495057;
+  border-top: none;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.list-unstyled li {
+  padding: 0.25rem 0;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+.border-info {
+  border-color: #0dcaf0 !important;
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  h6 {
+    font-size: 1rem;
+  }
+  
+  .card-body .row {
+    margin-top: 1rem;
+  }
+}

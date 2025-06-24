@@ -1,0 +1,131 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-12">
+      <h2 class="mb-4">
+        <i class="fas fa-calendar-alt me-2 text-primary"></i>
+        Mes entretiens
+      </h2>
+      
+      <!-- Chargement -->
+      <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
+        <p class="mt-2">Chargement de vos entretiens...</p>
+      </div>
+      
+      <!-- Erreur -->
+      <div *ngIf="error" class="alert alert-danger" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        {{ error }}
+      </div>
+      
+      <!-- Aucun entretien -->
+      <div *ngIf="!loading && !error && interviews.length === 0" class="text-center py-5">
+        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">Aucun entretien programmé</h4>
+        <p class="text-muted">Vous n'avez pas encore d'entretiens planifiés.</p>
+        <a routerLink="/candidate/my-applications" class="btn btn-primary">
+          <i class="fas fa-briefcase me-2"></i>
+          Voir mes candidatures
+        </a>
+      </div>
+      
+      <!-- Liste des entretiens -->
+      <div *ngIf="!loading && !error && interviews.length > 0">
+        <div class="row">
+          <div class="col-12">
+            <div class="card">
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead class="table-light">
+                      <tr>
+                        <th>Offre d'emploi</th>
+                        <th>Date & Heure</th>
+                        <th>Type</th>
+                        <th>Lieu</th>
+                        <th>Interviewer</th>
+                        <th>Statut</th>
+                        <th>Durée</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let interview of interviews">
+                        <td>
+                          <div>
+                            <h6 class="mb-1">{{ interview.jobOfferTitle || 'N/A' }}</h6>
+                            <small class="text-muted">{{ interview.candidateName }}</small>
+                          </div>
+                        </td>
+                        <td>
+                          <div>
+                            <strong>{{ formatDate(interview.interviewDate) }}</strong><br>
+                            <small class="text-muted">{{ formatTime(interview.interviewDate) }}</small>
+                          </div>
+                        </td>
+                        <td>
+                          <span class="badge bg-info">{{ getTypeText(interview.type) }}</span>
+                        </td>
+                        <td>
+                          {{ interview.location || 'Non spécifié' }}
+                        </td>
+                        <td>
+                          {{ interview.interviewerName || 'N/A' }}
+                        </td>
+                        <td>
+                          <span [class]="getStatusClass(interview.status)">
+                            {{ getStatusText(interview.status) }}
+                          </span>
+                        </td>
+                        <td>
+                          {{ interview.durationMinutes ? (interview.durationMinutes + ' min') : 'N/A' }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Conseils -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card border-info">
+              <div class="card-header bg-info text-white">
+                <h5 class="mb-0">
+                  <i class="fas fa-lightbulb me-2"></i>
+                  Conseils pour vos entretiens
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="row">
+                  <div class="col-md-6">
+                    <h6><i class="fas fa-clock me-2 text-primary"></i>Avant l'entretien</h6>
+                    <ul class="list-unstyled">
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Préparez vos réponses aux questions courantes</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Recherchez l'entreprise et le poste</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Préparez vos questions</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Testez votre connexion (si visio)</li>
+                    </ul>
+                  </div>
+                  <div class="col-md-6">
+                    <h6><i class="fas fa-user-tie me-2 text-primary"></i>Le jour J</h6>
+                    <ul class="list-unstyled">
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Arrivez 10 minutes en avance</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Habillez-vous professionnellement</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Apportez votre CV et vos documents</li>
+                      <li><i class="fas fa-check-circle text-success me-2"></i>Restez positif et confiant</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

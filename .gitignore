@@ -1,0 +1,20 @@
+# Backend - Java / Spring Boot
+.metadata/
+target/
+*.class
+*.jar
+*.war
+*.log
+
+# Frontend - Angular
+node_modules/
+dist/
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Env files
+.env

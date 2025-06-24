@@ -1,0 +1,42 @@
+.card {
+  border: none;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+  border-radius: 0.5rem;
+}
+
+.card-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.table th {
+  font-weight: 600;
+  color: #495057;
+  border-top: none;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.btn-group-sm .btn {
+  padding: 0.25rem 0.5rem;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+@media (max-width: 768px) {
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  h6 {
+    font-size: 1rem;
+  }
+}

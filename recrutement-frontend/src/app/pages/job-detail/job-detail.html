@@ -1,0 +1,279 @@
+<div class="job-detail-page container py-5">
+  <div *ngIf="loading" class="text-center my-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3">Chargement de l'offre...</p>
+  </div>
+
+  <div *ngIf="error && !loading" class="alert alert-danger text-center my-5">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Layout simple avec détails de l'offre -->
+  <div *ngIf="job && !loading">
+    <div class="col-12">
+      <div class="card shadow-lg mb-4">
+        <div class="card-body p-5">
+          <h1 class="card-title mb-3">{{ job.title }}</h1>
+          <div class="mb-3 text-muted">
+            <i class="fas fa-map-marker-alt me-2"></i> {{ job.location }}
+            <span class="mx-3">|</span>
+            <i class="fas fa-briefcase me-2"></i> {{ job.contractType }}
+            <span class="mx-3">|</span>
+            <i class="fas fa-calendar me-2"></i> Publiée le {{ job.createdAt | date:'dd/MM/yyyy' }}
+          </div>
+          <div class="mb-4">
+            <span class="badge bg-success fs-6" *ngIf="job.status === 'ACTIVE'">
+              <i class="fas fa-check-circle me-1"></i> Active
+            </span>
+            <span class="badge bg-warning fs-6" *ngIf="job.status === 'DRAFT'">Brouillon</span>
+            <span class="badge bg-danger fs-6" *ngIf="job.status === 'CLOSED'">Clôturée</span>
+            <span class="badge bg-secondary fs-6" *ngIf="job.status === 'EXPIRED'">Expirée</span>
+          </div>
+
+          <div class="mb-4">
+            <h4 class="text-primary mb-3">
+              <i class="fas fa-file-alt me-2"></i>
+              Description du poste
+            </h4>
+            <div class="bg-light p-4 rounded">
+              <p class="mb-0" style="white-space: pre-line;">{{ job.description }}</p>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <h4 class="text-primary mb-3">
+              <i class="fas fa-star me-2"></i>
+              Compétences et exigences
+            </h4>
+            <div class="bg-light p-4 rounded">
+              <p class="mb-0" style="white-space: pre-line;">{{ job.requirements }}</p>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <h4 class="text-primary mb-3">
+              <i class="fas fa-euro-sign me-2"></i>
+              Rémunération
+            </h4>
+            <div class="bg-light p-3 rounded">
+              <span class="fs-5 fw-bold text-success" *ngIf="job.salary">
+                {{ job.salary | number:'1.0-0' }} € / an
+              </span>
+              <span class="text-muted" *ngIf="!job.salary">À négocier selon profil</span>
+            </div>
+          </div>
+
+          <div class="d-flex gap-3">
+            <a routerLink="/job-offers" class="btn btn-outline-primary">
+              <i class="fas fa-arrow-left me-2"></i> Retour aux offres
+            </a>
+            
+            <!-- Bouton Postuler visible uniquement pour les candidats -->
+            <button *ngIf="job.status === 'ACTIVE' && canApplyToJob()" 
+                    (click)="openApplicationModal()" 
+                    class="btn btn-success btn-lg">
+              <i class="fas fa-paper-plane me-2"></i> Postuler maintenant
+            </button>
+
+            <!-- Message pour les utilisateurs administratifs -->
+            <div *ngIf="job.status === 'ACTIVE' && !canApplyToJob() && isAuthenticated()" 
+                 class="alert alert-info">
+              <i class="fas fa-info-circle me-2"></i>
+              <strong>Accès administrateur</strong>
+              <p class="mb-0 mt-2">
+                Vous visualisez cette offre en tant qu'administrateur. 
+                Les candidatures sont gérées via l'interface d'administration.
+              </p>
+            </div>
+
+            <!-- Offres inactives -->
+            <div *ngIf="job.status !== 'ACTIVE'" class="alert alert-warning">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              <strong>Offre non disponible</strong>
+              <p class="mb-0 mt-2">
+                Cette offre est actuellement 
+                <span *ngIf="job.status === 'CLOSED'">clôturée</span>
+                <span *ngIf="job.status === 'EXPIRED'">expirée</span>
+                <span *ngIf="job.status === 'DRAFT'">en préparation</span>.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de candidature -->
+  <div *ngIf="showApplicationModal" 
+       class="modal fade show d-block" 
+       tabindex="-1" 
+       style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h4 class="modal-title">
+            <i class="fas fa-user-plus me-2"></i>
+            Postuler pour : {{ job?.title }}
+          </h4>
+          <button type="button" class="btn-close btn-close-white" (click)="closeApplicationModal()"></button>
+        </div>
+        <div class="modal-body p-4">
+          
+          <!-- Message d'info pour utilisateurs non connectés -->
+          <div *ngIf="!isAuthenticated()" class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Nouveau candidat ?</strong> Remplissez le formulaire ci-dessous pour postuler.
+          </div>
+
+          <!-- Formulaire de candidature -->
+          <form [formGroup]="applicationForm" (ngSubmit)="submitApplication()">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="firstName" class="form-label">Prénom *</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="firstName" 
+                       formControlName="firstName"
+                       [class.is-invalid]="applicationForm.get('firstName')?.invalid && applicationForm.get('firstName')?.touched">
+                <div class="invalid-feedback" 
+                     *ngIf="applicationForm.get('firstName')?.invalid && applicationForm.get('firstName')?.touched">
+                  Le prénom est requis.
+                </div>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="lastName" class="form-label">Nom *</label>
+                <input type="text" 
+                       class="form-control" 
+                       id="lastName" 
+                       formControlName="lastName"
+                       [class.is-invalid]="applicationForm.get('lastName')?.invalid && applicationForm.get('lastName')?.touched">
+                <div class="invalid-feedback" 
+                     *ngIf="applicationForm.get('lastName')?.invalid && applicationForm.get('lastName')?.touched">
+                  Le nom est requis.
+                </div>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="email" class="form-label">Email *</label>
+                <input type="email" 
+                       class="form-control" 
+                       id="email" 
+                       formControlName="email"
+                       [class.is-invalid]="applicationForm.get('email')?.invalid && applicationForm.get('email')?.touched">
+                <div class="invalid-feedback" 
+                     *ngIf="applicationForm.get('email')?.invalid && applicationForm.get('email')?.touched">
+                  <span *ngIf="applicationForm.get('email')?.errors?.['required']">L'email est requis.</span>
+                  <span *ngIf="applicationForm.get('email')?.errors?.['email']">Format d'email invalide.</span>
+                </div>
+              </div>
+
+              <div class="col-md-6 mb-3">
+                <label for="phone" class="form-label">Téléphone *</label>
+                <input type="tel" 
+                       class="form-control" 
+                       id="phone" 
+                       formControlName="phone"
+                       [class.is-invalid]="applicationForm.get('phone')?.invalid && applicationForm.get('phone')?.touched">
+                <div class="invalid-feedback" 
+                     *ngIf="applicationForm.get('phone')?.invalid && applicationForm.get('phone')?.touched">
+                  Le téléphone est requis.
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="coverLetter" class="form-label">Lettre de motivation</label>
+              <textarea class="form-control" 
+                        id="coverLetter" 
+                        rows="4" 
+                        formControlName="coverLetter"
+                        placeholder="Expliquez pourquoi vous êtes le candidat idéal pour ce poste..."></textarea>
+              <div class="form-text">
+                Optionnel : présentez vos motivations et expliquez pourquoi vous souhaitez rejoindre notre équipe.
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label for="cv" class="form-label">CV (PDF, DOC, DOCX) *</label>
+              <input type="file" 
+                     class="form-control" 
+                     id="cv" 
+                     accept=".pdf,.doc,.docx"
+                     (change)="onFileSelected($event)"
+                     [class.is-invalid]="!selectedFile && applicationForm.get('cv')?.touched">
+              <div class="invalid-feedback" 
+                   *ngIf="!selectedFile && applicationForm.get('cv')?.touched">
+                Veuillez sélectionner votre CV.
+              </div>
+              <div class="form-text">
+                Formats acceptés : PDF, DOC, DOCX (max 5 MB)
+              </div>
+              <div *ngIf="selectedFile" class="mt-2">
+                <div class="alert alert-success py-2">
+                  <i class="fas fa-check me-1"></i>
+                  Fichier sélectionné : {{ selectedFile.name }}
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <div class="form-check">
+                <input class="form-check-input" 
+                       type="checkbox" 
+                       id="acceptTerms" 
+                       formControlName="acceptTerms"
+                       [class.is-invalid]="applicationForm.get('acceptTerms')?.invalid && applicationForm.get('acceptTerms')?.touched">
+                <label class="form-check-label" for="acceptTerms">
+                  J'accepte les conditions d'utilisation et la politique de confidentialité *
+                </label>
+                <div class="invalid-feedback" 
+                     *ngIf="applicationForm.get('acceptTerms')?.invalid && applicationForm.get('acceptTerms')?.touched">
+                  Vous devez accepter les conditions.
+                </div>
+              </div>
+            </div>
+
+            <!-- Message de succès -->
+            <div *ngIf="applicationSuccess" class="alert alert-success">
+              <i class="fas fa-check-circle me-2"></i>
+              <strong>Candidature envoyée avec succès !</strong>
+              <p class="mb-0 mt-2">
+                Merci pour votre candidature. Nous avons bien reçu votre dossier et notre équipe RH l'examinera dans les plus brefs délais. 
+                Vous recevrez un email de confirmation à l'adresse {{ applicationForm.value.email }}.
+              </p>
+            </div>
+
+            <!-- Message d'erreur -->
+            <div *ngIf="applicationError" class="alert alert-danger">
+              <i class="fas fa-exclamation-triangle me-2"></i>
+              <strong>Erreur :</strong> {{ applicationError }}
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center">
+              <button type="button" class="btn btn-secondary" (click)="closeApplicationModal()">
+                <i class="fas fa-times me-2"></i>
+                Annuler
+              </button>
+              
+              <button type="submit" 
+                      class="btn btn-success btn-lg"
+                      [disabled]="applicationForm.invalid || !selectedFile || submitting">
+                <span *ngIf="submitting" class="spinner-border spinner-border-sm me-2"></span>
+                <i *ngIf="!submitting" class="fas fa-paper-plane me-2"></i>
+                {{ submitting ? 'Envoi...' : 'Envoyer ma candidature' }}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+</div>

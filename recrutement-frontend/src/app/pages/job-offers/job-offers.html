@@ -1,0 +1,227 @@
+<div class="job-offers-page">
+  <!-- Hero Section -->
+  <section class="hero-section py-5">
+    <div class="container">
+      <div class="row">
+        <div class="col-12 text-center">
+          <h1 class="display-4 fw-bold text-white mb-3">
+            Trouvez votre emploi idéal
+          </h1>
+          <p class="lead text-white-50 mb-4">
+            Découvrez {{ filteredJobs.length }} offres d'emploi disponibles
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Search and Filters Section -->
+  <section class="search-section py-4 bg-light">
+    <div class="container">
+      <div class="search-card card shadow">
+        <div class="card-body p-4">
+          <form [formGroup]="searchForm" class="row g-3">
+            <!-- Keyword Search -->
+            <div class="col-lg-4 col-md-6">
+              <div class="form-floating">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="keyword"
+                  formControlName="keyword"
+                  placeholder="Mot-clé, poste, entreprise..."
+                >
+                <label for="keyword">
+                  <i class="fas fa-search me-2"></i>
+                  Mot-clé
+                </label>
+              </div>
+            </div>
+
+            <!-- Location Filter -->
+            <div class="col-lg-3 col-md-6">
+              <div class="form-floating">
+                <input
+                  type="text"
+                  class="form-control"
+                  id="location"
+                  formControlName="location"
+                  placeholder="Ville, région..."
+                >
+                <label for="location">
+                  <i class="fas fa-map-marker-alt me-2"></i>
+                  Localisation
+                </label>
+              </div>
+            </div>
+
+            <!-- Contract Type Filter -->
+            <div class="col-lg-3 col-md-6">
+              <div class="form-floating">
+                <select class="form-select" id="contractType" formControlName="contractType">
+                  <option value="">Tous les contrats</option>
+                  <option *ngFor="let type of contractTypes" [value]="type">
+                    {{ getContractTypeLabel(type) }}
+                  </option>
+                </select>
+                <label for="contractType">
+                  <i class="fas fa-briefcase me-2"></i>
+                  Type de contrat
+                </label>
+              </div>
+            </div>
+
+            <!-- Clear Filters Button -->
+            <div class="col-lg-2 col-md-6">
+              <button
+                type="button"
+                class="btn btn-outline-secondary w-100 h-100"
+                (click)="clearFilters()"
+              >
+                <i class="fas fa-times me-2"></i>
+                Effacer
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Results Section -->
+  <section class="results-section py-5">
+    <div class="container">
+      <!-- Results Header -->
+      <div class="row mb-4">
+        <div class="col-12">
+          <div class="d-flex justify-content-between align-items-center">
+            <h3 class="mb-0">
+              {{ filteredJobs.length }} offre{{ filteredJobs.length > 1 ? 's' : '' }} trouvée{{ filteredJobs.length > 1 ? 's' : '' }}
+            </h3>
+            <div class="sort-options">
+              <select class="form-select form-select-sm">
+                <option>Plus récentes</option>
+                <option>Plus anciennes</option>
+                <option>Salaire croissant</option>
+                <option>Salaire décroissant</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Chargement...</span>
+        </div>
+        <p class="mt-3 text-muted">Chargement des offres d'emploi...</p>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="error" class="alert alert-danger text-center" role="alert">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        {{ error }}
+      </div>
+
+      <!-- No Results -->
+      <div *ngIf="!loading && !error && filteredJobs.length === 0" class="text-center py-5">
+        <div class="no-results">
+          <i class="fas fa-search fa-3x text-muted mb-3"></i>
+          <h4>Aucune offre trouvée</h4>
+          <p class="text-muted">
+            Essayez de modifier vos critères de recherche ou 
+            <button class="btn btn-link p-0" (click)="clearFilters()">effacez les filtres</button>
+          </p>
+        </div>
+      </div>
+
+      <!-- Job Offers Grid -->
+      <div *ngIf="!loading && !error && filteredJobs.length > 0" class="row">
+        <div class="col-lg-4 col-md-6 mb-4" *ngFor="let job of filteredJobs">
+          <div class="job-card card h-100">
+            <div class="card-body">
+              <!-- Job Header -->
+              <div class="job-header mb-3">
+                <div class="d-flex justify-content-between align-items-start">
+                  <h5 class="card-title mb-2">{{ job.title }}</h5>
+                  <span class="badge bg-primary">{{ getContractTypeLabel(job.contractType) }}</span>
+                </div>
+                <p class="company-name text-muted mb-0">
+                  <i class="fas fa-building me-2"></i>
+                  Entreprise
+                </p>
+              </div>
+
+              <!-- Job Details -->
+              <div class="job-details mb-3">
+                <p class="text-muted mb-2">
+                  <i class="fas fa-map-marker-alt me-2"></i>
+                  {{ job.location }}
+                </p>
+                <p class="text-muted mb-2" *ngIf="job.salary">
+                  <i class="fas fa-euro-sign me-2"></i>
+                  {{ formatSalary(job.salary) }}
+                </p>
+                <p class="text-muted mb-0">
+                  <i class="fas fa-calendar-alt me-2"></i>
+                  Publié le {{ job.createdAt | date:'dd/MM/yyyy' }}
+                </p>
+              </div>
+
+              <!-- Job Description -->
+              <p class="card-text">
+                {{ job.description | slice:0:150 }}
+                <span *ngIf="job.description.length > 150">...</span>
+              </p>
+
+              <!-- Job Tags -->
+              <div class="job-tags mb-3">
+                <span class="badge bg-light text-dark me-2">
+                  <i class="fas fa-clock me-1"></i>
+                  {{ getContractTypeLabel(job.contractType) }}
+                </span>
+                <span class="badge bg-light text-dark">
+                  <i class="fas fa-briefcase me-1"></i>
+                  Temps plein
+                </span>
+              </div>
+            </div>
+
+            <!-- Card Footer -->
+            <div class="card-footer bg-transparent">
+              <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">
+                  Il y a {{ getDaysAgo(job.createdAt) }} jour(s)
+                </small>
+                <div class="btn-group">
+                  <a [routerLink]="['/job-offers', job.id]" class="btn btn-outline-primary btn-sm">
+                    <i class="fas fa-eye me-1"></i>
+                    Détails
+                  </a>
+                  <!-- Bouton Postuler visible uniquement pour les candidats (non connectés ou rôle USER) -->
+                  <a *ngIf="job.status === 'ACTIVE' && canApplyToJob()" 
+                     [routerLink]="['/job-offers', job.id]"
+                     fragment="application-section"
+                     class="btn btn-success btn-sm">
+                    <i class="fas fa-paper-plane me-1"></i>
+                    Postuler
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Load More Button -->
+      <div *ngIf="!loading && !error && filteredJobs.length > 0" class="text-center mt-4">
+        <button class="btn btn-outline-primary btn-lg" (click)="loadMore()">
+          <i class="fas fa-plus me-2"></i>
+          Charger plus d'offres
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+

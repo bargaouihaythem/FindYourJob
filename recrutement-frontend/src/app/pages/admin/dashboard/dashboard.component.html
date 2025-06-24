@@ -1,0 +1,332 @@
+<div class="dashboard-page">
+  <!-- Header Section -->
+  <div class="dashboard-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-8">
+        <h1 class="h3 mb-0">
+          <i class="fas fa-tachometer-alt me-2 text-primary"></i>
+          Tableau de bord
+        </h1>
+        <p class="text-muted mb-0">Vue d'ensemble de votre plateforme de recrutement</p>
+      </div>
+      <div class="col-md-4 text-end">
+        <button class="btn btn-outline-primary" (click)="refreshDashboard()" [disabled]="loading">
+          <i class="fas fa-sync-alt me-2" [class.fa-spin]="loading"></i>
+          Actualiser
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3 text-muted">Chargement des données...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="alert alert-danger" role="alert">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!loading && !error">
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                  Total Candidats
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ stats.totalCandidates }}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-users fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                  Offres Actives
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ stats.activeJobOffers }}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-briefcase fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                  Entretiens Planifiés
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ stats.scheduledInterviews }}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-calendar-check fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-warning shadow h-100 py-2">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                  Feedbacks en Attente
+                </div>
+                <div class="h5 mb-0 font-weight-bold text-gray-800">
+                  {{ stats.pendingFeedbacks }}
+                </div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-comment-dots fa-2x text-gray-300"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Secondary Statistics -->
+    <div class="row mb-4">
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card shadow h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-user-plus fa-2x text-success"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Nouveaux ce mois</div>
+                <div class="h6 mb-0">{{ stats.newCandidatesThisMonth }} candidats</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card shadow h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-check-circle fa-2x text-success"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Entretiens terminés</div>
+                <div class="h6 mb-0">{{ stats.completedInterviews }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card shadow h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-clipboard-list fa-2x text-info"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Total offres</div>
+                <div class="h6 mb-0">{{ stats.totalJobOffers }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card shadow h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-handshake fa-2x text-primary"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Total entretiens</div>
+                <div class="h6 mb-0">{{ stats.totalInterviews }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+      <!-- Recent Activities -->
+      <div class="col-lg-8 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+              <i class="fas fa-clock me-2"></i>
+              Activités Récentes
+            </h6>
+            <a routerLink="/admin/activities" class="btn btn-sm btn-outline-primary">
+              Voir tout
+            </a>
+          </div>
+          <div class="card-body">
+            <div *ngIf="recentActivities.length === 0" class="text-center py-4">
+              <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+              <p class="text-muted">Aucune activité récente</p>
+            </div>
+            
+            <div *ngFor="let activity of recentActivities" class="d-flex align-items-center mb-3">
+              <div class="flex-shrink-0">
+                <div class="avatar avatar-sm rounded-circle bg-light">
+                  <i [class]="getActivityIcon(activity.type) + ' ' + getActivityColor(activity.type)"></i>
+                </div>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">{{ formatDate(activity.date) }}</div>
+                <div class="fw-bold">{{ activity.title }}</div>
+                <div class="text-muted small">{{ activity.description }}</div>
+              </div>
+              <div class="flex-shrink-0">
+                <span [class]="getStatusBadgeClass(activity.status || '')">
+                  {{ activity.status }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Interviews -->
+      <div class="col-lg-4 mb-4">
+        <div class="card shadow">
+          <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+              <i class="fas fa-calendar-alt me-2"></i>
+              Entretiens à Venir
+            </h6>
+            <a routerLink="/admin/interviews" class="btn btn-sm btn-outline-primary">
+              Voir tout
+            </a>
+          </div>
+          <div class="card-body">
+            <div *ngIf="upcomingInterviews.length === 0" class="text-center py-4">
+              <i class="fas fa-calendar-times fa-2x text-muted mb-2"></i>
+              <p class="text-muted small">Aucun entretien planifié</p>
+            </div>
+            
+            <div *ngFor="let interview of upcomingInterviews; let last = last" class="mb-3">
+              <div class="d-flex justify-content-between align-items-start">
+                <div>
+                  <div class="fw-bold small">{{ interview.candidateName }}</div>
+                  <div class="text-muted small">{{ interview.jobOfferTitle }}</div>
+                  <div class="text-primary small">
+                    <i class="fas fa-clock me-1"></i>
+                    {{ formatDate(interview.scheduledDate) }}
+                  </div>
+                </div>
+                <span [class]="getStatusBadgeClass(interview.status)">
+                  {{ interview.status }}
+                </span>
+              </div>
+              <hr *ngIf="!last" class="my-2">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Feedbacks -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card shadow">
+          <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+            <h6 class="m-0 font-weight-bold text-primary">
+              <i class="fas fa-exclamation-circle me-2"></i>
+              Feedbacks en Attente d'Approbation
+            </h6>
+            <a routerLink="/admin/feedbacks" class="btn btn-sm btn-outline-primary">
+              Gérer les feedbacks
+            </a>
+          </div>
+          <div class="card-body">
+            <div *ngIf="pendingFeedbacks.length === 0" class="text-center py-4">
+              <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+              <p class="text-muted">Aucun feedback en attente</p>
+            </div>
+            
+            <div *ngIf="pendingFeedbacks.length > 0" class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Candidat</th>
+                    <th>Type</th>
+                    <th>Auteur</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let feedback of pendingFeedbacks">
+                    <td>
+                      <div class="fw-bold">{{ feedback.candidateName }}</div>
+                      <div class="text-muted small">{{ feedback.jobOfferTitle }}</div>
+                    </td>
+                    <td>
+                      <span class="badge bg-info">{{ feedback.type }}</span>
+                    </td>
+                    <td>{{ feedback.authorName }}</td>
+                    <td>{{ formatDate(feedback.createdAt) }}</td>
+                    <td>
+                      <button class="btn btn-sm btn-outline-primary me-2" 
+                              [routerLink]="['/admin/feedbacks', feedback.id]">
+                        <i class="fas fa-eye"></i>
+                      </button>
+                      <button class="btn btn-sm btn-success me-1" 
+                              title="Approuver">
+                        <i class="fas fa-check"></i>
+                      </button>
+                      <button class="btn btn-sm btn-danger" 
+                              title="Rejeter">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

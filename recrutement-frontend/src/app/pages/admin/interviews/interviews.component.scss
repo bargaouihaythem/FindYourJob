@@ -1,0 +1,385 @@
+/* Styles for interviews.component */
+
+// Variables
+$primary-color: #007bff;
+$success-color: #28a745;
+$warning-color: #ffc107;
+$danger-color: #dc3545;
+$info-color: #17a2b8;
+$border-radius: 0.375rem;
+$box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+
+// Header
+.interviews-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  border-radius: $border-radius;
+  margin-bottom: 2rem;
+  box-shadow: $box-shadow;
+
+  h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 600;
+  }
+
+  .text-muted {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+}
+
+// Filtres
+.card {
+  box-shadow: $box-shadow;
+  border: none;
+  border-radius: $border-radius;
+  
+  .card-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    font-weight: 600;
+  }
+}
+
+// Filtres rapides
+.btn-group {
+  .btn {
+    border-radius: $border-radius !important;
+    margin-right: 0.5rem;
+    
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+}
+
+// Table styles
+.table {
+  .sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    
+    &:hover {
+      background-color: #f8f9fa;
+    }
+  }
+  
+  .avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+  }
+  
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+// Status badges
+.badge {
+  &.bg-warning {
+    background-color: $warning-color !important;
+    color: #212529;
+  }
+  
+  &.bg-success {
+    background-color: $success-color !important;
+  }
+  
+  &.bg-primary {
+    background-color: $primary-color !important;
+  }
+  
+  &.bg-danger {
+    background-color: $danger-color !important;
+  }
+  
+  &.bg-info {
+    background-color: $info-color !important;
+  }
+}
+
+// Buttons
+.btn-group {
+  .btn {
+    border-radius: $border-radius;
+    
+    &:not(:last-child) {
+      margin-right: 0.25rem;
+    }
+  }
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+}
+
+// Dropdown
+.dropdown-menu {
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  border: none;
+  border-radius: $border-radius;
+  
+  .dropdown-item {
+    padding: 0.5rem 1rem;
+    
+    &:hover {
+      background-color: #f8f9fa;
+    }
+    
+    &.text-danger:hover {
+      background-color: #f8d7da;
+      color: $danger-color;
+    }
+  }
+}
+
+// Pagination
+.pagination {
+  .page-link {
+    border-radius: $border-radius;
+    border: 1px solid #dee2e6;
+    margin: 0 0.125rem;
+    
+    &:hover {
+      background-color: #e9ecef;
+    }
+  }
+  
+  .page-item.active .page-link {
+    background-color: $primary-color;
+    border-color: $primary-color;
+  }
+  
+  .page-item.disabled .page-link {
+    background-color: #fff;
+    border-color: #dee2e6;
+    color: #6c757d;
+  }
+}
+
+// Modals
+.modal {
+  &.show {
+    display: block !important;
+  }
+  
+  .modal-dialog {
+    margin: 1.75rem auto;
+    max-width: 900px;
+    
+    &.modal-lg {
+      max-width: 1000px;
+    }
+  }
+  
+  .modal-content {
+    border: none;
+    border-radius: $border-radius;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+  }
+  
+  .modal-header {
+    background: #f8f9fa;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: $border-radius $border-radius 0 0;
+    
+    .modal-title {
+      font-weight: 600;
+      color: #495057;
+    }
+  }
+  
+  .modal-body {
+    padding: 1.5rem;
+  }
+  
+  .modal-footer {
+    background: #f8f9fa;
+    border-top: 1px solid rgba(0, 0, 0, 0.125);
+    border-radius: 0 0 $border-radius $border-radius;
+  }
+}
+
+// Modal backdrop
+.modal-backdrop {
+  &.show {
+    opacity: 0.5;
+  }
+}
+
+// Forms
+.form-control {
+  border-radius: $border-radius;
+  border: 1px solid #ced4da;
+  
+  &:focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+}
+
+.form-select {
+  border-radius: $border-radius;
+  border: 1px solid #ced4da;
+  
+  &:focus {
+    border-color: $primary-color;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+}
+
+.form-check-input {
+  &:checked {
+    background-color: $primary-color;
+    border-color: $primary-color;
+  }
+  
+  &:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  }
+}
+
+// Alerts
+.alert {
+  border: none;
+  border-radius: $border-radius;
+  
+  &.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+  }
+  
+  &.alert-warning {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+  
+  &.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+}
+
+// Cards
+.card {
+  &.bg-light {
+    background-color: #f8f9fa !important;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+  }
+}
+
+// Loading state
+.spinner-border {
+  &.text-primary {
+    color: $primary-color !important;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .interviews-header {
+    padding: 1rem;
+    text-align: center;
+    
+    h1 {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .btn-group {
+    flex-direction: column;
+    width: 100%;
+    
+    .btn {
+      margin-right: 0;
+      margin-bottom: 0.25rem;
+      border-radius: $border-radius !important;
+    }
+  }
+  
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .modal-dialog {
+    margin: 0.5rem;
+    max-width: calc(100% - 1rem);
+  }
+}
+
+// Animation
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+// Hover effects
+.table tbody tr {
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+  }
+}
+
+// Selection styles
+.table tbody tr.selected {
+  background-color: rgba(0, 123, 255, 0.1);
+}
+
+// Empty state
+.text-center {
+  .fa-calendar-times {
+    color: #6c757d;
+    opacity: 0.5;
+  }
+}
+
+// Quick filter buttons
+.btn-outline-secondary {
+  &.active {
+    background-color: $primary-color;
+    border-color: $primary-color;
+    color: white;
+  }
+}
+
+// Custom scrollbar
+.table-responsive {
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+    
+    &:hover {
+      background: #a8a8a8;
+    }
+  }
+}

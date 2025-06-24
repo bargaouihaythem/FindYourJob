@@ -1,0 +1,187 @@
+.register-page {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  
+  .register-card {
+    border: none;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.95);
+    
+    .register-icon {
+      i {
+        font-size: 4rem;
+        color: var(--primary-color);
+        opacity: 0.8;
+      }
+    }
+    
+    .card-title {
+      color: var(--dark-color);
+      font-weight: 700;
+    }
+    
+    .form-label {
+      font-weight: 600;
+      color: var(--dark-color);
+      margin-bottom: 8px;
+      
+      i {
+        color: var(--primary-color);
+        width: 16px;
+      }
+    }
+    
+    .form-control {
+      border-radius: 10px;
+      border: 2px solid #e9ecef;
+      padding: 12px 16px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      
+      &:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+        transform: translateY(-2px);
+      }
+      
+      &.is-invalid {
+        border-color: var(--danger-color);
+        
+        &:focus {
+          border-color: var(--danger-color);
+          box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+      }
+    }
+    
+    .form-check {
+      .form-check-input {
+        border-radius: 4px;
+        
+        &:checked {
+          background-color: var(--primary-color);
+          border-color: var(--primary-color);
+        }
+      }
+      
+      .form-check-label {
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+      }
+    }
+    
+    .btn-primary {
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-weight: 600;
+      font-size: 1.1rem;
+      background: linear-gradient(45deg, var(--primary-color), #0056b3);
+      border: none;
+      transition: all 0.3s ease;
+      
+      &:hover:not(:disabled) {
+        background: linear-gradient(45deg, #0056b3, var(--primary-color));
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+      }
+      
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+    }
+    
+    .divider {
+      position: relative;
+      text-align: center;
+      margin: 2rem 0;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: #e9ecef;
+      }
+      
+      span {
+        background: white;
+        padding: 0 1rem;
+        color: var(--secondary-color);
+        font-size: 0.9rem;
+      }
+    }
+    
+    a {
+      color: var(--primary-color);
+      transition: color 0.3s ease;
+      
+      &:hover {
+        color: #0056b3;
+      }
+    }
+  }
+}
+
+.invalid-feedback {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--danger-color);
+  margin-top: 5px;
+}
+
+.alert {
+  border-radius: 10px;
+  border: none;
+  
+  &.alert-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    color: var(--success-color);
+    border-left: 4px solid var(--success-color);
+  }
+  
+  &.alert-danger {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--danger-color);
+    border-left: 4px solid var(--danger-color);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .register-page {
+    .container {
+      padding: 1rem;
+    }
+    
+    .register-card {
+      .card-body {
+        padding: 2rem !important;
+      }
+      
+      .register-icon i {
+        font-size: 3rem;
+      }
+    }
+  }
+}
+
+// Animation
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-card {
+  animation: fadeInUp 0.6s ease-out;
+}
+

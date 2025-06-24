@@ -1,0 +1,869 @@
+<div class="interviews-page">
+  <!-- Header Section -->
+  <div class="interviews-header mb-4">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h1 class="h3 mb-0">
+          <i class="fas fa-calendar-alt me-2 text-primary"></i>
+          Gestion des Entretiens
+        </h1>
+        <p class="text-muted mb-0">{{ totalInterviews }} entretien(s) au total</p>
+      </div>
+      <div class="col-md-6 text-end">
+        <div class="btn-group me-2">
+          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-download me-2"></i>
+            Exporter
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" (click)="exportInterviewsAdvanced('csv')">
+              <i class="fas fa-file-csv me-2"></i>Exporter CSV
+            </a></li>
+            <li><a class="dropdown-item" (click)="exportInterviewsAdvanced('excel')">
+              <i class="fas fa-file-excel me-2"></i>Exporter Excel
+            </a></li>
+          </ul>
+        </div>
+        <div class="btn-group me-2" *ngIf="selectedInterviews.length > 0">
+          <button class="btn btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="fas fa-tasks me-2"></i>
+            Actions ({{ selectedInterviews.length }})
+          </button>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" (click)="bulkUpdateStatus('IN_PROGRESS')">
+              <i class="fas fa-check me-2"></i>Marquer en cours
+            </a></li>
+            <li><a class="dropdown-item" (click)="bulkUpdateStatus('CANCELLED')">
+              <i class="fas fa-times me-2"></i>Annuler sélection
+            </a></li>
+            <li><a class="dropdown-item" (click)="bulkUpdateStatus('COMPLETED')">
+              <i class="fas fa-flag-checkered me-2"></i>Terminer sélection
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" (click)="bulkDelete()">
+              <i class="fas fa-trash me-2"></i>Supprimer sélection
+            </a></li>
+          </ul>
+        </div>
+        <button class="btn btn-primary" (click)="openInterviewModal()">
+          <i class="fas fa-plus me-2"></i>
+          Nouvel Entretien
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <!-- Quick Filters -->
+      <div class="mb-3">
+        <label class="form-label fw-bold">Filtres rapides :</label>
+        <div class="btn-group" role="group">
+          <button type="button" class="btn btn-outline-secondary" (click)="quickFilterByStatus('')">
+            Tous ({{ totalInterviews }})
+          </button>
+          <button type="button" class="btn btn-outline-warning" (click)="quickFilterByStatus('SCHEDULED')">
+            Planifiés
+          </button>
+          <button type="button" class="btn btn-outline-success" (click)="quickFilterByStatus('IN_PROGRESS')">
+            En cours
+          </button>
+          <button type="button" class="btn btn-outline-primary" (click)="quickFilterByStatus('COMPLETED')">
+            Terminés
+          </button>
+          <button type="button" class="btn btn-outline-danger" (click)="quickFilterByStatus('CANCELLED')">
+            Annulés
+          </button>
+        </div>
+      </div>
+      
+      <!-- Advanced Filters -->
+      <form [formGroup]="searchForm" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Rechercher</label>
+          <div class="input-group">
+            <span class="input-group-text">
+              <i class="fas fa-search"></i>
+            </span>
+            <input type="text" class="form-control" formControlName="searchTerm" 
+                   placeholder="Candidat, interviewer...">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Statut</label>
+          <select class="form-select" formControlName="status">
+            <option value="">Tous</option>
+            <option value="SCHEDULED">Planifié</option>
+            <option value="IN_PROGRESS">En cours</option>
+            <option value="COMPLETED">Terminé</option>
+            <option value="CANCELLED">Annulé</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Type</label>
+          <select class="form-select" formControlName="type">
+            <option value="">Tous</option>
+            <option value="PHONE_SCREENING">Téléphonique</option>
+            <option value="TECHNICAL">Technique</option>
+            <option value="HR">RH</option>
+            <option value="MANAGER">Manager</option>
+            <option value="FINAL">Final</option>
+            <option value="GROUP">Groupe</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Période</label>
+          <select class="form-select" formControlName="dateRange">
+            <option value="">Toutes</option>
+            <option value="today">Aujourd'hui</option>
+            <option value="week">Cette semaine</option>
+            <option value="month">Ce mois</option>
+          </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-outline-secondary w-100" (click)="clearFilters()">
+            <i class="fas fa-times me-2"></i>
+            Effacer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <p class="mt-3 text-muted">Chargement des entretiens...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error" class="alert alert-danger">
+    <i class="fas fa-exclamation-triangle me-2"></i>
+    {{ error }}
+  </div>
+
+  <!-- Interviews Table -->
+  <div *ngIf="!loading && !error" class="card">
+    <div class="card-header">
+      <h5 class="card-title mb-0">
+        <i class="fas fa-list me-2"></i>
+        Liste des entretiens ({{ getFilteredInterviews().length }})
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th width="40">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" 
+                         [checked]="selectedInterviews.length === getPaginatedInterviews().length && getPaginatedInterviews().length > 0"
+                         (change)="selectedInterviews.length === getPaginatedInterviews().length ? clearSelection() : selectAllInterviews()">
+                </div>
+              </th>
+              <th (click)="changeSort('candidateName')" class="sortable">
+                <i [class]="getSortIcon('candidateName')" class="me-2"></i>
+                Candidat
+              </th>
+              <th>Offre d'emploi</th>
+              <th (click)="changeSort('interviewDate')" class="sortable">
+                <i [class]="getSortIcon('interviewDate')" class="me-2"></i>
+                Date & Heure
+              </th>
+              <th>Type</th>
+              <th>Interviewer</th>
+              <th (click)="changeSort('status')" class="sortable">
+                <i [class]="getSortIcon('status')" class="me-2"></i>
+                Statut
+              </th>
+              <th class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let interview of getPaginatedInterviews()">
+              <td>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" 
+                         [checked]="isInterviewSelected(interview.id)"
+                         (change)="toggleInterviewSelection(interview.id)">
+                </div>
+              </td>
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="avatar avatar-sm rounded-circle bg-primary text-white me-3">
+                    {{ interview.candidateName?.charAt(0) || 'C' }}
+                  </div>
+                  <div>
+                    <div class="fw-bold">{{ interview.candidateName || 'N/A' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge bg-info">{{ interview.jobOfferTitle || 'N/A' }}</span>
+              </td>
+              <td>
+                <div>
+                  <div class="fw-bold">{{ formatDate(interview.interviewDate) }}</div>
+                  <div class="text-muted small">{{ formatTime(interview.interviewDate) }}</div>
+                </div>
+              </td>
+              <td>
+                <i [class]="getTypeIcon(interview.type)" class="me-2"></i>
+                {{ getTypeText(interview.type) }}
+              </td>
+              <td>
+                <span>{{ interview.interviewerName || 'N/A' }}</span>
+              </td>
+              <td>
+                <span [class]="getStatusBadgeClass(interview.status)">
+                  {{ getStatusText(interview.status) }}
+                </span>
+              </td>
+              <td class="text-center">
+                <div class="btn-group" role="group">
+                  <!-- Bouton Voir -->
+                  <button class="btn btn-sm btn-outline-info"
+                          (click)="openConsultationModal(interview)"
+                          title="Voir les détails">
+                    <i class="fas fa-eye"></i>
+                  </button>
+                  <!-- Modifier -->
+                  <button class="btn btn-sm btn-outline-primary"
+                          (click)="openInterviewModal(interview)"
+                          title="Modifier"
+                          [disabled]="!canChangeStatus(interview, 'IN_PROGRESS') && !canChangeStatus(interview, 'CANCELLED') && !canChangeStatus(interview, 'COMPLETED') && !canChangeStatus(interview, 'RESCHEDULED')">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <!-- Feedback -->
+                  <button class="btn btn-sm btn-outline-success"
+                          (click)="openFeedbackModal(interview)"
+                          title="Ajouter un feedback"
+                          [disabled]="interview.status !== 'COMPLETED'">
+                    <i class="fas fa-comment"></i>
+                  </button>
+                  <!-- Notification -->
+                  <button class="btn btn-sm btn-outline-warning"
+                          (click)="openNotificationModal(interview)"
+                          title="Envoyer une notification">
+                    <i class="fas fa-envelope"></i>
+                  </button>
+                  <!-- Dropdown pour plus d'actions -->
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                            data-bs-toggle="dropdown" aria-expanded="false" title="Plus d'actions">
+                      <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <!-- Actions de workflow -->
+                      <li *ngIf="canChangeStatus(interview, 'IN_PROGRESS') && interview.status === 'SCHEDULED'">
+                        <a class="dropdown-item" (click)="confirmInterviewWithNotification(interview)">
+                          <i class="fas fa-check me-2 text-success"></i>Commencer avec notification
+                        </a>
+                      </li>
+                      <li *ngIf="canChangeStatus(interview, 'COMPLETED') && interview.status === 'IN_PROGRESS'">
+                        <a class="dropdown-item" (click)="completeInterviewWithFeedback(interview)">
+                          <i class="fas fa-flag-checkered me-2 text-primary"></i>Terminer et ajouter feedback
+                        </a>
+                      </li>
+                      <li *ngIf="canChangeStatus(interview, 'RESCHEDULED')">
+                        <a class="dropdown-item" (click)="rescheduleInterview(interview)">
+                          <i class="fas fa-calendar-alt me-2 text-info"></i>Reprogrammer
+                        </a>
+                      </li>
+                      <li *ngIf="canChangeStatus(interview, 'CANCELLED') && interview.status !== 'CANCELLED'">
+                        <a class="dropdown-item" (click)="cancelInterview(interview)">
+                          <i class="fas fa-times me-2 text-warning"></i>Annuler
+                        </a>
+                      </li>
+                      <li><hr class="dropdown-divider"></li>
+                      <!-- Supprimer -->
+                      <li *ngIf="canChangeStatus(interview, 'CANCELLED') || canChangeStatus(interview, 'RESCHEDULED') || canChangeStatus(interview, 'IN_PROGRESS') || canChangeStatus(interview, 'COMPLETED')">
+                        <a class="dropdown-item text-danger" (click)="openDeleteModal(interview)">
+                          <i class="fas fa-trash me-2"></i>Supprimer
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="getPaginatedInterviews().length === 0">
+              <td colspan="8" class="text-center py-4 text-muted">
+                <i class="fas fa-calendar-times fa-2x mb-3"></i>
+                <p class="mb-0">Aucun entretien trouvé</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Pagination -->
+    <div class="card-footer" *ngIf="totalPages > 1">
+      <nav aria-label="Pagination des entretiens">
+        <ul class="pagination justify-content-center mb-0">
+          <li class="page-item" [class.disabled]="currentPage === 1">
+            <a class="page-link" (click)="changePage(currentPage - 1)">
+              <i class="fas fa-chevron-left"></i>
+            </a>
+          </li>
+          <li class="page-item" *ngFor="let page of [].constructor(totalPages); let i = index"
+              [class.active]="currentPage === i + 1">
+            <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
+          </li>
+          <li class="page-item" [class.disabled]="currentPage === totalPages">
+            <a class="page-link" (click)="changePage(currentPage + 1)">
+              <i class="fas fa-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+      <div class="text-center mt-2">
+        <small class="text-muted">
+          Page {{ currentPage }} sur {{ totalPages }} - 
+          {{ (currentPage - 1) * pageSize + 1 }} à 
+          {{ Math.min(currentPage * pageSize, totalInterviews) }} sur {{ totalInterviews }} entretiens
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Création/Édition Entretien -->
+<div class="modal fade" [class.show]="showInterviewModal" [style.display]="showInterviewModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog" aria-labelledby="interviewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="interviewModalLabel">
+          <i class="fas fa-calendar-plus me-2"></i>
+          {{ selectedInterview ? 'Modifier l\'entretien' : 'Nouvel entretien' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeInterviewModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form [formGroup]="interviewForm">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-user me-2"></i>
+                  Candidat <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" formControlName="candidateId">
+                  <option value="">Sélectionner un candidat</option>
+                  <option *ngFor="let candidate of candidates" [value]="candidate.id">
+                    {{ candidate.firstName }} {{ candidate.lastName }}
+                  </option>
+                </select>
+                <div *ngIf="interviewForm.get('candidateId')?.invalid && interviewForm.get('candidateId')?.touched" 
+                     class="invalid-feedback d-block">
+                  Le candidat est requis
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-briefcase me-2"></i>
+                  Offre d'emploi <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" formControlName="jobOfferId">
+                  <option value="">Sélectionner une offre</option>
+                  <option *ngFor="let jobOffer of jobOffers" [value]="jobOffer.id">
+                    {{ jobOffer.title }}
+                  </option>
+                </select>
+                <div *ngIf="interviewForm.get('jobOfferId')?.invalid && interviewForm.get('jobOfferId')?.touched" 
+                     class="invalid-feedback d-block">
+                  L'offre d'emploi est requise
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-user-tie me-2"></i>
+                  Interviewer <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" formControlName="interviewerId">
+                  <option value="">Sélectionner un interviewer</option>
+                  <option *ngFor="let interviewer of interviewers" [value]="interviewer.id">
+                    {{ interviewer.name }} - {{ interviewer.role }}
+                  </option>
+                </select>
+                <div *ngIf="interviewForm.get('interviewerId')?.invalid && interviewForm.get('interviewerId')?.touched" 
+                     class="invalid-feedback d-block">
+                  L'interviewer est requis
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-calendar-alt me-2"></i>
+                  Date et heure <span class="text-danger">*</span>
+                </label>
+                <input type="datetime-local" class="form-control" formControlName="scheduledDate">
+                <div *ngIf="interviewForm.get('scheduledDate')?.invalid && interviewForm.get('scheduledDate')?.touched" 
+                     class="invalid-feedback d-block">
+                  La date et l'heure sont requises
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-clock me-2"></i>
+                  Durée (minutes) <span class="text-danger">*</span>
+                </label>
+                <input type="number" class="form-control" formControlName="duration" min="15" max="480">
+                <div *ngIf="interviewForm.get('duration')?.invalid && interviewForm.get('duration')?.touched" 
+                     class="invalid-feedback d-block">
+                  La durée doit être entre 15 et 480 minutes
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-video me-2"></i>
+                  Type <span class="text-danger">*</span>
+                </label>
+                <select class="form-select" formControlName="type">
+                  <option value="PHONE_SCREENING">Entretien téléphonique</option>
+                  <option value="TECHNICAL">Entretien technique</option>
+                  <option value="HR">Entretien RH</option>
+                  <option value="MANAGER">Entretien manager</option>
+                  <option value="FINAL">Entretien final</option>
+                  <option value="GROUP">Entretien de groupe</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">
+                  <i class="fas fa-map-marker-alt me-2"></i>
+                  Lieu <span class="text-danger">*</span>
+                </label>
+                <input type="text" class="form-control" formControlName="location" 
+                       placeholder="Ex: Salle 101, Zoom, +33123456789">
+                <div *ngIf="interviewForm.get('location')?.invalid && interviewForm.get('location')?.touched" 
+                     class="invalid-feedback d-block">
+                  Le lieu est requis
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-sticky-note me-2"></i>
+              Notes
+            </label>
+            <textarea class="form-control" formControlName="notes" rows="3" 
+                      placeholder="Notes additionnelles sur l'entretien..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeInterviewModal()">
+          <i class="fas fa-times me-2"></i>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" (click)="saveInterview()" 
+                [disabled]="interviewForm.invalid">
+          <i class="fas fa-save me-2"></i>
+          {{ selectedInterview ? 'Mettre à jour' : 'Créer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Suppression -->
+<div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteModalLabel">
+          <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
+          Confirmer la suppression
+        </h5>
+        <button type="button" class="btn-close" (click)="closeDeleteModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-warning">
+          <i class="fas fa-exclamation-triangle me-2"></i>
+          <strong>Attention !</strong> Cette action est irréversible.
+        </div>
+        <p>Êtes-vous sûr de vouloir supprimer cet entretien ?</p>
+        <div *ngIf="selectedInterview" class="card bg-light">
+          <div class="card-body">
+            <h6 class="card-title">{{ selectedInterview.candidateName }}</h6>
+            <p class="card-text">
+              <strong>Offre :</strong> {{ selectedInterview.jobOfferTitle }}<br>
+              <strong>Date :</strong> {{ formatDateTime(selectedInterview.interviewDate) }}<br>
+              <strong>Interviewer :</strong> {{ selectedInterview.interviewerName }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">
+          <i class="fas fa-times me-2"></i>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-danger" (click)="deleteInterview()">
+          <i class="fas fa-trash me-2"></i>
+          Supprimer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Feedback -->
+<div class="modal fade" [class.show]="showFeedbackModal" [style.display]="showFeedbackModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="feedbackModalLabel">
+          <i class="fas fa-comment me-2"></i>
+          Ajouter un feedback
+        </h5>
+        <button type="button" class="btn-close" (click)="closeFeedbackModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="selectedInterview" class="card bg-light mb-3">
+          <div class="card-body">
+            <h6 class="card-title">
+              <i class="fas fa-info-circle me-2"></i>
+              Détails de l'entretien
+            </h6>
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Candidat :</strong> {{ selectedInterview.candidateName }}</p>
+                <p class="mb-1"><strong>Offre :</strong> {{ selectedInterview.jobOfferTitle }}</p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-1"><strong>Date :</strong> {{ formatDateTime(selectedInterview.interviewDate) }}</p>
+                <p class="mb-1"><strong>Interviewer :</strong> {{ selectedInterview.interviewerName }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <form [formGroup]="feedbackForm">
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-star me-2"></i>
+              Note (1-5) <span class="text-danger">*</span>
+            </label>
+            <select class="form-select" formControlName="rating">
+              <option value="">Sélectionner une note</option>
+              <option value="1">1 - Très insatisfaisant</option>
+              <option value="2">2 - Insatisfaisant</option>
+              <option value="3">3 - Satisfaisant</option>
+              <option value="4">4 - Bon</option>
+              <option value="5">5 - Excellent</option>
+            </select>
+            <div *ngIf="feedbackForm.get('rating')?.invalid && feedbackForm.get('rating')?.touched" 
+                 class="invalid-feedback d-block">
+              La note est requise
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-comment-alt me-2"></i>
+              Commentaires <span class="text-danger">*</span>
+            </label>
+            <textarea class="form-control" formControlName="feedback" rows="5" 
+                      placeholder="Vos commentaires sur l'entretien..."></textarea>
+            <div *ngIf="feedbackForm.get('feedback')?.invalid && feedbackForm.get('feedback')?.touched" 
+                 class="invalid-feedback d-block">
+              Les commentaires sont requis
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeFeedbackModal()">
+          <i class="fas fa-times me-2"></i>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-success" (click)="saveFeedback()" 
+                [disabled]="feedbackForm.invalid">
+          <i class="fas fa-paper-plane me-2"></i>
+          Envoyer le feedback
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Consultation (Visualisation) -->
+<div class="modal fade" [class.show]="showConsultationModal" [style.display]="showConsultationModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog" aria-labelledby="consultationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="consultationModalLabel">
+          <i class="fas fa-eye me-2"></i>
+          Détails de l'entretien
+        </h5>
+        <button type="button" class="btn-close" (click)="closeConsultationModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" *ngIf="selectedInterview">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="card bg-light mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="fas fa-user me-2"></i>
+                  Informations Candidat
+                </h6>
+              </div>
+              <div class="card-body">
+                <p class="mb-2"><strong>Nom :</strong> {{ selectedInterview.candidateName || 'N/A' }}</p>
+                <p class="mb-0"><strong>ID :</strong> #{{ selectedInterview.candidateId }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card bg-light mb-3">
+              <div class="card-header">
+                <h6 class="mb-0">
+                  <i class="fas fa-briefcase me-2"></i>
+                  Offre d'emploi
+                </h6>
+              </div>
+              <div class="card-body">
+                <p class="mb-2"><strong>Titre :</strong> {{ selectedInterview.jobOfferTitle || 'N/A' }}</p>
+                <p class="mb-0"><strong>ID :</strong> #{{ selectedInterview.jobOfferId || 'N/A' }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card bg-light mb-3">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-calendar-alt me-2"></i>
+              Détails de l'entretien
+            </h6>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-6">
+                <p class="mb-2">
+                  <strong>Date :</strong> {{ formatDate(selectedInterview.interviewDate) }}
+                </p>
+                <p class="mb-2">
+                  <strong>Heure :</strong> {{ formatTime(selectedInterview.interviewDate) }}
+                </p>
+                <p class="mb-2">
+                  <strong>Durée :</strong> {{ selectedInterview.durationMinutes || 60 }} minutes
+                </p>
+              </div>
+              <div class="col-md-6">
+                <p class="mb-2">
+                  <strong>Type :</strong> 
+                  <i [class]="getTypeIcon(selectedInterview.type)" class="me-2"></i>
+                  {{ getTypeText(selectedInterview.type) }}
+                </p>
+                <p class="mb-2">
+                  <strong>Lieu :</strong> {{ selectedInterview.location || 'N/A' }}
+                </p>
+                <p class="mb-2">
+                  <strong>Statut :</strong> 
+                  <span [class]="getStatusBadgeClass(selectedInterview.status)">
+                    {{ getStatusText(selectedInterview.status) }}
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card bg-light mb-3" *ngIf="selectedInterview.interviewerName">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-user-tie me-2"></i>
+              Interviewer
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-2"><strong>Nom :</strong> {{ selectedInterview.interviewerName }}</p>
+            <p class="mb-0"><strong>ID :</strong> #{{ selectedInterview.interviewerId }}</p>
+          </div>
+        </div>
+
+        <div class="card bg-light mb-3" *ngIf="selectedInterview.notes">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-sticky-note me-2"></i>
+              Notes
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-0">{{ selectedInterview.notes }}</p>
+          </div>
+        </div>
+
+        <div class="card bg-light" *ngIf="selectedInterview.feedback || selectedInterview.rating">
+          <div class="card-header">
+            <h6 class="mb-0">
+              <i class="fas fa-comment me-2"></i>
+              Feedback
+            </h6>
+          </div>
+          <div class="card-body">
+            <p class="mb-2" *ngIf="selectedInterview.rating">
+              <strong>Note :</strong> 
+              <span class="badge bg-primary">{{ selectedInterview.rating }}/5</span>
+            </p>
+            <p class="mb-0" *ngIf="selectedInterview.feedback">
+              <strong>Commentaires :</strong><br>
+              {{ selectedInterview.feedback }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeConsultationModal()">
+          <i class="fas fa-times me-2"></i>
+          Fermer
+        </button>
+        <div class="btn-group">
+          <button type="button" class="btn btn-outline-primary" (click)="closeConsultationModal(); selectedInterview && openInterviewModal(selectedInterview)">
+            <i class="fas fa-edit me-2"></i>
+            Modifier
+          </button>
+          <button type="button" class="btn btn-outline-success" (click)="closeConsultationModal(); selectedInterview && openFeedbackModal(selectedInterview)">
+            <i class="fas fa-comment me-2"></i>
+            Feedback
+          </button>
+          <button type="button" class="btn btn-outline-info" (click)="closeConsultationModal(); selectedInterview && openNotificationModal(selectedInterview)">
+            <i class="fas fa-envelope me-2"></i>
+            Notifier
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Notification -->
+<div class="modal fade" [class.show]="showNotificationModal" [style.display]="showNotificationModal ? 'block' : 'none'" 
+     tabindex="-1" role="dialog" aria-labelledby="notificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="notificationModalLabel">
+          <i class="fas fa-envelope me-2"></i>
+          Envoyer une notification
+        </h5>
+        <button type="button" class="btn-close" (click)="closeNotificationModal()" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="selectedInterview" class="alert alert-info">
+          <strong>Entretien :</strong> {{ selectedInterview.candidateName }} - {{ selectedInterview.jobOfferTitle }}
+          <br>
+          <strong>Date :</strong> {{ formatDateTime(selectedInterview.interviewDate) }}
+        </div>
+        
+        <form [formGroup]="notificationForm">
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-tag me-2"></i>
+              Type de notification <span class="text-danger">*</span>
+            </label>
+            <select class="form-select" formControlName="notificationType">
+              <option *ngFor="let type of notificationTypes" [value]="type.value">
+                {{ type.label }}
+              </option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-envelope-open me-2"></i>
+              Sujet <span class="text-danger">*</span>
+            </label>
+            <input type="text" class="form-control" formControlName="subject" 
+                   placeholder="Sujet de l'email">
+            <div *ngIf="notificationForm.get('subject')?.invalid && notificationForm.get('subject')?.touched" 
+                 class="invalid-feedback d-block">
+              Le sujet est requis
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-edit me-2"></i>
+              Message <span class="text-danger">*</span>
+            </label>
+            <textarea class="form-control" formControlName="message" rows="8" 
+                      placeholder="Contenu de l'email..."></textarea>
+            <div *ngIf="notificationForm.get('message')?.invalid && notificationForm.get('message')?.touched" 
+                 class="invalid-feedback d-block">
+              Le message est requis
+            </div>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-12">
+              <label class="form-label">
+                <i class="fas fa-users me-2"></i>
+                Destinataires
+              </label>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" formControlName="sendToCandidate" id="sendToCandidate">
+                <label class="form-check-label" for="sendToCandidate">
+                  Envoyer au candidat
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" formControlName="sendToInterviewer" id="sendToInterviewer">
+                <label class="form-check-label" for="sendToInterviewer">
+                  Envoyer à l'interviewer
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" formControlName="copyToHR" id="copyToHR">
+                <label class="form-check-label" for="copyToHR">
+                  Copie aux RH
+                </label>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeNotificationModal()">
+          <i class="fas fa-times me-2"></i>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-primary" (click)="sendNotification()" 
+                [disabled]="notificationForm.invalid">
+          <i class="fas fa-paper-plane me-2"></i>
+          Envoyer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Backdrop pour les modaux -->
+<div class="modal-backdrop fade" [class.show]="showInterviewModal || showDeleteModal || showFeedbackModal || showConsultationModal || showNotificationModal" 
+     *ngIf="showInterviewModal || showDeleteModal || showFeedbackModal || showConsultationModal || showNotificationModal"></div>
+

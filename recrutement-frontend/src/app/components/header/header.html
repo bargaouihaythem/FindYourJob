@@ -1,0 +1,120 @@
+<nav class="navbar navbar-expand-lg navbar-dark">
+  <div class="container">
+    <a class="navbar-brand" routerLink="/">
+      <i class="fas fa-briefcase me-2"></i>
+      RecrutementApp
+    </a>
+    
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+            <i class="fas fa-home me-1"></i>
+            Accueil
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/job-offers" routerLinkActive="active">
+            <i class="fas fa-search me-1"></i>
+            Offres d'emploi
+          </a>
+        </li>
+        
+        <!-- Menu Candidat -->
+        <li class="nav-item dropdown" *ngIf="isAuthenticated() && isCandidate()">
+          <a class="nav-link dropdown-toggle" href="#" id="candidateDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-user me-1"></i>
+            Mon espace
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" routerLink="/candidate/my-applications">
+              <i class="fas fa-briefcase me-2"></i>
+              Mes candidatures
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/candidate/my-interviews">
+              <i class="fas fa-calendar-alt me-2"></i>
+              Mes entretiens
+            </a></li>
+          </ul>
+        </li>
+        
+        <!-- Menu Admin/RH -->
+        <li class="nav-item dropdown" *ngIf="isAuthenticated() && (isAdmin() || isHR())">
+          <a class="nav-link dropdown-toggle" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-cog me-1"></i>
+            Administration
+          </a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" routerLink="/admin/dashboard">
+              <i class="fas fa-tachometer-alt me-2"></i>
+              Tableau de bord
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/candidates">
+              <i class="fas fa-users me-2"></i>
+              Candidats
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/job-offers">
+              <i class="fas fa-briefcase me-2"></i>
+              Gestion des offres
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" routerLink="/admin/interviews">
+              <i class="fas fa-calendar-alt me-2"></i>
+              Entretiens
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/feedbacks">
+              <i class="fas fa-comments me-2"></i>
+              Feedbacks
+            </a></li>
+          </ul>
+        </li>
+      </ul>
+      
+      <ul class="navbar-nav">
+        <!-- Utilisateur connecté -->
+        <li class="nav-item dropdown" *ngIf="isAuthenticated() && currentUser">
+          <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
+            <i class="fas fa-user-circle me-1"></i>
+            {{ currentUser.username }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="#">
+              <i class="fas fa-user me-2"></i>
+              Profil
+            </a></li>
+            <li><a class="dropdown-item" href="#">
+              <i class="fas fa-cog me-2"></i>
+              Paramètres
+            </a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" (click)="logout()" style="cursor: pointer;">
+              <i class="fas fa-sign-out-alt me-2"></i>
+              Déconnexion
+            </a></li>
+          </ul>
+        </li>
+        
+        <!-- Utilisateur non connecté -->
+        <ng-container *ngIf="!isAuthenticated()">
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/login" routerLinkActive="active">
+              <i class="fas fa-sign-in-alt me-1"></i>
+              Connexion
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/register" routerLinkActive="active">
+              <i class="fas fa-user-plus me-1"></i>
+              Inscription
+            </a>
+          </li>
+        </ng-container>
+      </ul>
+    </div>
+  </div>
+</nav>
+

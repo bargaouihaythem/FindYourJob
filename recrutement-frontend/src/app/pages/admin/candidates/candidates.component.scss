@@ -1,0 +1,466 @@
+@use 'sass:color';
+
+// Mixins pour réduire la duplication
+@mixin card-shadow {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+  
+  &:hover {
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+}
+
+@mixin form-control {
+  border: 1px solid #e3e6f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: all 0.2s ease;
+  
+  &:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+  }
+}
+
+@mixin btn-base {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    transform: translateY(-1px);
+  }
+}
+
+.candidates-page {
+  padding: 2rem 0;
+
+  .candidates-header h1 {
+    color: var(--dark-color);
+    font-weight: 600;
+  }
+
+  // Cards
+  .card {
+    border: none;
+    border-radius: 15px;
+    @include card-shadow;
+    transition: all 0.3s ease;
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .card-header {
+      background: transparent;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      padding: 1rem 1.5rem;
+      
+      h6 {
+        color: var(--dark-color);
+        font-weight: 600;
+        margin: 0;
+      }
+    }
+  }
+
+  // Form elements
+  .form-label {
+    font-weight: 500;
+    color: var(--dark-color);
+    margin-bottom: 0.5rem;
+  }
+
+  .form-control,
+  .form-select {
+    @include form-control;
+  }
+
+  .input-group-text {
+    background-color: #f8f9fc;
+    border: 1px solid #e3e6f0;
+    color: var(--secondary-color);
+  }
+
+  // Table
+  .table {
+    th {
+      border-top: none;
+      font-weight: 600;
+      color: var(--dark-color);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 1rem 0.75rem;
+      background-color: #f8f9fc;
+
+      &.sortable {
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.2s ease;
+
+        &:hover {
+          background-color: #eaecf4;
+        }
+
+        i {
+          color: var(--secondary-color);
+          font-size: 0.8rem;
+        }
+      }
+    }
+
+    td {
+      padding: 1rem 0.75rem;
+      vertical-align: middle;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+
+      .fw-bold {
+        color: var(--dark-color);
+        font-size: 0.9rem;
+      }
+
+      .text-muted.small {
+        font-size: 0.8rem;
+      }
+    }
+
+    tbody tr {
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(0, 123, 255, 0.02);
+      }
+    }
+  }
+
+  // Avatar
+  .avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+
+    &.avatar-sm {
+      width: 32px;
+      height: 32px;
+      font-size: 0.8rem;
+    }
+  }
+
+  // Badges
+  .badge {
+    font-size: 0.75rem;
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    font-weight: 500;
+
+    &.bg-success {
+      background-color: var(--success-color) !important;
+    }
+
+    &.bg-primary {
+      background-color: var(--primary-color) !important;
+    }
+
+    &.bg-danger {
+      background-color: var(--danger-color) !important;
+    }
+
+    &.bg-secondary {
+      background-color: var(--secondary-color) !important;
+    }
+
+    &.bg-info {
+      background-color: #17a2b8 !important;
+    }
+
+    &.bg-warning {
+      background-color: #ffc107 !important;
+      color: #000 !important;
+    }
+  }
+
+  // Buttons
+  .btn {
+    @include btn-base;
+
+    &.btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8rem;
+    }
+
+    &.btn-primary {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+
+      &:hover {
+        background-color: #375a7f;
+        border-color: #375a7f;
+      }
+    }
+
+    &.btn-outline-primary {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+
+      &:hover {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+      }
+    }
+
+    &.btn-outline-secondary {
+      border-color: var(--secondary-color);
+      color: var(--secondary-color);
+
+      &:hover {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
+      }
+    }
+
+    &.btn-outline-info {
+      border-color: #17a2b8;
+      color: #17a2b8;
+
+      &:hover {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+      }
+    }
+
+    &.btn-outline-danger {
+      border-color: var(--danger-color);
+      color: var(--danger-color);
+
+      &:hover {
+        background-color: var(--danger-color);
+        border-color: var(--danger-color);
+      }
+    }
+
+    &.btn-success {
+      background-color: var(--success-color);
+      border-color: var(--success-color);
+
+      &:hover {
+        background-color: #1e7e34;
+        border-color: #1e7e34;
+      }
+    }
+
+    &.btn-danger {
+      background-color: var(--danger-color);
+      border-color: var(--danger-color);
+
+      &:hover {
+        background-color: #c82333;
+        border-color: #c82333;
+      }
+    }
+  }
+
+  // Button groups
+  .btn-group .btn {
+    margin-right: 0.25rem;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+
+  // Pagination
+  .pagination {
+    .page-link {
+      border: 1px solid #e3e6f0;
+      color: var(--primary-color);
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      margin: 0 0.125rem;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background-color: var(--primary-color);
+        border-color: var(--primary-color);
+        color: white;
+        transform: translateY(-1px);
+      }
+    }
+
+    .page-item.active .page-link {
+      background-color: var(--primary-color);
+      border-color: var(--primary-color);
+      color: white;
+    }
+
+    .page-item.disabled .page-link {
+      color: var(--secondary-color);
+      background-color: #f8f9fc;
+      border-color: #e3e6f0;
+    }
+  }
+
+  // Dropdowns
+  .dropdown-menu {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 0.5rem 0;
+
+    .dropdown-item {
+      padding: 0.5rem 1rem;
+      transition: background-color 0.2s ease;
+
+      &:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+      }
+
+      i {
+        width: 16px;
+      }
+    }
+  }
+
+  // Modal styles
+  .modal {
+    &.fade.show {
+      opacity: 1;
+    }
+
+    .modal-dialog.modal-lg {
+      max-width: 900px;
+    }
+
+    .modal-content {
+      border: none;
+      border-radius: 15px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+
+      .modal-header {
+        background: linear-gradient(135deg, var(--primary-color), #6f42c1);
+        color: white;
+        border-radius: 15px 15px 0 0;
+        padding: 1.5rem;
+
+        .modal-title {
+          font-weight: 600;
+          font-size: 1.2rem;
+
+          i {
+            color: rgba(255, 255, 255, 0.8);
+          }
+        }
+
+        .btn-close {
+          filter: invert(1);
+          opacity: 0.8;
+
+          &:hover {
+            opacity: 1;
+          }
+        }
+      }
+
+      .modal-body {
+        padding: 2rem;
+
+        h6 {
+          color: var(--primary-color);
+          font-weight: 600;
+          border-bottom: 2px solid rgba(var(--primary-color-rgb), 0.1);
+          padding-bottom: 0.5rem;
+          margin-bottom: 1.5rem;
+
+          i {
+            color: rgba(var(--primary-color-rgb), 0.7);
+          }
+        }
+
+        .form-label {
+          font-size: 0.85rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          margin-bottom: 0.25rem;
+        }
+
+        p {
+          margin-bottom: 0.5rem;
+          min-height: 1.5rem;
+
+          &.fw-bold {
+            color: var(--dark-color);
+            font-weight: 500;
+          }
+
+          a {
+            color: var(--primary-color);
+
+            &:hover {
+              text-decoration: underline;
+            }
+          }
+        }
+      }
+
+      .modal-footer {
+        padding: 1.5rem 2rem;
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+
+        .btn {
+          padding: 0.6rem 1.5rem;
+          border-radius: 8px;
+          font-weight: 500;
+          transition: all 0.2s ease;
+
+          &:hover {
+            transform: translateY(-1px);
+          }
+        }
+      }
+    }
+  }
+
+  // Responsive Design
+  @media (max-width: 768px) {
+    padding: 1rem 0;
+
+    .candidates-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .card-body {
+      padding: 1rem;
+    }
+
+    .table-responsive {
+      font-size: 0.85rem;
+    }
+
+    .btn-group {
+      flex-direction: column;
+
+      .btn {
+        margin-bottom: 0.25rem;
+        margin-right: 0;
+      }
+    }
+
+    .modal-dialog {
+      margin: 1rem;
+
+      &.modal-lg {
+        max-width: none;
+      }
+    }
+
+    .pagination {
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+  }
+}
