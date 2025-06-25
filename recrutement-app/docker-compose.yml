@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: recrutement-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/recrutement_db
+      - SPRING_DATASOURCE_USERNAME=recrutement_user
+      - SPRING_DATASOURCE_PASSWORD=recrutement_password
+      - APP_JWTSECRET=your_jwt_secret_key
+      - CLOUDINARY_CLOUD_NAME=your_cloud_name
+      - CLOUDINARY_API_KEY=your_api_key
+      - CLOUDINARY_API_SECRET=your_api_secret
+      - SPRING_MAIL_HOST=smtp.gmail.com
+      - SPRING_MAIL_USERNAME=your_email@gmail.com
+      - SPRING_MAIL_PASSWORD=your_app_password
+    depends_on:
+      - db
+    networks:
+      - recrutement-network
+    volumes:
+      - app-logs:/app/logs
+
+  db:
+    image: postgres:13
+    container_name: recrutement-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=recrutement_db
+      - POSTGRES_USER=recrutement_user
+      - POSTGRES_PASSWORD=recrutement_password
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - recrutement-network
+
+networks:
+  recrutement-network:
+    driver: bridge
+
+volumes:
+  db-data:
+  app-logs:
+

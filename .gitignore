@@ -118,6 +118,9 @@ libpeerconnection.log
 testem.log
 typings/
 
+# Angular build cache
+.angular/cache/
+
 # System Files
 .DS_Store
 Thumbs.db

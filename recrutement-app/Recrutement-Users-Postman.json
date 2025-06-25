@@ -1,0 +1,195 @@
+{
+  "info": {
+    "name": "Recrutement App - Création Utilisateurs",
+    "description": "Collection pour créer les utilisateurs de test (admin, RH, candidat) avec les bonnes validations",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Créer Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"admin\",\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"admin123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"System\",\n  \"role\": [\"admin\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signup",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signup"
+          ]
+        },
+        "description": "Créer un utilisateur administrateur avec tous les droits"
+      }
+    },
+    {
+      "name": "2. Créer RH",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"rh_user\",\n  \"email\": \"rh@recrutement.com\",\n  \"password\": \"rh123456\",\n  \"firstName\": \"Marie\",\n  \"lastName\": \"Dupont\",\n  \"role\": [\"rh\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signup",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signup"
+          ]
+        },
+        "description": "Créer un utilisateur RH pour gérer les candidatures"
+      }
+    },
+    {
+      "name": "3. Créer Candidat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"candidat\",\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"candidat123\",\n  \"firstName\": \"Jean\",\n  \"lastName\": \"Martin\",\n  \"role\": [\"user\"]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signup",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signup"
+          ]
+        },
+        "description": "Créer un utilisateur candidat pour postuler aux offres"
+      }
+    },
+    {
+      "name": "4. Test Connexion Admin",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"admin123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signin",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signin"
+          ]
+        },
+        "description": "Tester la connexion de l'admin"
+      }
+    },
+    {
+      "name": "5. Test Connexion RH",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"rh@recrutement.com\",\n  \"password\": \"rh123456\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signin",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signin"
+          ]
+        },
+        "description": "Tester la connexion RH"
+      }
+    },
+    {
+      "name": "6. Test Connexion Candidat",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"candidat123\"\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/api/auth/signin",
+          "protocol": "http",
+          "host": [
+            "localhost"
+          ],
+          "port": "8080",
+          "path": [
+            "api",
+            "auth",
+            "signin"
+          ]
+        },
+        "description": "Tester la connexion candidat"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ]
+}

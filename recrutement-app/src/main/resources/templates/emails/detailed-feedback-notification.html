@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification de Feedback Détaillé</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            border-radius: 0 5px 5px 0;
+        }
+        .section h3 {
+            color: #007bff;
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+        .highlight {
+            background-color: #e7f3ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">RecrutementApp</div>
+            <h1 th:text="${subject}">Notification de Feedback</h1>
+        </div>
+
+        <div class="content">
+            <p>Bonjour <span th:text="${candidateName}">Candidat</span>,</p>
+
+            <div class="highlight">
+                <p th:text="${message}">Message principal de la notification</p>
+            </div>
+
+            <div th:if="${interviewDetails and !#strings.isEmpty(interviewDetails)}" class="section">
+                <h3>📅 Détails de l'entretien</h3>
+                <p th:text="${interviewDetails}">Détails de l'entretien</p>
+            </div>
+
+            <div th:if="${feedbackSummary and !#strings.isEmpty(feedbackSummary)}" class="section">
+                <h3>📝 Résumé du feedback</h3>
+                <p th:text="${feedbackSummary}">Résumé du feedback</p>
+            </div>
+
+            <div class="section">
+                <h3>🚀 Prochaines étapes</h3>
+                <p>
+                    Si vous avez des questions concernant ce feedback ou le processus de recrutement, 
+                    n'hésitez pas à nous contacter. Notre équipe RH est là pour vous accompagner.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="mailto:rh@entreprise.com" class="btn">Nous contacter</a>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>
+                <strong>Équipe RecrutementApp</strong><br>
+                Cet email a été envoyé automatiquement, merci de ne pas y répondre directement.<br>
+                Pour toute question, contactez-nous à l'adresse : rh@entreprise.com
+            </p>
+            <p style="font-size: 12px; color: #999; margin-top: 15px;">
+                © 2025 RecrutementApp. Tous droits réservés.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

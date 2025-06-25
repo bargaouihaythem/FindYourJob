@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Création Candidat Sans Offre d'Emploi</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Création Candidat Sans Offre d'Emploi</h1>
+        <p>Ce test vérifie que la modification de l'entité <code>Candidate</code> permet maintenant de créer des candidats sans rattachement à une offre d'emploi (pour le workflow CV Improvement).</p>
+        
+        <button class="test-button" onclick="testCandidateCreation()">
+            🚀 Lancer le Test
+        </button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testCandidateCreation() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<div class="result">⏳ Test en cours...</div>';
+            
+            try {
+                const response = await fetch('http://localhost:8080/api/test/candidate-without-job', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            ✅ TEST RÉUSSI !
+                            
+                            La création d'un candidat sans offre d'emploi fonctionne !
+                            
+                            Détails:
+                            - Message: ${data.message}
+                            - ID du candidat: ${data.candidateId}
+                            - Nom: ${data.candidateName}
+                            - Email: ${data.candidateEmail}
+                            - JobOffer null: ${data.jobOfferNull ? 'OUI ✅' : 'NON ❌'}
+                            
+                            🎉 La contrainte NOT NULL sur job_offer_id a été supprimée avec succès !
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            ❌ TEST ÉCHOUÉ
+                            
+                            Erreur: ${data.error}
+                            Type d'erreur: ${data.errorType}
+                            
+                            La contrainte NOT NULL sur job_offer_id est toujours présente.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        ❌ ERREUR DE CONNEXION
+                        
+                        Impossible de joindre l'API: ${error.message}
+                        
+                        Vérifiez que l'application Spring Boot est démarrée sur http://localhost:8080
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-test au chargement de la page si l'API est disponible
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                fetch('http://localhost:8080/actuator/health')
+                    .then(() => {
+                        document.querySelector('.test-button').innerHTML = '🚀 Lancer le Test (API Disponible)';
+                        document.querySelector('.test-button').style.backgroundColor = '#28a745';
+                    })
+                    .catch(() => {
+                        document.querySelector('.test-button').innerHTML = '🚀 Lancer le Test (API Non Disponible)';
+                        document.querySelector('.test-button').style.backgroundColor = '#dc3545';
+                    });
+            }, 1000);
+        });
+    </script>
+</body>
+</html>
