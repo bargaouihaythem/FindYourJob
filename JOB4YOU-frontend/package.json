@@ -1,6 +1,7 @@
 {
-  "name": "recrutement-frontend",
-  "version": "0.0.0",
+  "name": "job4you-frontend",
+  "version": "1.0.0",
+  "description": "JOB4YOU - Interface utilisateur moderne pour la plateforme de recrutement",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",

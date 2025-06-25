@@ -1,19 +1,19 @@
-# Plateforme de Recrutement FindYourJob
+# JOB4YOU - Plateforme de Recrutement Moderne
 
-Ce repository contient les deux applications de la plateforme FindYourJob :
+Ce repository contient la plateforme complète JOB4YOU, solution moderne de recrutement comprenant une API backend et une interface utilisateur frontend.
 
 ## 🚀 Applications
 
-### 📁 Backend (`recrutement-app/`)
+### 📁 Backend (`JOB4YOU-backend/`)
 - **Technologie** : Spring Boot 3.2.0
 - **Base de données** : PostgreSQL
 - **Authentification** : JWT
 - **API REST** : Documentation Swagger disponible
 - **Port** : 8080
 
-### 📁 Frontend (`recrutement-frontend/`)
+### 📁 Frontend (`JOB4YOU-frontend/`)
 - **Technologie** : Angular 20
-- **UI** : Angular Material
+- **UI** : Angular Material + Bootstrap
 - **Authentification** : JWT avec intercepteurs
 - **Port** : 4200
 

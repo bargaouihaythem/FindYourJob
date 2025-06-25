@@ -8,11 +8,11 @@
         <version>3.2.0</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.recrutement</groupId>
-    <artifactId>recrutement-app</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>recrutement-app</name>
-    <description>Plateforme de gestion des recrutements</description>
+    <groupId>com.job4you</groupId>
+    <artifactId>job4you-backend</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <name>JOB4YOU Backend</name>
+    <description>JOB4YOU - Plateforme moderne de recrutement</description>
     
     <properties>
         <java.version>17</java.version>

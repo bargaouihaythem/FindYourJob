@@ -1,7 +1,7 @@
-# Frontend Angular - Application de Recrutement
+# JOB4YOU - Frontend Angular
 
 ## Description
-Application frontend Angular développée pour le système de recrutement. Cette application moderne et responsive offre une interface utilisateur complète pour la gestion des offres d'emploi et des candidatures.
+Interface utilisateur moderne et responsive développée avec Angular pour la plateforme de recrutement JOB4YOU. Cette application offre une expérience utilisateur optimale pour la recherche d'emploi et la gestion des candidatures.
 
 ## Fonctionnalités
 

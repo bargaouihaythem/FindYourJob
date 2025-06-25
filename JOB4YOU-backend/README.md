@@ -1,12 +1,12 @@
-# Plateforme de Gestion des Recrutements - Backend API
+# JOB4YOU - Backend API
 
-Une application backend complète pour la gestion des recrutements, développée avec Spring Boot, JWT, PostgreSQL et Cloudinary.
+Une plateforme moderne de recrutement développée avec Spring Boot, offrant une API REST complète pour la gestion des offres d'emploi, candidatures et entretiens.
 
 ## 📋 Fonctionnalités
 
 - **Gestion des utilisateurs et authentification**
   - Inscription et connexion sécurisée avec JWT
-  - Gestion des rôles (RH, Manager, Admin)
+  - Gestion des rôles (Candidat, Recruteur, Admin)
   - Protection des endpoints par rôle
 
 - **Gestion des offres d'emploi**

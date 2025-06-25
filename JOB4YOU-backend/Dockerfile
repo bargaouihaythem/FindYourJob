@@ -1,8 +1,8 @@
 FROM openjdk:17-jdk-slim
 
 # Métadonnées
-LABEL maintainer="dev@recrutement.com"
-LABEL description="Plateforme de Gestion des Recrutements - Backend API"
+LABEL maintainer="dev@job4you.com"
+LABEL description="JOB4YOU - Plateforme moderne de recrutement - Backend API"
 LABEL version="1.0.0"
 
 # Variables d'environnement
@@ -16,7 +16,7 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 WORKDIR /app
 
 # Copier le fichier JAR
-COPY target/recrutement-app-0.0.1-SNAPSHOT.jar app.jar
+COPY target/job4you-backend-1.0.0-SNAPSHOT.jar app.jar
 
 # Changer le propriétaire du fichier
 RUN chown appuser:appuser app.jar

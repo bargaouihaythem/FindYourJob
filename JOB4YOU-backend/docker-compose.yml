@@ -3,14 +3,14 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: recrutement-app
+    container_name: job4you-backend
     restart: always
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/recrutement_db
-      - SPRING_DATASOURCE_USERNAME=recrutement_user
-      - SPRING_DATASOURCE_PASSWORD=recrutement_password
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/job4you_db
+      - SPRING_DATASOURCE_USERNAME=job4you_user
+      - SPRING_DATASOURCE_PASSWORD=job4you_password
       - APP_JWTSECRET=your_jwt_secret_key
       - CLOUDINARY_CLOUD_NAME=your_cloud_name
       - CLOUDINARY_API_KEY=your_api_key
@@ -21,27 +21,27 @@ services:
     depends_on:
       - db
     networks:
-      - recrutement-network
+      - job4you-network
     volumes:
       - app-logs:/app/logs
 
   db:
     image: postgres:13
-    container_name: recrutement-db
+    container_name: job4you-db
     restart: always
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=recrutement_db
-      - POSTGRES_USER=recrutement_user
-      - POSTGRES_PASSWORD=recrutement_password
+      - POSTGRES_DB=job4you_db
+      - POSTGRES_USER=job4you_user
+      - POSTGRES_PASSWORD=job4you_password
     volumes:
       - db-data:/var/lib/postgresql/data
     networks:
-      - recrutement-network
+      - job4you-network
 
 networks:
-  recrutement-network:
+  job4you-network:
     driver: bridge
 
 volumes:
