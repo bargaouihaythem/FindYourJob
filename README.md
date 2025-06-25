@@ -1,93 +1,66 @@
-# FindYourJob - Plateforme de Recrutement
+# Plateforme de Recrutement FindYourJob
 
-## Description
-Application web complète de recrutement développée avec Spring Boot (backend) et Angular (frontend).
+Ce repository contient les deux applications de la plateforme FindYourJob :
 
-## Fonctionnalités
-- **Gestion des utilisateurs** avec authentification JWT
-- **Gestion des offres d'emploi** (création, modification, suppression)
-- **Candidatures** avec upload de CV
-- **Système d'entretiens** avec planification
-- **Notifications** par email
-- **Tableau de bord administrateur**
-- **Gestion des rôles** (ADMIN, HR, MANAGER, TEAM, CANDIDATE)
+## 🚀 Applications
 
-## Technologies utilisées
+### 📁 Backend (`recrutement-app/`)
+- **Technologie** : Spring Boot 3.2.0
+- **Base de données** : PostgreSQL
+- **Authentification** : JWT
+- **API REST** : Documentation Swagger disponible
+- **Port** : 8080
 
-### Backend
-- **Spring Boot 3.2.0**
-- **Spring Security** avec JWT
-- **Spring Data JPA** avec Hibernate
-- **PostgreSQL** comme base de données
-- **Maven** pour la gestion des dépendances
-- **Java 17+**
+### 📁 Frontend (`recrutement-frontend/`)
+- **Technologie** : Angular 20
+- **UI** : Angular Material
+- **Authentification** : JWT avec intercepteurs
+- **Port** : 4200
 
-### Frontend
-- **Angular 20**
-- **Angular Material** pour l'UI
-- **TypeScript**
-- **SCSS** pour les styles
-- **NGX-Toastr** pour les notifications
-
-## Prérequis
-- Java 17 ou supérieur
-- Node.js 18 ou supérieur
-- PostgreSQL 12 ou supérieur
-- Maven 3.6 ou supérieur
-
-## Installation et Configuration
+## 🛠 Installation Rapide
 
 ### 1. Base de données
 ```sql
--- Créer la base de données
 CREATE DATABASE recrutement_db;
-
--- Créer l'utilisateur (optionnel)
-CREATE USER recrutement_user WITH PASSWORD 'votre_mot_de_passe';
-GRANT ALL PRIVILEGES ON DATABASE recrutement_db TO recrutement_user;
 ```
 
-### 2. Configuration Backend
-```properties
-# application.properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/recrutement_db
-spring.datasource.username=recrutement_user
-spring.datasource.password=votre_mot_de_passe
-```
-
-### 3. Démarrage
-
-#### Backend
+### 2. Backend
 ```bash
 cd recrutement-app
 mvn clean install
 mvn spring-boot:run
 ```
-Le backend sera disponible sur http://localhost:8080
 
-#### Frontend
+### 3. Frontend
 ```bash
 cd recrutement-frontend
-npm install
+npm install --legacy-peer-deps
 npm start
 ```
-Le frontend sera disponible sur http://localhost:4200
 
-## Utilisation
+## 🔑 Comptes de Test
 
-### Comptes par défaut
-- **Admin**: `haythemadmin` / `admin123`
-- **RH**: `rh_user` / `rh123`
-- **Candidat**: `candidat_test` / `candidat123`
+- **Admin** : `haythemadmin` / `admin123`
+- **RH** : `rh_user` / `rh123`
+- **Candidat** : `candidat_test` / `candidat123`
 
-### API Endpoints principaux
-- `POST /api/auth/login` - Connexion
-- `GET /api/job-offers` - Liste des offres
-- `POST /api/applications` - Créer une candidature
-- `GET /api/interviews` - Gestion des entretiens
-- `POST /api/cvs/upload` - Upload de CV
+## 📋 Fonctionnalités
 
-## Structure du projet
+✅ Gestion des utilisateurs et rôles  
+✅ Offres d'emploi avec filtres  
+✅ Candidatures avec upload CV  
+✅ Système d'entretiens  
+✅ Notifications email  
+✅ Tableau de bord administrateur  
+✅ Gestion des feedbacks  
+
+## 🌐 Accès
+
+- **Frontend** : http://localhost:4200
+- **Backend API** : http://localhost:8080
+- **Swagger** : http://localhost:8080/swagger-ui.html
+
+## 📁 Structure du projet
 
 ```
 FindYourJob/
