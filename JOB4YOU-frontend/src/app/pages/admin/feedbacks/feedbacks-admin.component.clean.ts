@@ -7,7 +7,7 @@ import { CandidateService } from '../../../services/candidate.service';
 import { InterviewService } from '../../../services/interview.service';
 import { NotificationService, FeedbackNotificationRequest } from '../../../services/notification.service';
 import { Feedback, Interview } from '../../../models/interfaces';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-feedbacks-admin',
@@ -57,7 +57,7 @@ export class FeedbacksAdminComponent implements OnInit {
     private interviewService: InterviewService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -284,32 +284,32 @@ export class FeedbacksAdminComponent implements OnInit {
         // Mise à jour
         this.feedbackService.updateFeedback(this.selectedFeedback.id, feedbackData).subscribe({
           next: () => {
-            this.toastr.success('Feedback mis à jour avec succès !');
+            this.showSuccess('Feedback mis à jour avec succès !');
             this.loadFeedbacks();
             this.closeFeedbackModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la mise à jour du feedback:', error);
-            this.toastr.error('Erreur lors de la mise à jour du feedback');
+            this.showError('Erreur lors de la mise à jour du feedback');
           }
         });
       } else {
         // Création
         this.feedbackService.createFeedback(feedbackData).subscribe({
           next: () => {
-            this.toastr.success('Feedback créé avec succès !');
+            this.showSuccess('Feedback créé avec succès !');
             this.loadFeedbacks();
             this.loadPendingFeedbacks();
             this.closeFeedbackModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la création du feedback:', error);
-            this.toastr.error('Erreur lors de la création du feedback');
+            this.showError('Erreur lors de la création du feedback');
           }
         });
       }
     } else {
-      this.toastr.error('Veuillez remplir tous les champs obligatoires');
+      this.showError('Veuillez remplir tous les champs obligatoires');
     }
   }
 
@@ -321,7 +321,7 @@ export class FeedbacksAdminComponent implements OnInit {
         // Mise à jour
         this.feedbackService.updateFeedback(this.selectedFeedback.id, feedbackData).subscribe({
           next: (updatedFeedback) => {
-            this.toastr.success('Feedback mis à jour avec succès !');
+            this.showSuccess('Feedback mis à jour avec succès !');
             this.loadFeedbacks();
             this.closeFeedbackModal();
             
@@ -331,14 +331,14 @@ export class FeedbacksAdminComponent implements OnInit {
           },
           error: (error: any) => {
             console.error('Erreur lors de la mise à jour du feedback:', error);
-            this.toastr.error('Erreur lors de la mise à jour du feedback');
+            this.showError('Erreur lors de la mise à jour du feedback');
           }
         });
       } else {
         // Création
         this.feedbackService.createFeedback(feedbackData).subscribe({
           next: (newFeedback) => {
-            this.toastr.success('Feedback créé avec succès !');
+            this.showSuccess('Feedback créé avec succès !');
             this.loadFeedbacks();
             this.loadPendingFeedbacks();
             this.closeFeedbackModal();
@@ -349,12 +349,12 @@ export class FeedbacksAdminComponent implements OnInit {
           },
           error: (error: any) => {
             console.error('Erreur lors de la création du feedback:', error);
-            this.toastr.error('Erreur lors de la création du feedback');
+            this.showError('Erreur lors de la création du feedback');
           }
         });
       }
     } else {
-      this.toastr.error('Veuillez remplir tous les champs obligatoires');
+      this.showError('Veuillez remplir tous les champs obligatoires');
     }
   }
 
@@ -383,7 +383,7 @@ export class FeedbacksAdminComponent implements OnInit {
       action.subscribe({
         next: () => {
           const statusText = decision === 'approve' ? 'approuvé' : 'rejeté';
-          this.toastr.success(`Feedback ${statusText} avec succès !`);
+          this.showSuccess(`Feedback ${statusText} avec succès !`);
           if (sendNotification) {
             this.sendFeedbackNotification(this.selectedFeedback!, decision, content, nextSteps);
           }
@@ -393,7 +393,7 @@ export class FeedbacksAdminComponent implements OnInit {
         },
         error: (error: any) => {
           console.error('Erreur lors de la validation du feedback:', error);
-          this.toastr.error('Erreur lors de la validation du feedback');
+          this.showError('Erreur lors de la validation du feedback');
         }
       });
     }
@@ -425,18 +425,18 @@ export class FeedbacksAdminComponent implements OnInit {
     if (this.selectedFeedback && this.selectedFeedback.id != null) {
       this.feedbackService.deleteFeedback(this.selectedFeedback.id).subscribe({
         next: () => {
-          this.toastr.success('Feedback supprimé avec succès !');
+          this.showSuccess('Feedback supprimé avec succès !');
           this.loadFeedbacks();
           this.loadPendingFeedbacks();
           this.closeDeleteModal();
         },
         error: (error: any) => {
           console.error('Erreur lors de la suppression du feedback:', error);
-          this.toastr.error('Erreur lors de la suppression du feedback');
+          this.showError('Erreur lors de la suppression du feedback');
         }
       });
     } else {
-      this.toastr.error('Aucun feedback sélectionné pour la suppression');
+      this.showError('Aucun feedback sélectionné pour la suppression');
     }
   }
 
@@ -451,11 +451,11 @@ export class FeedbacksAdminComponent implements OnInit {
     
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
-        this.toastr.success('Notification envoyée au candidat');
+        this.showSuccess('Notification envoyée au candidat');
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de la notification:', error);
-        this.toastr.warning('Feedback validé mais erreur lors de l\'envoi de la notification');
+        this.showWarning('Feedback validé mais erreur lors de l\'envoi de la notification');
       }
     });
   }
@@ -470,11 +470,11 @@ export class FeedbacksAdminComponent implements OnInit {
     
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
-        this.toastr.success('Notification envoyée au candidat avec succès !');
+        this.showSuccess('Notification envoyée au candidat avec succès !');
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de la notification:', error);
-        this.toastr.error('Erreur lors de l\'envoi de la notification');
+        this.showError('Erreur lors de l\'envoi de la notification');
       }
     });
   }
@@ -489,11 +489,11 @@ export class FeedbacksAdminComponent implements OnInit {
     
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
-        this.toastr.success('Notification de création envoyée au candidat');
+        this.showSuccess('Notification de création envoyée au candidat');
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de la notification de création:', error);
-        this.toastr.warning('Feedback créé mais erreur lors de l\'envoi de la notification');
+        this.showWarning('Feedback créé mais erreur lors de l\'envoi de la notification');
       }
     });
   }
@@ -508,11 +508,11 @@ export class FeedbacksAdminComponent implements OnInit {
     
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
-        this.toastr.success('Notification de mise à jour envoyée au candidat');
+        this.showSuccess('Notification de mise à jour envoyée au candidat');
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de la notification de mise à jour:', error);
-        this.toastr.warning('Feedback mis à jour mais erreur lors de l\'envoi de la notification');
+        this.showWarning('Feedback mis à jour mais erreur lors de l\'envoi de la notification');
       }
     });
   }
@@ -623,16 +623,16 @@ export class FeedbacksAdminComponent implements OnInit {
       }));
       
       if (csvData.length === 0) {
-        this.toastr.warning('Aucun feedback à exporter');
+        this.showWarning('Aucun feedback à exporter');
         return;
       }
       
       const csv = this.convertToCSV(csvData);
       this.downloadCSV(csv, 'feedbacks.csv');
-      this.toastr.success('Export réalisé avec succès');
+      this.showSuccess('Export réalisé avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
-      this.toastr.error('Erreur lors de l\'export des feedbacks');
+      this.showError('Erreur lors de l\'export des feedbacks');
     }
   }
 
@@ -658,5 +658,18 @@ export class FeedbacksAdminComponent implements OnInit {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  }
+
+  // Méthodes auxiliaires pour les notifications
+  private showSuccess(message: string): void {
+    this.toastrNotification.showSuccess(message);
+  }
+
+  private showError(message: string): void {
+    this.toastrNotification.showError(message);
+  }
+
+  private showWarning(message: string): void {
+    this.toastrNotification.showWarning(message);
   }
 }

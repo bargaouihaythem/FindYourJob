@@ -118,5 +118,36 @@ public class EmailService {
             throw new RuntimeException("Failed to send email", e);
         }
     }
+
+    /**
+     * Envoie un e-mail simple de manière synchrone pour le debug
+     */
+    public void sendSimpleEmailSync(String to, String subject, String content) {
+        if (!emailEnabled) {
+            logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
+            return;
+        }
+
+        try {
+            logger.info("=== DÉBUT ENVOI EMAIL SYNCHRONE ===");
+            logger.info("To: {}", to);
+            logger.info("Subject: {}", subject);
+            logger.info("From: {}", fromEmail);
+            
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(content, false);
+
+            logger.info("Envoi du message...");
+            mailSender.send(message);
+            logger.info("=== EMAIL ENVOYÉ AVEC SUCCÈS ===");
+        } catch (Exception e) {
+            logger.error("=== ERREUR LORS DE L'ENVOI EMAIL ===", e);
+            throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+        }
+    }
 }
 

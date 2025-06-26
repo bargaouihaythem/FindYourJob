@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { SignupRequest } from '../../models/interfaces';
+import { ToastrNotificationService } from '../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-register',
@@ -18,7 +19,8 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private toastrNotification: ToastrNotificationService
   ) {
     this.registerForm = this.fb.group({
       firstName: ['', [Validators.required, Validators.minLength(2)]],
@@ -26,7 +28,8 @@ export class RegisterComponent {
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', [Validators.required]]
+      confirmPassword: ['', [Validators.required]],
+      acceptTerms: [false, [Validators.requiredTrue]] // Ajouter la validation des conditions
     }, { validators: this.passwordMatchValidator });
   }
 
@@ -60,7 +63,7 @@ export class RegisterComponent {
       this.authService.register(userData).subscribe({
         next: (response) => {
           this.loading = false;
-          // Afficher un message de succès avec un toast ou une autre méthode
+          this.toastrNotification.showRegisterSuccess();
           setTimeout(() => {
             this.router.navigate(['/login']);
           }, 2000);
@@ -71,12 +74,11 @@ export class RegisterComponent {
           
           // Gestion des erreurs spécifiques
           if (error.status === 400 && error.error?.message) {
-            // Erreurs de validation du backend
-            console.error('Erreur de validation:', error.error.message);
+            this.toastrNotification.showRegisterError(error.error.message);
           } else if (error.status === 400) {
-            console.error('Données invalides envoyées au serveur');
+            this.toastrNotification.showRegisterError('Données invalides');
           } else {
-            console.error('Erreur serveur lors de l\'inscription');
+            this.toastrNotification.showRegisterError('Erreur serveur lors de l\'inscription');
           }
         }
       });
@@ -102,6 +104,9 @@ export class RegisterComponent {
     if (field?.errors) {
       if (field.errors['required']) {
         return 'Ce champ est requis';
+      }
+      if (field.errors['requiredTrue']) {
+        return 'Vous devez accepter les conditions d\'utilisation';
       }
       if (field.errors['minlength']) {
         const requiredLength = field.errors['minlength'].requiredLength;

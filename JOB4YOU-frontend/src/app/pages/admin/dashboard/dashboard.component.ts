@@ -6,7 +6,7 @@ import { JobOfferService } from '../../../services/job-offer.service';
 import { InterviewService } from '../../../services/interview.service';
 import { FeedbackService } from '../../../services/feedback.service';
 import { Candidate, JobOffer, Interview, Feedback } from '../../../models/interfaces';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 interface DashboardStats {
   totalCandidates: number;
@@ -58,7 +58,7 @@ export class DashboardComponent implements OnInit {
     private jobOfferService: JobOfferService,
     private interviewService: InterviewService,
     private feedbackService: FeedbackService,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {}
 
   ngOnInit(): void {
@@ -98,7 +98,7 @@ export class DashboardComponent implements OnInit {
         }).length;
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des candidats', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des candidats');
         console.error('Erreur lors du chargement des candidats:', error);
       }
     });
@@ -110,7 +110,7 @@ export class DashboardComponent implements OnInit {
         this.stats.activeJobOffers = jobOffers.filter((job: any) => job.status === 'ACTIVE').length;
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des offres d\'emploi', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des offres d\'emploi');
         console.error('Erreur lors du chargement des offres d\'emploi:', error);
       }
     });
@@ -127,7 +127,7 @@ export class DashboardComponent implements OnInit {
         ).length;
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des entretiens', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des entretiens');
         console.error('Erreur lors du chargement des entretiens:', error);
       }
     });
@@ -138,7 +138,7 @@ export class DashboardComponent implements OnInit {
         this.stats.pendingFeedbacks = feedbacks.length;
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des feedbacks', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des feedbacks');
         console.error('Erreur lors du chargement des feedbacks:', error);
       }
     });
@@ -187,7 +187,7 @@ export class DashboardComponent implements OnInit {
           .slice(0, 5); // Limiter à 5 entretiens
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des entretiens à venir', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des entretiens à venir');
         console.error('Erreur lors du chargement des entretiens à venir:', error);
       },
       complete: () => {
@@ -202,7 +202,7 @@ export class DashboardComponent implements OnInit {
         this.pendingFeedbacks = feedbacks.slice(0, 5); // Limiter à 5 feedbacks
       },
       error: (error: any) => {
-        this.toastr.error('Erreur lors du chargement des feedbacks en attente', 'Erreur');
+        this.toastrNotification.showError('Erreur lors du chargement des feedbacks en attente');
         console.error('Erreur lors du chargement des feedbacks en attente:', error);
       }
     });

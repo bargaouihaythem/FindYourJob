@@ -3,6 +3,7 @@ package com.recrutement.app.config;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,33 +13,61 @@ import org.springframework.stereotype.Component;
  * Configuration pour créer l'utilisateur admin par défaut au démarrage
  */
 @Component
-public class AdminUserCreator implements CommandLineRunner {    private static final Logger logger = LoggerFactory.getLogger(AdminUserCreator.class);
+public class AdminUserCreator implements CommandLineRunner {    
+    private static final Logger logger = LoggerFactory.getLogger(AdminUserCreator.class);
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+    
+    @Value("${app.init.create-default-users:false}")
+    private boolean createDefaultUsers;
 
     @Override
     public void run(String... args) throws Exception {
-        createDefaultUsers();
+        if (createDefaultUsers) {
+            logger.info("🚀 Initialisation des utilisateurs par défaut activée");
+            createDefaultUsersInternal();
+        } else {
+            logger.info("ℹ️  Initialisation des utilisateurs par défaut désactivée");
+        }
     }
 
-    private void createDefaultUsers() {
-        // D'abord, vérifier la structure de la table users
+    private void createDefaultUsersInternal() {
+        // Vérifier si des utilisateurs existent déjà
         try {
-            String describeQuery = "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'users'";
-            logger.info("=== STRUCTURE DE LA TABLE USERS ===");
-            jdbcTemplate.query(describeQuery, (rs) -> {
-                logger.info("Colonne: {} | Type: {} | Nullable: {}", 
-                    rs.getString("column_name"), 
-                    rs.getString("data_type"), 
-                    rs.getString("is_nullable"));
-            });
-            logger.info("=== FIN STRUCTURE TABLE USERS ===");
+            String countQuery = "SELECT COUNT(*) FROM users";
+            Integer userCount = jdbcTemplate.queryForObject(countQuery, Integer.class);
+            
+            if (userCount != null && userCount > 0) {
+                logger.info("ℹ️  Des utilisateurs existent déjà ({} utilisateurs trouvés). Initialisation ignorée.", userCount);
+                return;
+            }
+            
+            logger.info("🚀 Aucun utilisateur trouvé. Création des utilisateurs par défaut...");
+            
         } catch (Exception e) {
-            logger.error("Erreur lors de la vérification de la structure: {}", e.getMessage());
+            logger.error("Erreur lors de la vérification des utilisateurs existants: {}", e.getMessage());
+            return;
+        }
+        
+        // D'abord, vérifier la structure de la table users (en mode debug)
+        if (logger.isDebugEnabled()) {
+            try {
+                String describeQuery = "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'users'";
+                logger.debug("=== STRUCTURE DE LA TABLE USERS ===");
+                jdbcTemplate.query(describeQuery, (rs) -> {
+                    logger.debug("Colonne: {} | Type: {} | Nullable: {}", 
+                        rs.getString("column_name"), 
+                        rs.getString("data_type"), 
+                        rs.getString("is_nullable"));
+                });
+                logger.debug("=== FIN STRUCTURE TABLE USERS ===");
+            } catch (Exception e) {
+                logger.error("Erreur lors de la vérification de la structure: {}", e.getMessage());
+            }
         }
         
         createUser("haythemadmin", "haythemadmin", "haythemadmin@admin.com", 
@@ -49,6 +78,11 @@ public class AdminUserCreator implements CommandLineRunner {    private static f
         
         createUser("candidat_test", "candidat123", "candidat@test.com", 
                   "Jean", "Dupont", "ROLE_USER", "Candidat simple");
+        
+        createUser("haythem_user", "haythem123", "bargaouihaythem1@gmail.com", 
+                  "Haythem", "Bargaoui", "ROLE_USER", "Utilisateur de test pour mot de passe oublié");
+        
+        logger.info("✅ Création des utilisateurs par défaut terminée avec succès!");
     }
 
     private void createUser(String username, String password, String email, 

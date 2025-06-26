@@ -32,6 +32,7 @@
                   id="username"
                   class="form-control"
                   [class.is-invalid]="isFieldInvalid('username')"
+                  [class.pre-filled]="hasRememberedData() && loginForm.get('username')?.value"
                   formControlName="username"
                   placeholder="Entrez votre nom d'utilisateur"
                   autocomplete="username"
@@ -65,14 +66,37 @@
               <div class="row mb-4">
                 <div class="col-6">
                   <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="rememberMe">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="rememberMe"
+                      formControlName="rememberMe"
+                    >
                     <label class="form-check-label" for="rememberMe">
                       Se souvenir de moi
+                      <i 
+                        class="fas fa-info-circle ms-1 text-muted info-icon" 
+                        style="cursor: pointer; font-size: 0.8em;"
+                        (click)="showPasswordSecurityInfo()"
+                        title="Cliquez pour plus d'informations sur la sécurité"
+                      ></i>
                     </label>
+                  </div>
+                  <!-- Bouton pour effacer les données mémorisées -->
+                  <div *ngIf="hasRememberedData()" class="mt-2">
+                    <button 
+                      type="button" 
+                      class="btn btn-link btn-sm p-0 btn-clear-remember"
+                      (click)="clearRememberedData()"
+                      title="Effacer les informations mémorisées"
+                    >
+                      <i class="fas fa-times me-1"></i>
+                      Effacer le souvenir
+                    </button>
                   </div>
                 </div>
                 <div class="col-6 text-end">
-                  <a href="#" class="text-decoration-none">
+                  <a routerLink="/forgot-password" class="text-decoration-none">
                     Mot de passe oublié ?
                   </a>
                 </div>

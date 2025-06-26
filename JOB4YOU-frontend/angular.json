@@ -65,10 +65,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "recrutement-frontend:build:production"
+              "buildTarget": "job4you-frontend:build:production"
             },
             "development": {
-              "buildTarget": "recrutement-frontend:build:development"
+              "buildTarget": "job4you-frontend:build:development"
             }
           },
           "defaultConfiguration": "development"

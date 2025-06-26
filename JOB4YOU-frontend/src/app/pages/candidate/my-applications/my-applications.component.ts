@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { CandidateService } from '../../../services/candidate.service';
+import { CVService } from '../../../services/cv.service';
 import { AuthService } from '../../../services/auth';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 import { Candidate } from '../../../models/interfaces';
 
 @Component({
@@ -21,7 +23,9 @@ export class MyApplicationsComponent implements OnInit {
 
   constructor(
     private candidateService: CandidateService,
-    private authService: AuthService
+    private cvService: CVService,
+    private authService: AuthService,
+    private toastrNotification: ToastrNotificationService
   ) {}
 
   ngOnInit() {
@@ -84,9 +88,37 @@ export class MyApplicationsComponent implements OnInit {
     const dateObj = new Date(date);
     return dateObj.toLocaleDateString('fr-FR');
   }
-  downloadCV(fileUrl: string | undefined) {
+  downloadCV(fileUrl: string | undefined): void {
     if (fileUrl) {
-      window.open(fileUrl, '_blank');
+      // Utiliser le service CV avec authentification JWT
+      this.cvService.downloadFile(fileUrl).subscribe({
+        next: (blob: Blob) => {
+          // Créer un téléchargement automatique
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = 'Mon_CV.pdf'; // Nom par défaut
+          
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          this.toastrNotification.showSuccess('CV téléchargé avec succès');
+        },
+        error: (error: any) => {
+          console.error('Erreur lors du téléchargement du CV:', error);
+          if (error.status === 401) {
+            this.toastrNotification.showError('Erreur d\'authentification. Veuillez vous reconnecter.', 'Accès refusé');
+          } else if (error.status === 404) {
+            this.toastrNotification.showError('Le fichier CV n\'a pas été trouvé', 'Fichier introuvable');
+          } else {
+            this.toastrNotification.showError('Erreur lors du téléchargement du CV', 'Erreur de téléchargement');
+          }
+        }
+      });
+    } else {
+      this.toastrNotification.showError('Aucun CV disponible', 'CV non trouvé');
     }
   }
 }

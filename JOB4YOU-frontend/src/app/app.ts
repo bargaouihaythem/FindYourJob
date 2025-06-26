@@ -12,6 +12,6 @@ import { FooterComponent } from './components/footer/footer';
   styleUrls: ['./app.scss']
 })
 export class AppComponent {
-  title = 'recrutement-frontend';
+  title = 'job4you-frontend';
 }
 

@@ -9,7 +9,7 @@ import { JobOfferService } from '../../../services/job-offer.service';
 import { AuthService } from '../../../services/auth';
 import { FeedbackService } from '../../../services/feedback.service';
 import { CVService } from '../../../services/cv.service';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-interviews',
@@ -75,7 +75,7 @@ export class InterviewsComponent implements OnInit {
     private feedbackService: FeedbackService,
     private cvService: CVService,
     private fb: FormBuilder,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -322,7 +322,7 @@ export class InterviewsComponent implements OnInit {
       
       // Validation des champs obligatoires
       if (!interviewData.candidateId || !interviewData.interviewerId || !interviewData.interviewDate) {
-        this.toastr.error('Tous les champs obligatoires doivent être remplis');
+        this.toastrNotification.showValidationError('Tous les champs obligatoires doivent être remplis');
         return;
       }
       
@@ -331,12 +331,12 @@ export class InterviewsComponent implements OnInit {
       const interviewerId = Number(interviewData.interviewerId);
       
       if (isNaN(candidateId) || candidateId <= 0) {
-        this.toastr.error('ID du candidat invalide');
+        this.toastrNotification.showValidationError('ID du candidat invalide');
         return;
       }
       
       if (isNaN(interviewerId) || interviewerId <= 0) {
-        this.toastr.error('ID de l\'interviewer invalide');
+        this.toastrNotification.showValidationError('ID de l\'interviewer invalide');
         return;
       }
       
@@ -367,20 +367,20 @@ export class InterviewsComponent implements OnInit {
       if (this.selectedInterview) {
         this.interviewService.updateInterview(this.selectedInterview.id, interviewToSend).subscribe({
           next: () => {
-            this.toastr.success('Entretien mis à jour avec succès !');
+            this.toastrNotification.showInterviewUpdatedSuccess();
             this.loadInterviews();
             this.closeInterviewModal();
           },
           error: (error: any) => {
             console.error("Erreur lors de la mise à jour de l'entretien:", error);
-            this.toastr.error("Erreur lors de la mise à jour de l'entretien");
+            this.toastrNotification.showInterviewError("Erreur lors de la mise à jour de l'entretien");
             this.error = "Erreur lors de la mise à jour de l'entretien";
           }
         });
       } else {
         this.interviewService.createInterview(interviewToSend).subscribe({
           next: () => {
-            this.toastr.success('Entretien créé avec succès !');
+            this.toastrNotification.showInterviewCreatedSuccess();
             this.loadInterviews();
             this.closeInterviewModal();
           },
@@ -397,7 +397,7 @@ export class InterviewsComponent implements OnInit {
               errorMessage = "Erreur interne du serveur. Vérifiez les logs du backend.";
             }
             
-            this.toastr.error(errorMessage);
+            this.toastrNotification.showInterviewError(errorMessage);
             this.error = errorMessage;
           }
         });
@@ -432,13 +432,13 @@ export class InterviewsComponent implements OnInit {
       if (confirm('Êtes-vous sûr de vouloir supprimer cet entretien ?')) {
         this.interviewService.deleteInterview(this.selectedInterview.id).subscribe({
           next: () => {
-            this.toastr.success('Entretien supprimé avec succès !');
+            this.toastrNotification.showInterviewDeletedSuccess();
             this.loadInterviews();
             this.closeDeleteModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la suppression de l\'entretien:', error);
-            this.toastr.error('Erreur lors de la suppression de l\'entretien');
+            this.toastrNotification.showInterviewError('Erreur lors de la suppression de l\'entretien');
             this.error = 'Erreur lors de la suppression de l\'entretien';
           }
         });
@@ -471,13 +471,13 @@ export class InterviewsComponent implements OnInit {
         rating: rating ? parseInt(rating) : 0
       }).subscribe({
         next: () => {
-          this.toastr.success('Feedback ajouté avec succès !');
+          this.toastrNotification.showFeedbackSentSuccess();
           this.loadInterviews();
           this.closeFeedbackModal();
         },
         error: (error: any) => {
           console.error('Erreur lors de l\'ajout du feedback:', error);
-          this.toastr.error('Erreur lors de l\'ajout du feedback');
+          this.toastrNotification.showFeedbackError();
           this.error = 'Erreur lors de l\'ajout du feedback';
         }
       });
@@ -540,7 +540,7 @@ export class InterviewsComponent implements OnInit {
       console.log('Envoi de notification:', notificationData);
       
       // Appel à votre service de notification
-      this.toastr.success('Notification envoyée avec succès !');
+      this.toastrNotification.showNotificationSentSuccess();
       this.closeNotificationModal();
     }
   }
@@ -639,7 +639,7 @@ L'équipe RH`;
       this.downloadCSV(csv, `entretiens_${new Date().getTime()}.csv`);
     }
     
-    this.toastr.success(`Export ${format.toUpperCase()} terminé !`);
+    this.toastrNotification.showExportSuccess(format);
   }
 
   /**
@@ -681,7 +681,7 @@ L'équipe RH`;
    */
   bulkUpdateStatus(newStatus: 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED'): void {
     if (this.selectedInterviews.length === 0) {
-      this.toastr.warning('Aucun entretien sélectionné');
+      this.toastrNotification.showNoSelectionWarning();
       return;
     }
 
@@ -695,13 +695,13 @@ L'équipe RH`;
       });
       
       this.clearSelection();
-      this.toastr.success('Mise à jour en lot effectuée !');
+      this.toastrNotification.showBulkOperationSuccess('Mise à jour');
     }
   }
 
   bulkDelete(): void {
     if (this.selectedInterviews.length === 0) {
-      this.toastr.warning('Aucun entretien sélectionné');
+      this.toastrNotification.showNoSelectionWarning();
       return;
     }
 
@@ -720,7 +720,7 @@ L'équipe RH`;
       
       this.clearSelection();
       this.loadInterviews(); // Recharger la liste
-      this.toastr.success('Suppression en lot effectuée !');
+      this.toastrNotification.showBulkOperationSuccess('Suppression');
     }
   }
 
@@ -732,12 +732,12 @@ L'équipe RH`;
   updateInterviewStatus(interview: Interview, newStatus: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED'): void {
     this.interviewService.updateInterviewStatus(interview.id, newStatus).subscribe({
       next: () => {
-        this.toastr.success('Statut de l\'entretien mis à jour avec succès !');
+        this.toastrNotification.showInterviewStatusUpdatedSuccess();
         interview.status = newStatus;
       },
       error: (error: any) => {
         console.error('Erreur lors de la mise à jour du statut:', error);
-        this.toastr.error('Erreur lors de la mise à jour du statut');
+        this.toastrNotification.showInterviewError('Erreur lors de la mise à jour du statut');
         this.error = 'Erreur lors de la mise à jour du statut';
       }
     });
@@ -895,7 +895,7 @@ L'équipe RH`;
    */
   viewCandidateCV(candidateId: number): void {
     if (!candidateId) {
-      this.toastr.error('ID candidat manquant');
+      this.toastrNotification.showValidationError('ID candidat manquant');
       return;
     }
     
@@ -907,17 +907,17 @@ L'équipe RH`;
         if (cvResponse && fileName) {
           this.viewFileAuthenticated(fileName);
         } else {
-          this.toastr.error('Aucun CV trouvé pour ce candidat');
+          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
         }
       },
       error: (error) => {
         console.error('Erreur lors de l\'ouverture du CV:', error);
         if (error.status === 403) {
-          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce CV');
+          this.toastrNotification.showUnauthorizedError();
         } else if (error.status === 404) {
-          this.toastr.error('Aucun CV trouvé pour ce candidat');
+          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
         } else {
-          this.toastr.error('Impossible d\'ouvrir le CV du candidat');
+          this.toastrNotification.showError('Impossible d\'ouvrir le CV du candidat');
         }
       }
     });
@@ -933,7 +933,7 @@ L'équipe RH`;
       next: (blob: Blob) => {
         const blobUrl = URL.createObjectURL(blob);
         window.open(blobUrl, '_blank');
-        this.toastr.success('CV ouvert dans un nouvel onglet');
+        this.toastrNotification.showSuccess('CV ouvert dans un nouvel onglet');
         
         // Nettoyer l'URL après un délai
         setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
@@ -941,11 +941,11 @@ L'équipe RH`;
       error: (error: any) => {
         console.error('Erreur lors de la récupération du fichier:', error);
         if (error.status === 403) {
-          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce fichier');
+          this.toastrNotification.showUnauthorizedError();
         } else if (error.status === 404) {
-          this.toastr.error('Fichier non trouvé');
+          this.toastrNotification.showError('Fichier non trouvé');
         } else {
-          this.toastr.error('Impossible d\'ouvrir le fichier');
+          this.toastrNotification.showError('Impossible d\'ouvrir le fichier');
         }
       }
     });
@@ -956,7 +956,7 @@ L'équipe RH`;
    */
   downloadCandidateCV(candidateId: number, candidateName: string): void {
     if (!candidateId) {
-      this.toastr.error('ID candidat manquant');
+      this.toastrNotification.showValidationError('ID candidat manquant');
       return;
     }
     
@@ -968,17 +968,17 @@ L'équipe RH`;
         if (cvResponse && fileName) {
           this.downloadFileAuthenticated(fileName, candidateName);
         } else {
-          this.toastr.error('Aucun CV trouvé pour ce candidat');
+          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
         }
       },
       error: (error: any) => {
         console.error('Erreur lors du téléchargement du CV:', error);
         if (error.status === 403) {
-          this.toastr.error('Vous n\'avez pas l\'autorisation d\'accéder à ce CV');
+          this.toastrNotification.showUnauthorizedError();
         } else if (error.status === 404) {
-          this.toastr.error('Aucun CV trouvé pour ce candidat');
+          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
         } else {
-          this.toastr.error('Impossible de télécharger le CV du candidat');
+          this.toastrNotification.showError('Impossible de télécharger le CV du candidat');
         }
       }
     });
@@ -1003,16 +1003,16 @@ L'équipe RH`;
         // Nettoyer l'URL
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         
-        this.toastr.success('Téléchargement du CV démarré');
+        this.toastrNotification.showSuccess('Téléchargement du CV démarré');
       },
       error: (error: any) => {
         console.error('Erreur lors du téléchargement du fichier:', error);
         if (error.status === 403) {
-          this.toastr.error('Vous n\'avez pas l\'autorisation de télécharger ce fichier');
+          this.toastrNotification.showUnauthorizedError();
         } else if (error.status === 404) {
-          this.toastr.error('Fichier non trouvé');
+          this.toastrNotification.showError('Fichier non trouvé');
         } else {
-          this.toastr.error('Impossible de télécharger le fichier');
+          this.toastrNotification.showError('Impossible de télécharger le fichier');
         }
       }
     });

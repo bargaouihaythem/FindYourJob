@@ -309,6 +309,7 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 8px;
     padding: 0.5rem 0;
+    z-index: 1050; // Assure que le dropdown apparaît au-dessus des autres éléments
 
     .dropdown-item {
       padding: 0.5rem 1rem;
@@ -321,6 +322,52 @@
       i {
         width: 16px;
       }
+    }
+  }
+
+  // Fix pour les dropdowns dans les tableaux
+  .table-responsive {
+    overflow: visible; // Permet aux dropdowns de dépasser du conteneur
+  }
+
+  .table-dropdown-container {
+    overflow: visible !important; // Force l'overflow visible
+  }
+
+  .table-with-dropdowns {
+    overflow: visible;
+  }
+
+  .table {
+    td, th {
+      position: relative; // Contexte de positionnement pour les dropdowns
+      overflow: visible; // Évite que le contenu soit coupé
+    }
+  }
+
+  // Dropdowns spécifiques dans les actions
+  .dropdown {
+    position: static; // Évite les problèmes de positionnement dans le tableau
+    
+    &.position-relative {
+      position: relative !important; // Force la position relative quand nécessaire
+    }
+    
+    .dropdown-toggle {
+      &::after {
+        display: none; // Cache la flèche par défaut si on utilise une icône
+      }
+    }
+
+    .dropdown-menu {
+      position: absolute !important;
+      top: 100% !important;
+      left: 0 !important;
+      z-index: 1055 !important; // Z-index plus élevé que les modals Bootstrap
+      min-width: 180px;
+      max-height: 300px;
+      overflow-y: auto;
+      transform: translateZ(0); // Force une nouvelle couche de composition
     }
   }
 

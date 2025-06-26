@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NotificationService, EmailHistory } from '../../../services/notification.service';
 import { CandidateService } from '../../../services/candidate.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-notifications',
@@ -31,7 +31,7 @@ export class NotificationsComponent implements OnInit {
   constructor(
     private notificationService: NotificationService,
     private candidateService: CandidateService,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {}
 
   ngOnInit(): void {
@@ -155,12 +155,12 @@ export class NotificationsComponent implements OnInit {
   sendApplicationConfirmation(candidateId: number): void {
     this.notificationService.sendApplicationConfirmation(candidateId).subscribe({
       next: () => {
-        this.toastr.success('Email de confirmation envoyé avec succès !');
+        this.toastrNotification.showSuccess('Email de confirmation envoyé avec succès !');
         this.loadEmailHistory();
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de l\'email de confirmation:', error);
-        this.toastr.error('Erreur lors de l\'envoi de l\'email de confirmation');
+        this.toastrNotification.showError('Erreur lors de l\'envoi de l\'email de confirmation');
       }
     });
   }
@@ -168,12 +168,12 @@ export class NotificationsComponent implements OnInit {
   sendInterviewInvitation(interviewId: number): void {
     this.notificationService.sendInterviewInvitation(interviewId).subscribe({
       next: () => {
-        this.toastr.success('Invitation à l\'entretien envoyée avec succès !');
+        this.toastrNotification.showSuccess('Invitation à l\'entretien envoyée avec succès !');
         this.loadEmailHistory();
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de l\'invitation:', error);
-        this.toastr.error('Erreur lors de l\'envoi de l\'invitation');
+        this.toastrNotification.showError('Erreur lors de l\'envoi de l\'invitation');
       }
     });
   }
@@ -181,12 +181,12 @@ export class NotificationsComponent implements OnInit {
   sendFeedbackNotification(feedbackId: number): void {
     this.notificationService.sendFeedbackNotification(feedbackId).subscribe({
       next: () => {
-        this.toastr.success('Notification de feedback envoyée avec succès !');
+        this.toastrNotification.showSuccess('Notification de feedback envoyée avec succès !');
         this.loadEmailHistory();
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de la notification de feedback:', error);
-        this.toastr.error('Erreur lors de l\'envoi de la notification de feedback');
+        this.toastrNotification.showError('Erreur lors de l\'envoi de la notification de feedback');
       }
     });
   }

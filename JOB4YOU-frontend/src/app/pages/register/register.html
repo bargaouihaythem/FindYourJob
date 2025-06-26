@@ -140,13 +140,22 @@
               <!-- Terms and Conditions -->
               <div class="mb-4">
                 <div class="form-check">
-                  <input class="form-check-input" type="checkbox" id="terms" required>
-                  <label class="form-check-label" for="terms">
+                  <input 
+                    class="form-check-input" 
+                    type="checkbox" 
+                    id="acceptTerms"
+                    formControlName="acceptTerms"
+                    [class.is-invalid]="isFieldInvalid('acceptTerms')"
+                  >
+                  <label class="form-check-label" for="acceptTerms">
                     J'accepte les 
                     <a href="#" class="text-decoration-none">conditions d'utilisation</a>
                     et la 
                     <a href="#" class="text-decoration-none">politique de confidentialité</a>
                   </label>
+                </div>
+                <div *ngIf="isFieldInvalid('acceptTerms')" class="invalid-feedback d-block">
+                  {{ getFieldError('acceptTerms') }}
                 </div>
               </div>
 

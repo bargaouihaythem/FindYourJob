@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { JobOffer, JobOfferRequest } from '../../../models/interfaces';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-job-offers-admin',
@@ -43,7 +43,7 @@ export class JobOffersAdminComponent implements OnInit {
   constructor(
     private jobOfferService: JobOfferService,
     private fb: FormBuilder,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -215,31 +215,31 @@ export class JobOffersAdminComponent implements OnInit {
         // Mise à jour
         this.jobOfferService.updateJobOffer(this.selectedJobOffer.id, jobOfferData).subscribe({
           next: () => {
-            this.toastr.success('Offre d\'emploi mise à jour avec succès !');
+            this.toastrNotification.showJobOfferUpdatedSuccess();
             this.loadJobOffers();
             this.closeJobOfferModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la mise à jour de l\'offre:', error);
-            this.toastr.error('Erreur lors de la mise à jour de l\'offre');
+            this.toastrNotification.showJobOfferError('Erreur lors de la mise à jour de l\'offre');
           }
         });
       } else {
         // Création
         this.jobOfferService.createJobOffer(jobOfferData).subscribe({
           next: () => {
-            this.toastr.success('Offre d\'emploi créée avec succès !');
+            this.toastrNotification.showJobOfferCreatedSuccess();
             this.loadJobOffers();
             this.closeJobOfferModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la création de l\'offre:', error);
-            this.toastr.error('Erreur lors de la création de l\'offre');
+            this.toastrNotification.showJobOfferError('Erreur lors de la création de l\'offre');
           }
         });
       }
     } else {
-      this.toastr.error('Veuillez remplir tous les champs obligatoires');
+      this.toastrNotification.showValidationError('Veuillez remplir tous les champs obligatoires');
     }
   }
 
@@ -257,13 +257,13 @@ export class JobOffersAdminComponent implements OnInit {
     if (this.selectedJobOffer) {
       this.jobOfferService.deleteJobOffer(this.selectedJobOffer.id).subscribe({
         next: () => {
-          this.toastr.success('Offre d\'emploi supprimée avec succès !');
+          this.toastrNotification.showJobOfferDeletedSuccess();
           this.loadJobOffers();
           this.closeDeleteModal();
         },
         error: (error: any) => {
           console.error('Erreur lors de la suppression de l\'offre:', error);
-          this.toastr.error('Erreur lors de la suppression de l\'offre');
+          this.toastrNotification.showJobOfferError('Erreur lors de la suppression de l\'offre');
         }
       });
     }
@@ -271,7 +271,7 @@ export class JobOffersAdminComponent implements OnInit {
     // Ne rien faire si le statut est déjà le même
     if (jobOffer.status === newStatus) {
       this.closeAllDropdowns();
-      this.toastr.info(`L'offre est déjà ${this.getStatusText(newStatus)}`);
+      this.toastrNotification.showJobOfferAlreadyInStatus(this.getStatusText(newStatus));
       return;
     }
     
@@ -283,7 +283,7 @@ export class JobOffersAdminComponent implements OnInit {
     this.jobOfferService.updateJobOfferStatus(jobOffer.id, newStatus).subscribe({
       next: (response: any) => {
         console.log('Réponse API:', response);
-        this.toastr.success(`Statut de l'offre mis à jour : ${this.getStatusText(newStatus)}`);
+        this.toastrNotification.showJobOfferStatusUpdatedSuccess(this.getStatusText(newStatus));
         jobOffer.status = newStatus;
       },
       error: (error: any) => {
@@ -292,13 +292,13 @@ export class JobOffersAdminComponent implements OnInit {
         
         // Gestion des erreurs spécifiques
         if (error.status === 400) {
-          this.toastr.error('Statut invalide ou offre non trouvée');
+          this.toastrNotification.showJobOfferError('Statut invalide ou offre non trouvée');
         } else if (error.status === 403) {
-          this.toastr.error('Vous n\'avez pas les droits pour modifier cette offre');
+          this.toastrNotification.showUnauthorizedError();
         } else if (error.status === 401) {
-          this.toastr.error('Vous devez vous connecter pour modifier cette offre');
+          this.toastrNotification.showJobOfferError('Vous devez vous connecter pour modifier cette offre');
         } else {
-          this.toastr.error(`Erreur lors de la mise à jour du statut: ${error.message || 'Erreur inconnue'}`);
+          this.toastrNotification.showJobOfferError(`Erreur lors de la mise à jour du statut: ${error.message || 'Erreur inconnue'}`);
         }
       }
     });

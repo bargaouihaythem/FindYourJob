@@ -4,12 +4,16 @@ import { LoginComponent } from './pages/login/login';
 import { RegisterComponent } from './pages/register/register';
 import { JobOffersComponent } from './pages/job-offers/job-offers';
 import { JobDetailComponent } from './pages/job-detail/job-detail';
+import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password';
+import { ResetPasswordComponent } from './pages/reset-password/reset-password';
 import { RoleGuard } from './guards/role.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'job-offers', component: JobOffersComponent },
   { path: 'job-offers/:id', component: JobDetailComponent },
   
@@ -24,6 +28,9 @@ export const routes: Routes = [
   { path: 'admin/interviews', loadComponent: () => import('./pages/admin/interviews/interviews.component').then(m => m.InterviewsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/feedbacks', loadComponent: () => import('./pages/admin/feedbacks/feedbacks-admin.component').then(m => m.FeedbacksAdminComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/notifications', loadComponent: () => import('./pages/admin/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
+  
+  // Test page for toasters
+  { path: 'test-toasts', loadComponent: () => import('./pages/toastr-test/toastr-test.component').then(m => m.ToastrTestComponent) },
   
   { path: '**', redirectTo: '' }
 ];

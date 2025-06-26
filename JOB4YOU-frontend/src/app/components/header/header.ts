@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { User } from '../../models/interfaces';
+import { ToastrNotificationService } from '../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-header',
@@ -16,7 +17,8 @@ export class HeaderComponent {
 
   constructor(
     private authService: AuthService,
-    private router: Router
+    private router: Router,
+    private toastrNotification: ToastrNotificationService
   ) {
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
@@ -45,6 +47,7 @@ export class HeaderComponent {
 
   logout(): void {
     this.authService.logout();
+    this.toastrNotification.showLogoutSuccess();
     this.router.navigate(['/']);
   }
 }

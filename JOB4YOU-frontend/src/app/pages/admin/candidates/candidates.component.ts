@@ -8,7 +8,7 @@ import { CVService } from '../../../services/cv.service';
 import { NotificationService } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { Candidate, JobOffer } from '../../../models/interfaces';
-import { ToastrService } from 'ngx-toastr';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
   selector: 'app-candidates',
@@ -60,7 +60,7 @@ export class CandidatesComponent implements OnInit {
     private cvService: CVService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private toastr: ToastrService
+    private toastrNotification: ToastrNotificationService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -276,12 +276,12 @@ export class CandidatesComponent implements OnInit {
     if (this.selectedFile) {
       this.cvService.uploadCV(candidateId, this.selectedFile).subscribe({
         next: () => {
-          this.toastr.success('CV téléchargé avec succès !');
+          this.toastrNotification.showCvUploadSuccess();
           this.loadCandidates(); // Rafraîchir la liste après upload
         },
         error: (error) => {
           console.error('Erreur lors du téléchargement du CV:', error);
-          this.toastr.error('Erreur lors du téléchargement du CV. Veuillez réessayer.');
+          this.toastrNotification.showCvUploadError();
         }
       });
     }
@@ -289,9 +289,41 @@ export class CandidatesComponent implements OnInit {
 
   downloadCV(candidate: Candidate): void {
     if (candidate.cv && candidate.cv.fileUrl) {
-      window.open(candidate.cv.fileUrl, '_blank');
+      // Utiliser le service CV avec authentification JWT au lieu de window.open()
+      this.cvService.downloadFile(candidate.cv.fileUrl).subscribe({
+        next: (blob: Blob) => {
+          // Créer un URL temporaire pour le blob
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          
+          // Déterminer le nom du fichier
+          const fileName = candidate.cv?.originalFilename || 
+                          `CV_${candidate.firstName}_${candidate.lastName}.pdf`;
+          
+          link.download = fileName;
+          document.body.appendChild(link);
+          link.click();
+          
+          // Nettoyer
+          document.body.removeChild(link);
+          window.URL.revokeObjectURL(url);
+          
+          this.toastrNotification.showSuccess('CV téléchargé avec succès');
+        },
+        error: (error: any) => {
+          console.error('Erreur lors du téléchargement du CV:', error);
+          if (error.status === 401) {
+            this.toastrNotification.showError('Erreur d\'authentification. Veuillez vous reconnecter.', 'Accès refusé');
+          } else if (error.status === 404) {
+            this.toastrNotification.showError('Le fichier CV n\'a pas été trouvé', 'Fichier introuvable');
+          } else {
+            this.toastrNotification.showError('Erreur lors du téléchargement du CV', 'Erreur de téléchargement');
+          }
+        }
+      });
     } else {
-      this.toastr.error('Aucun CV disponible pour ce candidat');
+      this.toastrNotification.showError('Aucun CV disponible pour ce candidat', 'CV non trouvé');
     }
   }
 
@@ -314,7 +346,7 @@ export class CandidatesComponent implements OnInit {
       
       // Vérification finale
       if (!cleanData.jobOfferId || cleanData.jobOfferId === 0) {
-        this.toastr.error("Veuillez sélectionner une offre d'emploi.");
+        this.toastrNotification.showValidationError("Veuillez sélectionner une offre d'emploi.");
         return;
       }
       
@@ -322,7 +354,7 @@ export class CandidatesComponent implements OnInit {
         // Mise à jour
         this.candidateService.updateCandidate(this.selectedCandidate.id, cleanData).subscribe({
           next: () => {
-            this.toastr.success('Candidat mis à jour avec succès !');
+            this.toastrNotification.showCandidateUpdatedSuccess();
             this.loadCandidates();
             this.closeCandidateModal();
           },
@@ -340,7 +372,7 @@ export class CandidatesComponent implements OnInit {
               errorMessage = 'Accès refusé. Droits insuffisants.';
             }
             
-            this.toastr.error(errorMessage);
+            this.toastrNotification.showCandidateError(errorMessage);
             this.error = errorMessage;
           }
         });
@@ -349,18 +381,18 @@ export class CandidatesComponent implements OnInit {
         if (this.selectedFile) {
           this.cvService.submitApplication(cleanData, this.selectedFile).subscribe({
             next: () => {
-              this.toastr.success('Candidat créé avec succès !');
+              this.toastrNotification.showCandidateCreatedSuccess();
               this.loadCandidates();
               this.closeCandidateModal();
             },
             error: (error: any) => {
               console.error('Erreur lors de la création du candidat:', error);
-              this.toastr.error('Erreur lors de la création du candidat');
+              this.toastrNotification.showCandidateError('Erreur lors de la création du candidat');
               this.error = 'Erreur lors de la création du candidat';
             }
           });
         } else {
-          this.toastr.error('Veuillez sélectionner un fichier CV.');
+          this.toastrNotification.showValidationError('Veuillez sélectionner un fichier CV.');
         }
       }
     }
@@ -381,13 +413,13 @@ export class CandidatesComponent implements OnInit {
       if (confirm('Êtes-vous sûr de vouloir supprimer ce candidat ?')) {
         this.candidateService.deleteCandidate(this.selectedCandidate.id).subscribe({
           next: () => {
-            this.toastr.success('Candidat supprimé avec succès !');
+            this.toastrNotification.showCandidateDeletedSuccess();
             this.loadCandidates();
             this.closeDeleteModal();
           },
           error: (error: any) => {
             console.error('Erreur lors de la suppression du candidat:', error);
-            this.toastr.error('Erreur lors de la suppression du candidat');
+            this.toastrNotification.showCandidateError('Erreur lors de la suppression du candidat');
             this.error = 'Erreur lors de la suppression du candidat';
           }
         });
@@ -400,7 +432,7 @@ export class CandidatesComponent implements OnInit {
     const updatedData = { ...candidate, status: newStatus };
     this.candidateService.updateCandidateStatus(candidate.id, backendStatus).subscribe({
       next: () => {
-        this.toastr.success('Statut du candidat mis à jour avec succès !');
+        this.toastrNotification.showSuccess('Statut du candidat mis à jour avec succès !', 'Statut modifié');
         candidate.status = newStatus as Candidate['status'];
         // Fermer les dropdowns après la mise à jour
         this.openStatusDropdownId = null;
@@ -408,7 +440,7 @@ export class CandidatesComponent implements OnInit {
       },
       error: (error: any) => {
         console.error('Erreur lors de la mise à jour du statut:', error);
-        this.toastr.error('Erreur lors de la mise à jour du statut');
+        this.toastrNotification.showCandidateError('Erreur lors de la mise à jour du statut');
         this.error = 'Erreur lors de la mise à jour du statut';
         // Fermer les dropdowns même en cas d'erreur
         this.openStatusDropdownId = null;
@@ -541,12 +573,12 @@ export class CandidatesComponent implements OnInit {
   sendApplicationConfirmation(candidate: Candidate): void {
     this.notificationService.sendApplicationConfirmation(candidate.id).subscribe({
       next: (response: any) => {
-        this.toastr.success('Email de confirmation envoyé avec succès !');
+        this.toastrNotification.showEmailSentSuccess();
         this.openEmailDropdownId = null;
       },
       error: (error: any) => {
         console.error('Erreur lors de l\'envoi de l\'email:', error);
-        this.toastr.error('Erreur lors de l\'envoi de l\'email');
+        this.toastrNotification.showEmailSentError();
         this.openEmailDropdownId = null;
       }
     });

@@ -4,6 +4,10 @@ import com.recrutement.app.dto.JwtResponse;
 import com.recrutement.app.dto.LoginRequest;
 import com.recrutement.app.dto.MessageResponse;
 import com.recrutement.app.dto.SignupRequest;
+import com.recrutement.app.dto.ForgotPasswordRequest;
+import com.recrutement.app.dto.ResetPasswordRequest;
+import com.recrutement.app.service.PasswordResetService;
+import com.recrutement.app.service.EmailService;
 import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.repository.RoleRepository;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,6 +48,16 @@ public class AuthController {
 
     @Autowired
     JwtUtils jwtUtils;
+
+    @Autowired
+    PasswordResetService passwordResetService;
+
+    @Autowired
+    EmailService emailService;
+
+    public AuthController() {
+        System.out.println("=== AuthController créé ===");
+    }
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -139,6 +154,93 @@ public class AuthController {
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    }
+
+    @GetMapping("/test")
+    public ResponseEntity<?> test() {
+        System.out.println("=== ENDPOINT TEST APPELÉ ===");
+        return ResponseEntity.ok(new MessageResponse("Test endpoint fonctionne"));
+    }
+
+    @PostMapping("/test-email")
+    public ResponseEntity<?> testEmail(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Email requis"));
+            }
+            
+            System.out.println("=== TEST EMAIL SIMPLE ===");
+            System.out.println("Envoi d'email de test vers: " + email);
+            
+            emailService.sendSimpleEmailSync(
+                email, 
+                "Test Email - Job4You", 
+                "Ceci est un email de test pour vérifier la configuration email. Si vous recevez ceci, la configuration fonctionne !"
+            );
+            
+            System.out.println("Email de test envoyé !");
+            return ResponseEntity.ok(new MessageResponse("Email de test envoyé vers: " + email));
+        } catch (Exception e) {
+            System.out.println("Erreur lors de l'envoi de l'email de test: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        System.out.println("=== DEBUT forgotPassword ===");
+        System.out.println("Email reçu: " + (request != null ? request.getEmail() : "request null"));
+        
+        if (request == null || request.getEmail() == null || request.getEmail().trim().isEmpty()) {
+            System.out.println("Email manquant ou invalide !");
+            return ResponseEntity.badRequest()
+                .body(new MessageResponse("Email requis"));
+        }
+        
+        try {
+            System.out.println("Demande de réinitialisation pour l'email: " + request.getEmail());
+            boolean success = passwordResetService.sendPasswordResetCode(request.getEmail());
+            
+            if (success) {
+                System.out.println("Code envoyé avec succès pour: " + request.getEmail());
+                return ResponseEntity.ok(new MessageResponse("Code de réinitialisation envoyé par email"));
+            } else {
+                System.out.println("Échec de l'envoi du code pour: " + request.getEmail());
+                return ResponseEntity.badRequest()
+                    .body(new MessageResponse("Utilisateur non trouvé ou erreur lors de l'envoi"));
+            }
+        } catch (Exception e) {
+            System.out.println("Exception lors de l'envoi du code: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                .body(new MessageResponse("Erreur lors de l'envoi du code de réinitialisation"));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            System.out.println("=== DEBUT resetPassword ===");
+            System.out.println("Code reçu: " + request.getResetCode());
+            
+            boolean success = passwordResetService.resetPassword(request.getResetCode(), request.getNewPassword());
+            
+            if (success) {
+                System.out.println("Mot de passe réinitialisé avec succès");
+                return ResponseEntity.ok(new MessageResponse("Mot de passe réinitialisé avec succès"));
+            } else {
+                System.out.println("Code invalide ou expiré");
+                return ResponseEntity.badRequest()
+                    .body(new MessageResponse("Code invalide ou expiré"));
+            }
+        } catch (Exception e) {
+            System.out.println("Exception lors de la réinitialisation: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest()
+                .body(new MessageResponse("Erreur lors de la réinitialisation du mot de passe"));
+        }
     }
 }
 

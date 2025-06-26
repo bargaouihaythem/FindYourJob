@@ -1,3 +1,5 @@
+@use 'ngx-toastr/toastr';
+
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
@@ -203,5 +205,186 @@ body {
   color: var(--success-color);
   font-size: 0.9rem;
   margin-top: 5px;
+}
+
+/* Styles personnalisés pour ngx-toastr */
+
+/* Toasts en position top-center pour les formulaires */
+.toast-top-center {
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: auto;
+  max-width: 500px;
+  min-width: 300px;
+}
+
+/* Toasts en position bottom-right pour les actions générales */
+.toast-bottom-right {
+  bottom: 20px;
+  right: 20px;
+  width: auto;
+  max-width: 400px;
+  min-width: 250px;
+}
+
+/* Styles généraux pour tous les toasts */
+.toast {
+  border-radius: 10px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  overflow: hidden !important;
+  margin-bottom: 10px !important;
+}
+
+/* Styles pour les toasts de succès */
+.toast-success {
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  border-left: 4px solid #1e7e34 !important;
+}
+
+/* Styles pour les toasts d'erreur */
+.toast-error {
+  background: linear-gradient(135deg, #dc3545, #fd7e14) !important;
+  border-left: 4px solid #721c24 !important;
+}
+
+/* Styles pour les toasts d'avertissement */
+.toast-warning {
+  background: linear-gradient(135deg, #ffc107, #fd7e14) !important;
+  border-left: 4px solid #856404 !important;
+  color: #333 !important;
+}
+
+/* Styles pour les toasts d'information */
+.toast-info {
+  background: linear-gradient(135deg, #17a2b8, #007bff) !important;
+  border-left: 4px solid #0c5460 !important;
+}
+
+/* Titre du toast */
+.toast-title {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  margin-bottom: 4px !important;
+}
+
+/* Message du toast */
+.toast-message {
+  font-weight: 400 !important;
+  opacity: 0.95 !important;
+}
+
+/* Bouton de fermeture */
+.toast-close-button {
+  color: white !important;
+  opacity: 0.8 !important;
+  font-size: 18px !important;
+  font-weight: bold !important;
+  background: none !important;
+  border: none !important;
+}
+
+.toast-close-button:hover {
+  opacity: 1 !important;
+}
+
+/* Barre de progression */
+.toast-progress {
+  height: 3px !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Animation d'entrée pour les toasts en top-center */
+.toast-top-center .toast {
+  animation: slideInFromTop 0.3s ease-out !important;
+}
+
+/* Animation d'entrée pour les toasts en bottom-right */
+.toast-bottom-right .toast {
+  animation: slideInFromRight 0.3s ease-out !important;
+}
+
+/* Keyframes pour les animations */
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive pour les toasts */
+@media (max-width: 768px) {
+  .toast-top-center {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    max-width: none;
+    min-width: auto;
+  }
+  
+  .toast-bottom-right {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    max-width: none;
+    min-width: auto;
+  }
+  
+  .toast {
+    font-size: 13px !important;
+  }
+  
+  .toast-title {
+    font-size: 14px !important;
+  }
+}
+
+/* Z-index élevé pour s'assurer que les toasts sont au-dessus de tout */
+.toast-container {
+  z-index: 10000 !important;
+}
+
+/* Correction globale pour les dropdowns */
+.dropdown-menu {
+  z-index: 1055 !important; /* Plus élevé que les modals Bootstrap (1050) */
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.175) !important;
+  border: 1px solid rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Fix spécifique pour les dropdowns dans les tableaux */
+.table-responsive {
+  overflow: visible !important;
+}
+
+.table-dropdown-container {
+  overflow: visible !important;
+}
+
+/* Amélioration de l'apparence des dropdowns */
+.dropdown-item {
+  transition: all 0.2s ease !important;
+  
+  &:hover, &:focus {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+    color: #0056b3 !important;
+  }
 }
 
