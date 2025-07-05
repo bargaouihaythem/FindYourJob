@@ -16,6 +16,8 @@ export class ResetPasswordComponent implements OnInit {
   resetPasswordForm: FormGroup;
   loading = false;
   email = '';
+  showNewPassword = false; // Propriété pour afficher/cacher le nouveau mot de passe
+  showConfirmPassword = false; // Propriété pour afficher/cacher la confirmation
   
   constructor(
     private fb: FormBuilder,
@@ -121,5 +123,19 @@ export class ResetPasswordComponent implements OnInit {
       const control = this.resetPasswordForm.get(key);
       control?.markAsTouched();
     });
+  }
+
+  /**
+   * Bascule l'affichage du nouveau mot de passe
+   */
+  toggleNewPasswordVisibility(): void {
+    this.showNewPassword = !this.showNewPassword;
+  }
+
+  /**
+   * Bascule l'affichage du mot de passe de confirmation
+   */
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 }

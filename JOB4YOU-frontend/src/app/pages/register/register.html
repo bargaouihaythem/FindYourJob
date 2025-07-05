@@ -103,15 +103,25 @@
                     <i class="fas fa-lock me-2"></i>
                     Mot de passe
                   </label>
-                  <input
-                    type="password"
-                    id="password"
-                    class="form-control"
-                    [class.is-invalid]="isFieldInvalid('password')"
-                    formControlName="password"
-                    placeholder="Mot de passe"
-                    autocomplete="new-password"
-                  >
+                  <div class="input-group">
+                    <input
+                      [type]="showPassword ? 'text' : 'password'"
+                      id="password"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('password')"
+                      formControlName="password"
+                      placeholder="Mot de passe"
+                      autocomplete="new-password"
+                    >
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary password-toggle"
+                      (click)="togglePasswordVisibility()"
+                      [title]="showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                    >
+                      <i [class]="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
                   <div *ngIf="isFieldInvalid('password')" class="invalid-feedback">
                     {{ getFieldError('password') }}
                   </div>
@@ -122,15 +132,25 @@
                     <i class="fas fa-lock me-2"></i>
                     Confirmer le mot de passe
                   </label>
-                  <input
-                    type="password"
-                    id="confirmPassword"
-                    class="form-control"
-                    [class.is-invalid]="isFieldInvalid('confirmPassword')"
-                    formControlName="confirmPassword"
-                    placeholder="Confirmer le mot de passe"
-                    autocomplete="new-password"
-                  >
+                  <div class="input-group">
+                    <input
+                      [type]="showConfirmPassword ? 'text' : 'password'"
+                      id="confirmPassword"
+                      class="form-control"
+                      [class.is-invalid]="isFieldInvalid('confirmPassword')"
+                      formControlName="confirmPassword"
+                      placeholder="Confirmer le mot de passe"
+                      autocomplete="new-password"
+                    >
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary password-toggle"
+                      (click)="toggleConfirmPasswordVisibility()"
+                      [title]="showConfirmPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'"
+                    >
+                      <i [class]="showConfirmPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                    </button>
+                  </div>
                   <div *ngIf="isFieldInvalid('confirmPassword')" class="invalid-feedback">
                     {{ getFieldError('confirmPassword') }}
                   </div>

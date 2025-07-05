@@ -10,11 +10,14 @@ import { ToastrNotificationService } from '../../services/toastr-notification.se
   selector: 'app-register',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, RouterModule],
-  templateUrl: './register.html'
+  templateUrl: './register.html',
+  styleUrl: './register.scss'
 })
 export class RegisterComponent {
   registerForm: FormGroup;
   loading = false;
+  showPassword = false; // Propriété pour afficher/cacher le mot de passe
+  showConfirmPassword = false; // Propriété pour afficher/cacher la confirmation
 
   constructor(
     private fb: FormBuilder,
@@ -120,6 +123,20 @@ export class RegisterComponent {
       }
     }
     return '';
+  }
+
+  /**
+   * Bascule l'affichage du mot de passe principal
+   */
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
+  }
+
+  /**
+   * Bascule l'affichage du mot de passe de confirmation
+   */
+  toggleConfirmPasswordVisibility(): void {
+    this.showConfirmPassword = !this.showConfirmPassword;
   }
 }
 

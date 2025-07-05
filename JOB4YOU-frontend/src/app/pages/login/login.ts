@@ -17,6 +17,7 @@ export class LoginComponent {
   loginForm: FormGroup;
   loading = false;
   error = '';
+  showPassword = false; // Propriété pour afficher/cacher le mot de passe
 
   constructor(
     private fb: FormBuilder,
@@ -84,6 +85,13 @@ export class LoginComponent {
       'Pour votre sécurité, seul le nom d\'utilisateur est mémorisé. Le navigateur peut proposer de sauvegarder votre mot de passe de façon sécurisée.',
       'Sécurité des mots de passe'
     );
+  }
+
+  /**
+   * Bascule l'affichage du mot de passe
+   */
+  togglePasswordVisibility(): void {
+    this.showPassword = !this.showPassword;
   }
 
   onSubmit(): void {

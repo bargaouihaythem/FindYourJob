@@ -388,3 +388,42 @@ body {
   }
 }
 
+/* Styles globaux pour les boutons toggle de mot de passe */
+.password-toggle {
+  min-width: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  i {
+    transition: all 0.2s ease;
+  }
+}
+
+/* Amélioration des input-group pour les mots de passe */
+.input-group {
+  .form-control {
+    z-index: 1;
+  }
+  
+  .password-toggle {
+    z-index: 2;
+    position: relative;
+  }
+  
+  /* Styles pour les états d'erreur */
+  .form-control.is-invalid + .password-toggle {
+    border-color: var(--danger-color) !important;
+  }
+}
+
