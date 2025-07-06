@@ -91,7 +91,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/job-offers/public/**").permitAll()
-                .requestMatchers("/api/candidates/apply").permitAll()
+                // .requestMatchers("/api/candidates/apply").permitAll() // Commenté : candidature nécessite un compte
                 .requestMatchers("/api/files/**").permitAll() // Allow access to uploaded files
                 .requestMatchers("/api/init/**").permitAll() // Allow role initialization
                 .requestMatchers("/error").permitAll()     // <-- Ajout pour éviter 401 sur /error

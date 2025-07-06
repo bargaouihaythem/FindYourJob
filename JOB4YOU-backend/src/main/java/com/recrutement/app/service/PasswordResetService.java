@@ -157,6 +157,8 @@ public class PasswordResetService {
      */
     private void sendResetCodeEmail(User user, String resetCode) {
         try {
+            logger.info("Envoi du code de réinitialisation à: {}", user.getEmail());
+            
             String subject = "Code de réinitialisation de votre mot de passe";
             
             Map<String, Object> variables = new HashMap<>();
@@ -164,15 +166,18 @@ public class PasswordResetService {
             variables.put("resetCode", resetCode);
             variables.put("validityHours", CODE_VALIDITY_HOURS);
             
-            emailService.sendTemplateEmail(
+            // Utilisation de la version synchrone pour les emails critiques
+            emailService.sendTemplateEmailSync(
                 user.getEmail(),
                 subject,
                 "emails/password-reset",
                 variables
             );
             
+            logger.info("Email de réinitialisation envoyé avec succès");
+            
         } catch (Exception e) {
-            logger.error("Erreur lors de l'envoi de l'email de réinitialisation", e);
+            logger.error("Erreur lors de l'envoi de l'email de réinitialisation à: {}", user.getEmail(), e);
             throw new RuntimeException("Erreur lors de l'envoi de l'email", e);
         }
     }

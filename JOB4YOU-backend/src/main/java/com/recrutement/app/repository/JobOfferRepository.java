@@ -21,8 +21,12 @@ public interface JobOfferRepository extends JpaRepository<JobOffer, Long> {
     @Query("SELECT j FROM JobOffer j WHERE j.title LIKE %:keyword% OR j.description LIKE %:keyword%")
     List<JobOffer> findByTitleOrDescriptionContaining(@Param("keyword") String keyword);
 
-    @Query("SELECT j FROM JobOffer j WHERE j.location LIKE %:location%")
+    @Query("SELECT j FROM JobOffer j WHERE LOWER(j.location) LIKE LOWER(CONCAT('%', :location, '%'))")
     List<JobOffer> findByLocationContaining(@Param("location") String location);
+
+    // Méthode pour recherche plus précise par localisation
+    @Query("SELECT j FROM JobOffer j WHERE LOWER(j.location) LIKE LOWER(CONCAT(:location, '%')) OR LOWER(j.location) LIKE LOWER(CONCAT('% ', :location, '%')) OR LOWER(j.location) LIKE LOWER(CONCAT('%,', :location, '%')) OR LOWER(j.location) LIKE LOWER(CONCAT('%(', :location, '%'))")
+    List<JobOffer> findByLocationContainingPrecise(@Param("location") String location);
 
    // List<JobOffer> findByCreatedBy(Long userId);
     @Query("SELECT j FROM JobOffer j WHERE j.createdBy.id = :userId")

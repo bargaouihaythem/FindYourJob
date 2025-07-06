@@ -166,15 +166,3 @@ export interface EmailNotification {
   feedbackId?: number;
 }
 
-
-export interface InterviewRequest {
-  candidateId: number;
-  jobOfferId?: number;
-  interviewerId: number;
-  interviewDate: Date;
-  duration?: number;
-  location: string;
-  type: 'PHONE_SCREENING' | 'TECHNICAL' | 'HR' | 'MANAGER' | 'FINAL' | 'GROUP';
-  notes?: string;
-}
-

@@ -79,6 +79,23 @@ public class JobOfferController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/public/{id}")
+    @Operation(summary = "Récupérer une offre d'emploi publique par ID", description = "Récupère les détails d'une offre d'emploi active pour les visiteurs non connectés")
+    public ResponseEntity<JobOfferResponse> getPublicJobOfferById(@PathVariable Long id) {
+        try {
+            JobOfferResponse response = jobOfferService.getJobOfferById(id);
+            
+            // Vérifier que l'offre est active et peut être consultée publiquement
+            if (response.getStatus() != JobOffer.JobStatus.ACTIVE) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
     @Operation(summary = "Mettre à jour une offre d'emploi")

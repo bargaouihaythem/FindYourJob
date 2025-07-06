@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
+import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { JobOfferService } from '../../services/job-offer.service';
 import { AuthService } from '../../services/auth';
 import { JobOffer, User } from '../../models/interfaces';
@@ -8,7 +9,7 @@ import { JobOffer, User } from '../../models/interfaces';
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule],
   templateUrl: './home.html',
   styleUrls: ['./home.scss']
 })
@@ -17,13 +18,21 @@ export class HomeComponent implements OnInit {
   loading = true;
   error = '';
   currentUser: User | null = null;
+  searchForm: FormGroup;
 
   constructor(
     private jobOfferService: JobOfferService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router,
+    private fb: FormBuilder
   ) {
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
+    });
+    
+    this.searchForm = this.fb.group({
+      keyword: [''],
+      location: ['']
     });
   }
 
@@ -41,6 +50,18 @@ export class HomeComponent implements OnInit {
         console.error('Erreur lors du chargement des offres:', error);
         this.error = 'Erreur lors du chargement des offres d\'emploi';
         this.loading = false;
+      }
+    });
+  }
+
+  onSearchSubmit(): void {
+    const formValue = this.searchForm.value;
+    
+    // Naviguer vers la page des offres d'emploi avec les paramètres de recherche
+    this.router.navigate(['/job-offers'], {
+      queryParams: {
+        keyword: formValue.keyword || null,
+        location: formValue.location || null
       }
     });
   }

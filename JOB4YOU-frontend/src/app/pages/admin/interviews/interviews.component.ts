@@ -3,13 +3,14 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { InterviewService } from '../../../services/interview.service';
-import { Interview, InterviewRequest } from '../../../models/interfaces';
+import { Interview } from '../../../models/interfaces';
 import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { AuthService } from '../../../services/auth';
 import { FeedbackService } from '../../../services/feedback.service';
 import { CVService } from '../../../services/cv.service';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { NotificationService } from '../../../services/notification.service';
 
 @Component({
   selector: 'app-interviews',
@@ -75,7 +76,8 @@ export class InterviewsComponent implements OnInit {
     private feedbackService: FeedbackService,
     private cvService: CVService,
     private fb: FormBuilder,
-    private toastrNotification: ToastrNotificationService
+    private toastrNotification: ToastrNotificationService,
+    private notificationService: NotificationService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -526,22 +528,34 @@ export class InterviewsComponent implements OnInit {
   }
 
   /**
-   * Envoie une notification par email
+   * Envoie la notification par email
    */
   sendNotification(): void {
     if (this.notificationForm.valid && this.selectedInterview) {
-      const notificationData = {
-        ...this.notificationForm.value,
-        interviewId: this.selectedInterview.id,
-        candidateId: this.selectedInterview.candidateId
+      const formData = this.notificationForm.value;
+      
+      // Préparer les données pour l'email personnalisé
+      const emailData = {
+        to: this.selectedInterview.candidateEmail || '',
+        subject: formData.subject,
+        content: formData.message,
+        isHtml: true
       };
 
-      // Simuler l'envoi de notification (à adapter selon votre API)
-      console.log('Envoi de notification:', notificationData);
-      
-      // Appel à votre service de notification
-      this.toastrNotification.showNotificationSentSuccess();
-      this.closeNotificationModal();
+      // Envoyer l'email via le service
+      this.notificationService.sendCustomEmail(emailData).subscribe({
+        next: (response) => {
+          console.log('Email envoyé avec succès:', response);
+          this.toastrNotification.showNotificationSentSuccess();
+          this.closeNotificationModal();
+        },
+        error: (error) => {
+          console.error('Erreur lors de l\'envoi de l\'email:', error);
+          this.toastrNotification.showError('Erreur lors de l\'envoi de la notification');
+        }
+      });
+    } else {
+      this.toastrNotification.showError('Veuillez remplir tous les champs requis');
     }
   }
 

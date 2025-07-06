@@ -1,11 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { JobOfferService } from '../../services/job-offer.service';
 import { CandidateService } from '../../services/candidate.service';
 import { AuthService } from '../../services/auth';
-import { JobOffer } from '../../models/interfaces';
+import { JobOffer, Candidate } from '../../models/interfaces';
 
 @Component({
   selector: 'app-job-detail',
@@ -18,6 +18,7 @@ export class JobDetailComponent implements OnInit {
   job: JobOffer | null = null;
   loading = true;
   error: string | null = null;
+  hasAlreadyApplied = false; // Nouvelle propriété pour tracker si l'utilisateur a déjà postulé
   
   // Application form
   applicationForm: FormGroup;
@@ -29,6 +30,7 @@ export class JobDetailComponent implements OnInit {
 
   constructor(
     private route: ActivatedRoute,
+    private router: Router,
     private jobOfferService: JobOfferService,
     private candidateService: CandidateService,
     private authService: AuthService,
@@ -49,7 +51,13 @@ export class JobDetailComponent implements OnInit {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (id) {
       this.loading = true;
-      this.jobOfferService.getJobOfferById(id).subscribe({
+      
+      // Utiliser l'endpoint approprié selon l'état d'authentification
+      const jobOfferObservable = this.authService.isAuthenticated() 
+        ? this.jobOfferService.getJobOfferById(id)
+        : this.jobOfferService.getPublicJobOfferById(id);
+      
+      jobOfferObservable.subscribe({
         next: (job: JobOffer) => {
           this.job = job;
           this.loading = false;
@@ -62,6 +70,9 @@ export class JobDetailComponent implements OnInit {
               lastName: currentUser.lastName || '',
               email: currentUser.email || ''
             });
+            
+            // Vérifier si l'utilisateur a déjà postulé pour cette offre
+            this.checkIfAlreadyApplied(currentUser.email, job.id);
           }
 
           // Check if user came from application link (via referrer or query params)
@@ -72,7 +83,8 @@ export class JobDetailComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.error = "Offre d'emploi introuvable.";
+          console.error('Erreur lors du chargement de l\'offre:', err);
+          this.error = "Offre d'emploi introuvable ou inaccessible.";
           this.loading = false;
         }
       });
@@ -88,12 +100,17 @@ export class JobDetailComponent implements OnInit {
 
   /**
    * Vérifie si l'utilisateur peut postuler à une offre d'emploi
-   * Seuls les utilisateurs non connectés ou avec le rôle USER peuvent postuler
+   * Seuls les utilisateurs connectés avec le rôle USER peuvent postuler
    */
   canApplyToJob(): boolean {
-    // Si l'utilisateur n'est pas connecté, il peut postuler (candidature publique)
+    // L'utilisateur DOIT être connecté pour postuler
     if (!this.authService.isAuthenticated()) {
-      return true;
+      return false;
+    }
+
+    // Vérifier si l'utilisateur a déjà postulé
+    if (this.hasAlreadyApplied) {
+      return false;
     }
 
     // Si l'utilisateur est connecté, vérifier qu'il a seulement le rôle USER/CANDIDATE
@@ -113,11 +130,59 @@ export class JobDetailComponent implements OnInit {
     return false;
   }
 
+  /**
+   * Vérifie si l'utilisateur connecté a déjà postulé pour cette offre
+   */
+  checkIfAlreadyApplied(email: string, jobOfferId: number): void {
+    this.candidateService.getCandidatesByEmail(email).subscribe({
+      next: (applications: Candidate[]) => {
+        this.hasAlreadyApplied = applications.some((app: Candidate) => app.jobOfferId === jobOfferId);
+        console.log('Vérification candidature existante:', {
+          email: email,
+          jobOfferId: jobOfferId,
+          hasAlreadyApplied: this.hasAlreadyApplied,
+          applicationsCount: applications.length
+        });
+      },
+      error: (err: any) => {
+        console.error('Erreur lors de la vérification des candidatures:', err);
+        // En cas d'erreur, on assume que l'utilisateur n'a pas encore postulé
+        this.hasAlreadyApplied = false;
+      }
+    });
+  }
+
   scrollToApplication(): void {
     const element = document.getElementById('application-section');
     if (element) {
       element.scrollIntoView({ behavior: 'smooth' });
     }
+  }
+
+  /**
+   * Gère l'action de candidature selon l'état d'authentification
+   */
+  handleApplyAction(): void {
+    if (this.authService.isAuthenticated()) {
+      if (this.canApplyToJob()) {
+        this.openApplicationModal();
+      } else {
+        this.applicationError = "Vous n'avez pas les permissions pour postuler à cette offre.";
+      }
+    } else {
+      // Rediriger vers l'inscription avec retour sur cette page
+      const currentUrl = this.router.url;
+      this.router.navigate(['/register'], { 
+        queryParams: { returnUrl: currentUrl }
+      });
+    }
+  }
+
+  /**
+   * Vérifie si l'utilisateur doit être redirigé vers l'inscription
+   */
+  shouldRedirectToRegister(): boolean {
+    return !this.authService.isAuthenticated();
   }
 
   openApplicationModal(): void {

@@ -1,0 +1,112 @@
+[
+  {
+    "title": "Développeur Frontend React/Angular",
+    "description": "Nous recherchons un développeur frontend passionné pour rejoindre notre équipe dynamique.\n\nMissions principales :\n• Développer des interfaces utilisateur modernes et responsives\n• Collaborer avec l'équipe UX/UI pour implémenter des designs innovants\n• Optimiser les performances des applications web\n• Maintenir et améliorer le code existant\n• Participer aux code reviews et aux méthodologies Agile\n\nEnvironnement technique :\n• React 18+ ou Angular 15+\n• TypeScript, HTML5, CSS3, SCSS\n• State management (Redux, NgRx)\n• Tests unitaires (Jest, Cypress)\n• Git, CI/CD\n\nAvantages :\n• Télétravail partiel (2-3 jours/semaine)\n• Formation continue et certifications\n• Tickets restaurant et mutuelle d'entreprise\n• Équipe jeune et bienveillante",
+    "requiredSkills": "React, Angular, TypeScript, JavaScript, HTML5, CSS3, SCSS, Redux, NgRx, Jest, Cypress, Git",
+    "experienceLevel": "3-5 ans",
+    "contractType": "CDI",
+    "location": "Paris (75) - Hybride",
+    "salaryRange": "45 000 - 55 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-15T23:59:59"
+  },
+  {
+    "title": "Développeur Backend Java/Spring",
+    "description": "Rejoignez notre équipe backend pour développer des APIs robustes et scalables.\n\nResponsabilités :\n• Concevoir et développer des microservices avec Spring Boot\n• Implémenter des APIs RESTful performantes\n• Gérer les bases de données (PostgreSQL, MongoDB)\n• Assurer la sécurité et l'authentification (JWT, OAuth)\n• Optimiser les performances et la scalabilité\n• Documenter les APIs avec Swagger/OpenAPI\n\nStack technique :\n• Java 17+, Spring Boot, Spring Security\n• PostgreSQL, MongoDB, Redis\n• Docker, Kubernetes\n• Maven/Gradle, Jenkins\n• AWS/GCP\n\nCe que nous offrons :\n• Projets techniques challengeants\n• Encadrement par des seniors expérimentés\n• Budget formation de 2000€/an\n• Matériel de qualité (MacBook Pro)",
+    "requiredSkills": "Java, Spring Boot, Spring Security, PostgreSQL, MongoDB, Redis, Docker, Kubernetes, Maven, AWS, GCP",
+    "experienceLevel": "2-4 ans",
+    "contractType": "CDI",
+    "location": "Lyon (69) - Sur site",
+    "salaryRange": "42 000 - 52 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-20T23:59:59"
+  },
+  {
+    "title": "Développeur Mobile Flutter",
+    "description": "Développez la prochaine génération d'applications mobiles avec Flutter.\n\nMissions :\n• Créer des applications mobiles cross-platform avec Flutter\n• Intégrer des APIs REST et GraphQL\n• Implémenter des fonctionnalités natives (géolocalisation, camera, etc.)\n• Optimiser les performances et l'UX mobile\n• Publier sur les stores (App Store, Google Play)\n• Collaborer avec les équipes design et backend\n\nCompétences techniques :\n• Flutter/Dart (2+ ans d'expérience)\n• État management (Bloc, Provider, Riverpod)\n• Intégration APIs (REST, GraphQL)\n• Firebase (Auth, Firestore, Analytics)\n• Tests automatisés (Widget tests, Integration tests)\n• CI/CD mobile (CodeMagic, GitHub Actions)\n\nPourquoi nous rejoindre ?\n• Startup en forte croissance (Series A)\n• Stock-options et participation\n• Équipe internationale\n• Méthodologie Agile/Scrum",
+    "requiredSkills": "Flutter, Dart, Bloc, Provider, Riverpod, Firebase, REST API, GraphQL, iOS, Android",
+    "experienceLevel": "2-3 ans",
+    "contractType": "CDI",
+    "location": "Toulouse (31) - Hybride",
+    "salaryRange": "38 000 - 48 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-25T23:59:59"
+  },
+  {
+    "title": "Ingénieur DevOps",
+    "description": "Accélérez notre transformation cloud en tant qu'Ingénieur DevOps.\n\nMissions principales :\n• Automatiser les déploiements avec des pipelines CI/CD\n• Gérer l'infrastructure cloud (AWS/Azure)\n• Implémenter la containerisation avec Docker/Kubernetes\n• Monitorer les applications en production\n• Assurer la sécurité et la conformité\n• Former les équipes aux bonnes pratiques DevOps\n\nExpertise requise :\n• Cloud providers (AWS, Azure, GCP)\n• Containers (Docker, Kubernetes, OpenShift)\n• CI/CD (Jenkins, GitLab CI, GitHub Actions)\n• Infrastructure as Code (Terraform, Ansible)\n• Monitoring (Prometheus, Grafana, ELK)\n• Scripting (Bash, Python, PowerShell)\n\nAvantages :\n• Certifications cloud prises en charge\n• Participation aux conférences tech\n• 13ème mois + prime de performance\n• RTT et congés flexibles",
+    "requiredSkills": "AWS, Azure, Docker, Kubernetes, Jenkins, Terraform, Ansible, Prometheus, Grafana, Python, Bash",
+    "experienceLevel": "4-6 ans",
+    "contractType": "CDI",
+    "location": "Marseille (13) - Hybride",
+    "salaryRange": "50 000 - 65 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-09-01T23:59:59"
+  },
+  {
+    "title": "Data Scientist",
+    "description": "Transformez les données en insights business avec l'IA et le Machine Learning.\n\nVos missions :\n• Analyser de gros volumes de données (Big Data)\n• Développer des modèles de Machine Learning\n• Créer des dashboards et visualisations\n• Collaborer avec les équipes métier\n• Optimiser les algorithmes pour la production\n• Assurer la qualité et la gouvernance des données\n\nCompétences clés :\n• Python (Pandas, NumPy, Scikit-learn, TensorFlow)\n• SQL avancé, NoSQL (MongoDB, Cassandra)\n• Outils de visualisation (Tableau, Power BI, Plotly)\n• Statistiques et mathématiques appliquées\n• Cloud ML (AWS SageMaker, Azure ML)\n• Spark, Hadoop pour le Big Data\n\nCe poste vous offre :\n• Projets d'innovation avec impact business\n• Accès aux dernières technologies IA\n• Formation continue (Coursera, Udacity)\n• Équipe data science de 8 personnes",
+    "requiredSkills": "Python, Pandas, NumPy, Scikit-learn, TensorFlow, SQL, MongoDB, Tableau, Power BI, AWS SageMaker, Spark",
+    "experienceLevel": "3-5 ans",
+    "contractType": "CDI",
+    "location": "Nantes (44) - Hybride",
+    "salaryRange": "48 000 - 60 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-30T23:59:59"
+  },
+  {
+    "title": "Chef de Projet Digital",
+    "description": "Pilotez des projets digitaux innovants dans un environnement Agile.\n\nResponsabilités :\n• Gérer des projets web et mobile de A à Z\n• Coordonner les équipes techniques et fonctionnelles\n• Assurer le respect des délais, budgets et qualité\n• Animer les cérémonies Agile (Sprint, Daily, Retro)\n• Communiquer avec les clients et stakeholders\n• Gérer les risques et les changements\n\nProfil recherché :\n• Formation en management de projet ou école d'ingénieur\n• Certification PMP, Prince2 ou PSM (apprécié)\n• Expérience en méthodologies Agile/Scrum\n• Maîtrise des outils de gestion de projet (Jira, Trello)\n• Excellentes capacités de communication\n• Anglais courant\n\nPackage attractif :\n• Salaire fixe + variable sur objectifs\n• Voiture de fonction ou budget mobilité\n• Formation en management et leadership\n• Évolution vers des postes de direction",
+    "requiredSkills": "Gestion de projet, Agile, Scrum, Jira, Trello, PMP, Prince2, Leadership, Communication",
+    "experienceLevel": "4-7 ans",
+    "contractType": "CDI",
+    "location": "Bordeaux (33) - Hybride",
+    "salaryRange": "45 000 - 58 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-09-10T23:59:59"
+  },
+  {
+    "title": "UI/UX Designer",
+    "description": "Créez des expériences utilisateur exceptionnelles pour nos produits digitaux.\n\nMissions créatives :\n• Concevoir des interfaces utilisateur intuitives\n• Réaliser des wireframes et prototypes interactifs\n• Conduire des tests utilisateurs et recherches UX\n• Créer et maintenir le design system\n• Collaborer étroitement avec les développeurs\n• Veiller à l'accessibilité et l'inclusive design\n\nOutils maîtrisés :\n• Figma, Sketch, Adobe Creative Suite\n• Prototyping (InVision, Principle, Framer)\n• User testing (Hotjar, Maze, UsabilityHub)\n• Design systems et atomic design\n• HTML/CSS pour la communication avec les devs\n\nEnvironnement stimulant :\n• Studio design de 6 personnes\n• Matériel haut de gamme (iMac, Wacom)\n• Budget conférences et formations design\n• Liberté créative et projets variés\n• Participation à la stratégie produit",
+    "requiredSkills": "Figma, Sketch, Adobe Creative Suite, UX Research, Prototyping, Design System, HTML, CSS",
+    "experienceLevel": "2-4 ans",
+    "contractType": "CDI",
+    "location": "Lille (59) - Hybride",
+    "salaryRange": "35 000 - 45 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-18T23:59:59"
+  },
+  {
+    "title": "Testeur QA Automatisation",
+    "description": "Garantissez la qualité de nos applications avec des tests automatisés robustes.\n\nActivités principales :\n• Développer des tests automatisés (UI, API, Performance)\n• Créer des plans de tests et stratégies QA\n• Intégrer les tests dans les pipelines CI/CD\n• Identifier et documenter les bugs\n• Former les équipes aux bonnes pratiques de test\n• Maintenir les frameworks de test\n\nExpertise technique :\n• Automation tools (Selenium, Cypress, Playwright)\n• API testing (Postman, REST Assured)\n• Performance testing (JMeter, LoadRunner)\n• Languages de test (Java, Python, JavaScript)\n• CI/CD integration (Jenkins, GitLab)\n• BDD/TDD methodologies\n\nAvantages du poste :\n• Équipe QA en croissance\n• Formation aux nouvelles technologies de test\n• Participation aux choix d'outils et méthodes\n• Projets variés (web, mobile, API)",
+    "requiredSkills": "Selenium, Cypress, Playwright, Postman, JMeter, Java, Python, JavaScript, Jenkins, BDD, TDD",
+    "experienceLevel": "2-5 ans",
+    "contractType": "CDI",
+    "location": "Strasbourg (67) - Sur site",
+    "salaryRange": "38 000 - 48 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-08-28T23:59:59"
+  },
+  {
+    "title": "Consultant Fonctionnel ERP",
+    "description": "Accompagnez nos clients dans leurs projets de transformation digitale ERP.\n\nVos interventions :\n• Analyser les besoins métier des clients\n• Configurer et paramétrer les solutions ERP\n• Former les utilisateurs finaux\n• Gérer la conduite du changement\n• Assurer le support post go-live\n• Rédiger la documentation fonctionnelle\n\nDomaines d'expertise :\n• ERP (SAP, Microsoft Dynamics, Oracle)\n• Processus métier (Finance, Supply Chain, HR)\n• Gestion de projet et méthodologies\n• Formation et change management\n• Business analysis\n\nProfil consultant :\n• Formation supérieure en gestion ou informatique\n• Expérience en conseil ou en entreprise\n• Capacité d'adaptation et d'écoute\n• Goût pour le voyage (missions client)\n• Anglais professionnel\n\nPackage consultant :\n• Salaire attractif + primes de mission\n• Véhicule de fonction\n• Prise en charge frais et hébergements\n• Plan de carrière international",
+    "requiredSkills": "ERP, SAP, Microsoft Dynamics, Oracle, Business Analysis, Change Management, Formation",
+    "experienceLevel": "3-6 ans",
+    "contractType": "CDI",
+    "location": "Paris (75) - Missions France",
+    "salaryRange": "45 000 - 60 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-09-05T23:59:59"
+  },
+  {
+    "title": "Tech Lead Full Stack",
+    "description": "Dirigez une équipe de développeurs dans la création de solutions innovantes.\n\nResponsabilités leadership :\n• Encadrer une équipe de 4-6 développeurs\n• Définir l'architecture technique des projets\n• Faire des choix technologiques stratégiques\n• Assurer la qualité du code et les bonnes pratiques\n• Participer au recrutement technique\n• Planifier et estimer les développements\n\nStack technique maîtrisée :\n• Frontend : React, Vue.js, Angular\n• Backend : Node.js, Python, Java\n• Databases : PostgreSQL, MongoDB, Redis\n• Cloud : AWS, Azure, GCP\n• DevOps : Docker, Kubernetes, CI/CD\n\nQualités requises :\n• Leadership technique et humain\n• Capacité de mentoring\n• Vision produit et architecture\n• Communication avec les non-techniques\n• Veille technologique active\n\nÉvolution de carrière :\n• Poste clé dans l'organisation\n• Formation management et leadership\n• Participation aux décisions stratégiques\n• Évolution vers CTO possible",
+    "requiredSkills": "Leadership, React, Vue.js, Angular, Node.js, Python, Java, PostgreSQL, AWS, Docker, Architecture",
+    "experienceLevel": "5-8 ans",
+    "contractType": "CDI",
+    "location": "Nice (06) - Hybride",
+    "salaryRange": "55 000 - 70 000 €",
+    "status": "ACTIVE",
+    "deadline": "2025-09-15T23:59:59"
+  }
+]

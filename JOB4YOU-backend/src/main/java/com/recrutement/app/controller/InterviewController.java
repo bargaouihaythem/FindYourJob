@@ -29,7 +29,7 @@ public class InterviewController {
     private InterviewService interviewService;
 
     @PostMapping
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Planifier un nouvel entretien")
     public ResponseEntity<InterviewResponse> scheduleInterview(
             @Valid @RequestBody InterviewRequest interviewRequest) {
@@ -54,7 +54,7 @@ public class InterviewController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Mettre à jour un entretien")
     public ResponseEntity<InterviewResponse> updateInterview(
             @PathVariable Long id,
@@ -64,7 +64,7 @@ public class InterviewController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Supprimer un entretien")
     public ResponseEntity<MessageResponse> deleteInterview(@PathVariable Long id) {
         interviewService.deleteInterview(id);

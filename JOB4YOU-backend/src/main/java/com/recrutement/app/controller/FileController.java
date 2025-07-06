@@ -21,7 +21,7 @@ public class FileController {
     @Value("${app.file.upload-dir:uploads/cvs}")
     private String uploadDir;    
     @GetMapping("/{fileName:.+}")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('TEAM_LEAD') or hasRole('SENIOR_DEV') or hasRole('TEAM') or hasRole('ÉQUIPE')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('TEAM_LEAD') or hasRole('SENIOR_DEV') or hasRole('TEAM') or hasRole('ÉQUIPE') or hasRole('USER')")
     public ResponseEntity<Resource> serveFile(@PathVariable String fileName) {
         try {
             Resource resource = findFileResource(fileName);

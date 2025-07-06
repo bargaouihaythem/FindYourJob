@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { JobOfferService } from '../../services/job-offer.service';
 import { AuthService } from '../../services/auth';
@@ -33,8 +33,7 @@ export class JobOffersComponent implements OnInit {
   constructor(
     private jobOfferService: JobOfferService,
     private authService: AuthService,
-    private fb: FormBuilder,
-    private route: ActivatedRoute
+    private fb: FormBuilder
   ) {
     this.searchForm = this.fb.group({
       keyword: [''],
@@ -46,33 +45,14 @@ export class JobOffersComponent implements OnInit {
   ngOnInit(): void {
     this.loadJobOffers();
     this.setupSearchForm();
-    this.handleUrlParams();
-  }
-
-  handleUrlParams(): void {
-    // Vérifier les paramètres de recherche depuis l'URL (depuis la page d'accueil)
-    this.route.queryParams.subscribe(params => {
-      if (params['keyword'] || params['location']) {
-        this.searchForm.patchValue({
-          keyword: params['keyword'] || '',
-          location: params['location'] || ''
-        });
-        
-        // Filtrer automatiquement si des paramètres sont présents
-        setTimeout(() => {
-          this.filterJobs();
-        }, 100);
-        
-        console.log('Paramètres de recherche depuis URL:', params);
-      }
-    });
   }
 
   setupSearchForm(): void {
-    // Filtrer automatiquement à chaque changement avec un délai
-    this.searchForm.valueChanges.subscribe(() => {
-      this.filterJobs();
-    });
+    // Ne pas filtrer automatiquement à chaque changement
+    // L'utilisateur devra cliquer sur "Rechercher" pour déclencher le filtrage
+    // this.searchForm.valueChanges.subscribe(() => {
+    //   this.filterJobs();
+    // });
   }
 
   loadJobOffers(): void {
@@ -106,21 +86,14 @@ export class JobOffersComponent implements OnInit {
       );
     }
 
-    // Filter by location (local) - recherche EXACTE pour éviter les faux positifs
+    // Filter by location (local) - recherche plus précise
     if (formValue.location && formValue.location.trim()) {
       const location = formValue.location.toLowerCase().trim();
       filtered = filtered.filter(job => {
         const jobLocation = job.location.toLowerCase();
-        
-        // Recherche exacte stricte pour éviter que "Nice" trouve "Venice" ou autres
-        return jobLocation.includes(location) && (
-          jobLocation.startsWith(location) ||           // Commence par la ville
-          jobLocation.includes(` ${location}`) ||       // Après un espace
-          jobLocation.includes(`(${location}`) ||       // Dans des parenthèses
-          jobLocation.includes(`,${location}`) ||       // Après une virgule
-          jobLocation.includes(`-${location}`) ||       // Après un tiret
-          jobLocation === location                      // Exactement égal
-        );
+        // Recherche exacte d'abord, puis recherche partielle
+        return jobLocation.includes(location) || 
+               location.split(' ').some((word: string) => jobLocation.includes(word.trim()));
       });
     }
 
@@ -133,7 +106,6 @@ export class JobOffersComponent implements OnInit {
 
     this.filteredJobs = filtered;
     console.log(`Filtrage local: ${filtered.length} offres trouvées sur ${this.jobOffers.length} total`);
-    console.log('Filtres appliqués:', formValue);
   }
 
   getContractTypeLabel(contractType: string): string {
@@ -155,8 +127,8 @@ export class JobOffersComponent implements OnInit {
   clearFilters(): void {
     this.searchForm.reset();
     this.error = '';
-    this.filteredJobs = [...this.jobOffers]; // Afficher toutes les offres immédiatement
-    console.log('Filtres effacés - affichage de toutes les offres');
+    this.loadJobOffers(); // Recharger toutes les offres
+    console.log('Filtres effacés - rechargement de toutes les offres');
   }
 
   getDaysAgo(date: Date): number {
@@ -179,6 +151,91 @@ export class JobOffersComponent implements OnInit {
         this.currentPage--; // Revert page increment on error
       }
     });
+  }
+
+  searchJobs(): void {
+    this.loading = true;
+    const formValue = this.searchForm.value;
+    
+    // Si aucun filtre n'est appliqué, recharger toutes les offres
+    if (!formValue.keyword?.trim() && !formValue.location?.trim() && !formValue.contractType?.trim()) {
+      this.loadJobOffers();
+      return;
+    }
+
+    // Si une localisation est spécifiée, utiliser l'endpoint de recherche par localisation
+    if (formValue.location?.trim()) {
+      console.log(`Recherche par localisation: "${formValue.location}"`);
+      this.jobOfferService.searchJobOffersByLocation(formValue.location.trim()).subscribe({
+        next: (jobs: JobOffer[]) => {
+          this.jobOffers = jobs;
+          
+          // Appliquer les autres filtres localement sur les résultats de localisation
+          this.applyAdditionalFilters(jobs, formValue);
+          
+          this.totalJobs = this.filteredJobs.length;
+          this.loading = false;
+          console.log(`Recherche par localisation terminée: ${this.filteredJobs.length} offres trouvées`);
+        },
+        error: (error: any) => {
+          console.error('Erreur lors de la recherche par localisation:', error);
+          this.error = 'Erreur lors de la recherche par localisation';
+          this.loading = false;
+        }
+      });
+    }
+    // Si seul un mot-clé est spécifié, utiliser l'endpoint de recherche par mot-clé
+    else if (formValue.keyword?.trim()) {
+      console.log(`Recherche par mot-clé: "${formValue.keyword}"`);
+      this.jobOfferService.searchJobOffers(formValue.keyword.trim()).subscribe({
+        next: (jobs: JobOffer[]) => {
+          this.jobOffers = jobs;
+          
+          // Appliquer les autres filtres localement
+          this.applyAdditionalFilters(jobs, formValue);
+          
+          this.totalJobs = this.filteredJobs.length;
+          this.loading = false;
+          console.log(`Recherche par mot-clé terminée: ${this.filteredJobs.length} offres trouvées`);
+        },
+        error: (error: any) => {
+          console.error('Erreur lors de la recherche par mot-clé:', error);
+          this.error = 'Erreur lors de la recherche par mot-clé';
+          this.loading = false;
+        }
+      });
+    }
+    // Si seul le type de contrat est spécifié, filtrer localement
+    else {
+      this.filterJobs();
+      this.loading = false;
+    }
+  }
+
+  /**
+   * Applique les filtres supplémentaires après une recherche backend
+   */
+  private applyAdditionalFilters(jobs: JobOffer[], formValue: any): void {
+    let filtered = [...jobs];
+
+    // Appliquer le filtre mot-clé si présent
+    if (formValue.keyword?.trim()) {
+      const keyword = formValue.keyword.toLowerCase().trim();
+      filtered = filtered.filter(job => 
+        job.title.toLowerCase().includes(keyword) ||
+        job.description.toLowerCase().includes(keyword) ||
+        job.requiredSkills.toLowerCase().includes(keyword)
+      );
+    }
+
+    // Appliquer le filtre type de contrat si présent
+    if (formValue.contractType?.trim()) {
+      filtered = filtered.filter(job => 
+        job.contractType === formValue.contractType
+      );
+    }
+
+    this.filteredJobs = filtered;
   }
 
   goToPage(page: number): void {
@@ -213,4 +270,3 @@ export class JobOffersComponent implements OnInit {
     return false;
   }
 }
-

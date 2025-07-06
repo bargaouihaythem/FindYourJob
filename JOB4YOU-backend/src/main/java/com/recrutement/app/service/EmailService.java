@@ -33,7 +33,7 @@ public class EmailService {
     private boolean emailEnabled;
 
     /**
-     * Envoie un e-mail avec un template Thymeleaf
+     * Envoie un e-mail avec un template Thymeleaf (asynchrone)
      */
     @Async
     public void sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
@@ -60,9 +60,9 @@ public class EmailService {
 
             // Envoyer l'e-mail
             mailSender.send(message);
-            logger.info("Email sent successfully to: {}, subject: {}", to, subject);
-        } catch (MessagingException e) {
-            logger.error("Failed to send email to: {}, subject: {}", to, subject, e);
+            logger.info("Template email sent successfully to: {}, subject: {}", to, subject);
+        } catch (Exception e) {
+            logger.error("Failed to send template email to: {}, subject: {}", to, subject, e);
             throw new RuntimeException("Failed to send email", e);
         }
     }
@@ -120,7 +120,7 @@ public class EmailService {
     }
 
     /**
-     * Envoie un e-mail simple de manière synchrone pour le debug
+     * Envoie un e-mail simple de manière synchrone
      */
     public void sendSimpleEmailSync(String to, String subject, String content) {
         if (!emailEnabled) {
@@ -129,11 +129,6 @@ public class EmailService {
         }
 
         try {
-            logger.info("=== DÉBUT ENVOI EMAIL SYNCHRONE ===");
-            logger.info("To: {}", to);
-            logger.info("Subject: {}", subject);
-            logger.info("From: {}", fromEmail);
-            
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             helper.setFrom(fromEmail);
@@ -141,12 +136,45 @@ public class EmailService {
             helper.setSubject(subject);
             helper.setText(content, false);
 
-            logger.info("Envoi du message...");
             mailSender.send(message);
-            logger.info("=== EMAIL ENVOYÉ AVEC SUCCÈS ===");
+            logger.info("Simple email sent successfully to: {}", to);
         } catch (Exception e) {
-            logger.error("=== ERREUR LORS DE L'ENVOI EMAIL ===", e);
+            logger.error("Failed to send simple email to: {}", to, e);
             throw new RuntimeException("Failed to send email: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Envoie un e-mail avec un template Thymeleaf de manière synchrone (recommandé pour les emails critiques)
+     */
+    public void sendTemplateEmailSync(String to, String subject, String templateName, Map<String, Object> variables) {
+        if (!emailEnabled) {
+            logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
+            return;
+        }
+
+        try {
+            // Préparer le contexte Thymeleaf
+            Context context = new Context();
+            variables.forEach(context::setVariable);
+
+            // Traiter le template
+            String htmlContent = templateEngine.process(templateName, context);
+
+            // Créer le message
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(fromEmail);
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(htmlContent, true);
+
+            // Envoyer l'e-mail
+            mailSender.send(message);
+            logger.info("Template email sent successfully to: {}, subject: {}", to, subject);
+        } catch (Exception e) {
+            logger.error("Failed to send template email to: {}, subject: {}", to, subject, e);
+            throw new RuntimeException("Failed to send template email: " + e.getMessage(), e);
         }
     }
 }

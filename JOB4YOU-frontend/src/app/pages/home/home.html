@@ -4,6 +4,16 @@
     <div class="row align-items-center min-vh-75">
       <div class="col-lg-6">
         <div class="hero-content fade-in">
+          <!-- Logo Sésame -->
+          <div class="hero-logo mb-4 text-center">
+            <img 
+              src="images/logo-sesame.png" 
+              alt="Logo Sésame" 
+              class="sesame-logo"
+              loading="lazy"
+            >
+          </div>
+          
           <h1 class="display-4 fw-bold text-white mb-4">
             Trouvez votre 
             <span class="text-warning">emploi idéal</span>
@@ -61,10 +71,16 @@
         <div class="search-card card shadow-lg">
           <div class="card-body p-4">
             <h3 class="text-center mb-4">Recherche rapide</h3>
-            <form class="row g-3">
+            <form [formGroup]="searchForm" (ngSubmit)="onSearchSubmit()" class="row g-3">
               <div class="col-md-4">
                 <div class="form-floating">
-                  <input type="text" class="form-control" id="keyword" placeholder="Mot-clé">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="keyword" 
+                    formControlName="keyword"
+                    placeholder="Mot-clé"
+                  >
                   <label for="keyword">
                     <i class="fas fa-search me-2"></i>
                     Mot-clé
@@ -73,7 +89,13 @@
               </div>
               <div class="col-md-4">
                 <div class="form-floating">
-                  <input type="text" class="form-control" id="location" placeholder="Localisation">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="location" 
+                    formControlName="location"
+                    placeholder="Localisation"
+                  >
                   <label for="location">
                     <i class="fas fa-map-marker-alt me-2"></i>
                     Localisation

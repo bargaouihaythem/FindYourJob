@@ -24,6 +24,11 @@ export class JobOfferService {
     return this.http.get<JobOffer>(`${this.apiUrl}/${id}`);
   }
 
+  // Nouvelle méthode pour récupérer une offre publique (pour les utilisateurs non connectés)
+  getPublicJobOfferById(id: number): Observable<JobOffer> {
+    return this.http.get<JobOffer>(`${this.apiUrl}/public/${id}`);
+  }
+
   createJobOffer(jobOffer: any): Observable<JobOffer> {
     return this.http.post<JobOffer>(this.apiUrl, jobOffer);
   }

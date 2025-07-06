@@ -3,18 +3,68 @@
 @import 'bootstrap/dist/css/bootstrap.min.css';
 @import '@fortawesome/fontawesome-free/css/all.min.css';
 
-/* Variables globales */
+/* Variables globales - Palette Bleue Moderne */
 :root {
-  --primary-color: #007bff;
-  --secondary-color: #6c757d;
-  --success-color: #28a745;
-  --danger-color: #dc3545;
-  --warning-color: #ffc107;
-  --info-color: #17a2b8;
-  --light-color: #f8f9fa;
-  --dark-color: #343a40;
+  /* === PALETTE BLEUE PRINCIPALE COMPLETE === */
+  --primary-color: #2563eb;        /* Bleu moderne principal */
+  --primary-dark: #1d4ed8;         /* Bleu foncé pour hover */
+  --primary-light: #3b82f6;        /* Bleu clair pour accents */
+  --primary-subtle: #eff6ff;       /* Bleu très clair pour backgrounds */
+  
+  /* Palette complète de nuances bleues */
+  --primary-50: #eff6ff;           /* Background ultra-léger */
+  --primary-100: #dbeafe;          /* Background léger */
+  --primary-200: #bfdbfe;          /* Bordures et séparateurs */
+  --primary-300: #93c5fd;          /* Éléments disabled */
+  --primary-400: #60a5fa;          /* Éléments secondaires */
+  --primary-500: #3b82f6;          /* Standard clair */
+  --primary-600: #2563eb;          /* Principal (notre couleur phare) */
+  --primary-700: #1d4ed8;          /* Hover et focus */
+  --primary-800: #1e40af;          /* Actif et pressed */
+  --primary-900: #1e3a8a;          /* Textes et éléments foncés */
+  
+  /* === COULEURS SYSTEME MODERNISEES === */
+  --secondary-color: #64748b;      /* Gris moderne slate */
+  --success-color: #10b981;        /* Vert emerald moderne */
+  --success-light: #34d399;        /* Vert clair */
+  --success-dark: #059669;         /* Vert foncé */
+  --danger-color: #ef4444;         /* Rouge moderne */
+  --danger-light: #f87171;         /* Rouge clair */
+  --danger-dark: #dc2626;          /* Rouge foncé */
+  --warning-color: #f59e0b;        /* Orange amber moderne */
+  --warning-light: #fbbf24;        /* Orange clair */
+  --warning-dark: #d97706;         /* Orange foncé */
+  --info-color: #06b6d4;           /* Cyan moderne */
+  --info-light: #22d3ee;           /* Cyan clair */
+  --info-dark: #0891b2;            /* Cyan foncé */
+  
+  /* === NEUTRES SOPHISTIQUES === */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* === BACKGROUNDS & TEXTES === */
+  --light-color: var(--gray-50);   /* Background principal */
+  --dark-color: var(--gray-800);   /* Texte principal */
   --white: #ffffff;
   --black: #000000;
+  
+  /* === VARIABLES SEMANTIQUES === */
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--gray-50);
+  --bg-accent: var(--primary-subtle);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-500);
+  --border-color: var(--gray-200);
+  --border-focus: var(--primary-color);
 }
 
 /* Styles globaux */
@@ -29,68 +79,147 @@ body {
   padding: 0;
 }
 
-/* Styles pour les cartes */
+/* Styles pour les cartes - Version Moderne */
 .card {
-  border: none;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+  background: var(--bg-primary);
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  border-color: var(--primary-200);
 }
 
-/* Styles pour les boutons */
+.card-header {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  border-radius: 12px 12px 0 0 !important;
+  padding: 1.25rem;
+}
+
+.card-body {
+  padding: 1.5rem;
+}
+
+.card-footer {
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  border-radius: 0 0 12px 12px !important;
+  padding: 1rem 1.5rem;
+}
+
+/* Styles pour les boutons - Version Moderne */
 .btn {
-  border-radius: 25px;
-  padding: 10px 20px;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  border-radius: 8px;               /* Moins arrondi, plus moderne */
+  padding: 12px 24px;               /* Padding plus généreux */
+  font-weight: 600;                 /* Plus bold */
+  transition: all 0.2s ease;       /* Transition plus rapide */
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 .btn-primary {
-  background: linear-gradient(45deg, var(--primary-color), #0056b3);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
   border: none;
+  color: white;
+  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
 .btn-primary:hover {
-  background: linear-gradient(45deg, #0056b3, var(--primary-color));
-  transform: translateY(-2px);
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary-700));
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  color: white;
 }
 
-/* Styles pour les formulaires */
+.btn-outline-primary {
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color);
+  background: transparent;
+}
+
+.btn-outline-primary:hover {
+  background: var(--primary-color);
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+}
+
+/* Styles pour les formulaires - Version Moderne */
 .form-control {
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
-  padding: 12px 15px;
-  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+  border: 2px solid var(--border-color);
+  padding: 12px 16px;
+  transition: all 0.2s ease;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
 }
 
 .form-control:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  outline: none;
 }
 
-/* Styles pour la navigation */
+.form-control::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.form-label {
+  color: var(--text-primary);
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.is-invalid {
+  border-color: var(--danger-color) !important;
+}
+
+.is-valid {
+  border-color: var(--success-color) !important;
+}
+
+/* Styles pour la navigation - Version Moderne */
 .navbar {
-  background: linear-gradient(135deg, var(--primary-color), #0056b3);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .navbar-brand {
-  font-weight: bold;
+  font-weight: 700;
   font-size: 1.5rem;
+  color: white !important;
+  letter-spacing: -0.5px;
 }
 
 .nav-link {
   font-weight: 500;
-  transition: color 0.3s ease;
+  transition: all 0.2s ease;
+  color: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 6px;
+  margin: 0 4px;
+  padding: 8px 16px !important;
 }
 
 .nav-link:hover {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: white !important;
+  background-color: rgba(255, 255, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+.nav-link.active {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white !important;
 }
 
 /* Styles pour les alertes */
@@ -425,5 +554,63 @@ body {
   .form-control.is-invalid + .password-toggle {
     border-color: var(--danger-color) !important;
   }
+}
+
+/* Styles globaux pour le logo Sésame */
+.sesame-logo {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  image-rendering: crisp-edges;
+  transition: all 0.3s ease;
+}
+
+.sesame-logo-auth {
+  display: block;
+  max-width: 180px; // Augmentation à 180px pour meilleure visibilité
+  height: auto;
+  margin: 0 auto 1rem;
+  filter: brightness(1.1);
+  transition: transform 0.3s ease;
+  image-rendering: crisp-edges;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+}
+
+// Styles responsifs pour le logo
+@media (max-width: 768px) {
+  .sesame-logo {
+    max-width: 250px; // Plus petit sur mobile mais toujours visible
+  }
+  
+  .sesame-logo-auth {
+    max-width: 140px; // Ajustement pour mobile
+  }
+}
+
+@media (max-width: 480px) {
+  .sesame-logo {
+    max-width: 200px; // Encore plus petit sur très petits écrans
+  }
+  
+  .sesame-logo-auth {
+    max-width: 120px;
+  }
+}
+
+// Animation subtile pour le logo
+@keyframes logoFloat {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.auth-logo {
+  animation: logoFloat 4s ease-in-out infinite;
 }
 

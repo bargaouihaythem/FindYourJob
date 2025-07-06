@@ -16,6 +16,21 @@
       }
     }
     
+    // Styles pour le logo Sésame dans l'authentification
+    .auth-logo {
+      .sesame-logo-auth {
+        max-width: 180px; // Augmentation de 160px à 180px pour meilleure visibilité
+        height: auto;
+        margin-bottom: 1rem;
+        filter: brightness(1.1);
+        transition: transform 0.3s ease;
+        
+        &:hover {
+          transform: scale(1.05);
+        }
+      }
+    }
+    
     .card-title {
       color: var(--dark-color);
       font-weight: 700;

@@ -1,0 +1,31 @@
+/* Palette Couleurs Optimisée - Bleu Professionnel */
+:root {
+  /* Bleus principaux - Plus modernes et professionnels */
+  --primary-color: #2563eb; /* Bleu plus moderne que #007bff */
+  --primary-dark: #1d4ed8; /* Pour les hover et états actifs */
+  --primary-light: #3b82f6; /* Pour les backgrounds subtils */
+  --primary-subtle: #eff6ff; /* Pour les zones d'accent */
+  
+  /* Couleurs neutres - Plus raffinées */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* Couleurs système */
+  --success-color: #10b981; /* Vert plus moderne */
+  --warning-color: #f59e0b; /* Orange plus doux */
+  --danger-color: #ef4444; /* Rouge plus moderne */
+  --info-color: #06b6d4; /* Cyan moderne */
+  
+  /* Backgrounds et textes */
+  --bg-primary: #ffffff;
+  --bg-secondary: var(--gray-50);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-500);
+}

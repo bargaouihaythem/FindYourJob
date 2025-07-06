@@ -125,7 +125,15 @@ public class JobOfferService {
      * Recherche des offres d'emploi par localisation
      */
     public List<JobOfferResponse> searchJobOffersByLocation(String location) {
-        return jobOfferRepository.findByLocationContaining(location).stream()
+        // Utiliser la recherche précise pour éviter trop de résultats
+        List<JobOffer> results = jobOfferRepository.findByLocationContainingPrecise(location.trim());
+        
+        // Si aucun résultat avec la recherche précise, fallback vers la recherche normale
+        if (results.isEmpty()) {
+            results = jobOfferRepository.findByLocationContaining(location.trim());
+        }
+        
+        return results.stream()
                 .map(JobOfferResponse::new)
                 .collect(Collectors.toList());
     }

@@ -10,7 +10,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "candidates")
+@Table(name = "candidates", 
+       uniqueConstraints = @UniqueConstraint(columnNames = {"email", "job_offer_id"}))
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,7 +27,7 @@ public class Candidate {
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String email;
 
     private String phone;

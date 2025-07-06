@@ -100,7 +100,7 @@ public class CandidateService {
      * Récupère tous les candidats
      */
     public List<CandidateResponse> getAllCandidates() {
-        return candidateRepository.findAll().stream()
+        return candidateRepository.findAllWithDetails().stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -174,7 +174,7 @@ public class CandidateService {
      * Récupère les candidats par offre d'emploi
      */
     public List<CandidateResponse> getCandidatesByJobOffer(Long jobOfferId) {
-        return candidateRepository.findByJobOfferId(jobOfferId).stream()
+        return candidateRepository.findByJobOfferIdWithDetails(jobOfferId).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }

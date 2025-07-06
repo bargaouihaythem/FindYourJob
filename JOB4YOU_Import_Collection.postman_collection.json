@@ -1,0 +1,196 @@
+{
+  "info": {
+    "name": "JOB4YOU - Import Job Offers",
+    "description": "Collection pour importer les offres d'emploi dans JOB4YOU",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "YOUR_JWT_TOKEN_HERE",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login HR User",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"hrUser\",\n  \"password\": \"hr123456\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/auth/signin",
+          "host": ["{{base_url}}"],
+          "path": ["api", "auth", "signin"]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    pm.environment.set('jwt_token', response.token);",
+              "    pm.collectionVariables.set('jwt_token', response.token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Create Job Offer - Développeur Frontend",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Développeur Frontend React/Angular\",\n  \"description\": \"Nous recherchons un développeur frontend passionné pour rejoindre notre équipe dynamique.\\n\\nMissions principales :\\n• Développer des interfaces utilisateur modernes et responsives\\n• Collaborer avec l'équipe UX/UI pour implémenter des designs innovants\\n• Optimiser les performances des applications web\\n• Maintenir et améliorer le code existant\\n• Participer aux code reviews et aux méthodologies Agile\\n\\nEnvironnement technique :\\n• React 18+ ou Angular 15+\\n• TypeScript, HTML5, CSS3, SCSS\\n• State management (Redux, NgRx)\\n• Tests unitaires (Jest, Cypress)\\n• Git, CI/CD\\n\\nAvantages :\\n• Télétravail partiel (2-3 jours/semaine)\\n• Formation continue et certifications\\n• Tickets restaurant et mutuelle d'entreprise\\n• Équipe jeune et bienveillante\",\n  \"requiredSkills\": \"React, Angular, TypeScript, JavaScript, HTML5, CSS3, SCSS, Redux, NgRx, Jest, Cypress, Git\",\n  \"experienceLevel\": \"3-5 ans\",\n  \"contractType\": \"CDI\",\n  \"location\": \"Paris (75) - Hybride\",\n  \"salaryRange\": \"45 000 - 55 000 €\",\n  \"status\": \"ACTIVE\",\n  \"deadline\": \"2025-08-15T23:59:59\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "3. Create Job Offer - Développeur Backend",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Développeur Backend Java/Spring\",\n  \"description\": \"Rejoignez notre équipe backend pour développer des APIs robustes et scalables.\\n\\nResponsabilités :\\n• Concevoir et développer des microservices avec Spring Boot\\n• Implémenter des APIs RESTful performantes\\n• Gérer les bases de données (PostgreSQL, MongoDB)\\n• Assurer la sécurité et l'authentification (JWT, OAuth)\\n• Optimiser les performances et la scalabilité\\n• Documenter les APIs avec Swagger/OpenAPI\\n\\nStack technique :\\n• Java 17+, Spring Boot, Spring Security\\n• PostgreSQL, MongoDB, Redis\\n• Docker, Kubernetes\\n• Maven/Gradle, Jenkins\\n• AWS/GCP\\n\\nCe que nous offrons :\\n• Projets techniques challengeants\\n• Encadrement par des seniors expérimentés\\n• Budget formation de 2000€/an\\n• Matériel de qualité (MacBook Pro)\",\n  \"requiredSkills\": \"Java, Spring Boot, Spring Security, PostgreSQL, MongoDB, Redis, Docker, Kubernetes, Maven, AWS, GCP\",\n  \"experienceLevel\": \"2-4 ans\",\n  \"contractType\": \"CDI\",\n  \"location\": \"Lyon (69) - Sur site\",\n  \"salaryRange\": \"42 000 - 52 000 €\",\n  \"status\": \"ACTIVE\",\n  \"deadline\": \"2025-08-20T23:59:59\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "4. Create Job Offer - Développeur Mobile",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Développeur Mobile Flutter\",\n  \"description\": \"Développez la prochaine génération d'applications mobiles avec Flutter.\\n\\nMissions :\\n• Créer des applications mobiles cross-platform avec Flutter\\n• Intégrer des APIs REST et GraphQL\\n• Implémenter des fonctionnalités natives (géolocalisation, camera, etc.)\\n• Optimiser les performances et l'UX mobile\\n• Publier sur les stores (App Store, Google Play)\\n• Collaborer avec les équipes design et backend\\n\\nCompétences techniques :\\n• Flutter/Dart (2+ ans d'expérience)\\n• État management (Bloc, Provider, Riverpod)\\n• Intégration APIs (REST, GraphQL)\\n• Firebase (Auth, Firestore, Analytics)\\n• Tests automatisés (Widget tests, Integration tests)\\n• CI/CD mobile (CodeMagic, GitHub Actions)\\n\\nPourquoi nous rejoindre ?\\n• Startup en forte croissance (Series A)\\n• Stock-options et participation\\n• Équipe internationale\\n• Méthodologie Agile/Scrum\",\n  \"requiredSkills\": \"Flutter, Dart, Bloc, Provider, Riverpod, Firebase, REST API, GraphQL, iOS, Android\",\n  \"experienceLevel\": \"2-3 ans\",\n  \"contractType\": \"CDI\",\n  \"location\": \"Toulouse (31) - Hybride\",\n  \"salaryRange\": \"38 000 - 48 000 €\",\n  \"status\": \"ACTIVE\",\n  \"deadline\": \"2025-08-25T23:59:59\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "5. Create Job Offer - DevOps",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Ingénieur DevOps\",\n  \"description\": \"Accélérez notre transformation cloud en tant qu'Ingénieur DevOps.\\n\\nMissions principales :\\n• Automatiser les déploiements avec des pipelines CI/CD\\n• Gérer l'infrastructure cloud (AWS/Azure)\\n• Implémenter la containerisation avec Docker/Kubernetes\\n• Monitorer les applications en production\\n• Assurer la sécurité et la conformité\\n• Former les équipes aux bonnes pratiques DevOps\\n\\nExpertise requise :\\n• Cloud providers (AWS, Azure, GCP)\\n• Containers (Docker, Kubernetes, OpenShift)\\n• CI/CD (Jenkins, GitLab CI, GitHub Actions)\\n• Infrastructure as Code (Terraform, Ansible)\\n• Monitoring (Prometheus, Grafana, ELK)\\n• Scripting (Bash, Python, PowerShell)\\n\\nAvantages :\\n• Certifications cloud prises en charge\\n• Participation aux conférences tech\\n• 13ème mois + prime de performance\\n• RTT et congés flexibles\",\n  \"requiredSkills\": \"AWS, Azure, Docker, Kubernetes, Jenkins, Terraform, Ansible, Prometheus, Grafana, Python, Bash\",\n  \"experienceLevel\": \"4-6 ans\",\n  \"contractType\": \"CDI\",\n  \"location\": \"Marseille (13) - Hybride\",\n  \"salaryRange\": \"50 000 - 65 000 €\",\n  \"status\": \"ACTIVE\",\n  \"deadline\": \"2025-09-01T23:59:59\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "6. Create Job Offer - Data Scientist",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Data Scientist\",\n  \"description\": \"Transformez les données en insights business avec l'IA et le Machine Learning.\\n\\nVos missions :\\n• Analyser de gros volumes de données (Big Data)\\n• Développer des modèles de Machine Learning\\n• Créer des dashboards et visualisations\\n• Collaborer avec les équipes métier\\n• Optimiser les algorithmes pour la production\\n• Assurer la qualité et la gouvernance des données\\n\\nCompétences clés :\\n• Python (Pandas, NumPy, Scikit-learn, TensorFlow)\\n• SQL avancé, NoSQL (MongoDB, Cassandra)\\n• Outils de visualisation (Tableau, Power BI, Plotly)\\n• Statistiques et mathématiques appliquées\\n• Cloud ML (AWS SageMaker, Azure ML)\\n• Spark, Hadoop pour le Big Data\\n\\nCe poste vous offre :\\n• Projets d'innovation avec impact business\\n• Accès aux dernières technologies IA\\n• Formation continue (Coursera, Udacity)\\n• Équipe data science de 8 personnes\",\n  \"requiredSkills\": \"Python, Pandas, NumPy, Scikit-learn, TensorFlow, SQL, MongoDB, Tableau, Power BI, AWS SageMaker, Spark\",\n  \"experienceLevel\": \"3-5 ans\",\n  \"contractType\": \"CDI\",\n  \"location\": \"Nantes (44) - Hybride\",\n  \"salaryRange\": \"48 000 - 60 000 €\",\n  \"status\": \"ACTIVE\",\n  \"deadline\": \"2025-08-30T23:59:59\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "7. Get All Job Offers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/job-offers",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers"]
+        }
+      }
+    },
+    {
+      "name": "8. Get Public Job Offers",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/api/job-offers/public",
+          "host": ["{{base_url}}"],
+          "path": ["api", "job-offers", "public"]
+        }
+      }
+    }
+  ]
+}

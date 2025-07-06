@@ -24,7 +24,7 @@ public class NotificationController {
      * Envoie un email personnalisé
      */
     @PostMapping("/custom-email")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('TEAM_LEAD') or hasRole('SENIOR_DEV') or hasRole('TEAM')")
     @Operation(summary = "Envoyer un email personnalisé")
     public ResponseEntity<EmailResponse> sendCustomEmail(
             @RequestBody EmailRequest emailRequest) {

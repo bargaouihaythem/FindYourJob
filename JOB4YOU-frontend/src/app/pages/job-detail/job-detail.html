@@ -71,11 +71,28 @@
               <i class="fas fa-arrow-left me-2"></i> Retour aux offres
             </a>
             
-            <!-- Bouton Postuler visible uniquement pour les candidats -->
-            <button *ngIf="job.status === 'ACTIVE' && canApplyToJob()" 
-                    (click)="openApplicationModal()" 
+            <!-- Bouton Postuler pour les utilisateurs connectés -->
+            <button *ngIf="job.status === 'ACTIVE' && canApplyToJob() && !hasAlreadyApplied" 
+                    (click)="handleApplyAction()" 
                     class="btn btn-success btn-lg">
               <i class="fas fa-paper-plane me-2"></i> Postuler maintenant
+            </button>
+
+            <!-- Message pour candidature déjà soumise -->
+            <div *ngIf="job.status === 'ACTIVE' && hasAlreadyApplied && isAuthenticated()" 
+                 class="alert alert-info">
+              <i class="fas fa-check-circle me-2"></i>
+              Vous avez déjà postulé pour cette offre. 
+              <a routerLink="/candidate/my-applications" class="alert-link">
+                Consultez vos candidatures
+              </a>
+            </div>
+
+            <!-- Bouton S'inscrire pour postuler (utilisateurs non connectés) -->
+            <button *ngIf="job.status === 'ACTIVE' && shouldRedirectToRegister()" 
+                    (click)="handleApplyAction()" 
+                    class="btn btn-primary btn-lg">
+              <i class="fas fa-user-plus me-2"></i> S'inscrire pour postuler
             </button>
 
             <!-- Message pour les utilisateurs administratifs -->
@@ -86,6 +103,16 @@
               <p class="mb-0 mt-2">
                 Vous visualisez cette offre en tant qu'administrateur. 
                 Les candidatures sont gérées via l'interface d'administration.
+              </p>
+            </div>
+
+            <!-- Message informatif pour les visiteurs non connectés -->
+            <div *ngIf="job.status === 'ACTIVE' && shouldRedirectToRegister()" 
+                 class="alert alert-light border">
+              <i class="fas fa-lightbulb me-2 text-warning"></i>
+              <strong>Candidature simplifiée</strong>
+              <p class="mb-0 mt-2">
+                Créez un compte en 30 secondes pour postuler et suivre vos candidatures.
               </p>
             </div>
 

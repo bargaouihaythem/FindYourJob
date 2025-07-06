@@ -18,6 +18,13 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     List<Candidate> findByJobOfferId(Long jobOfferId);
 
     Page<Candidate> findByJobOfferId(Long jobOfferId, Pageable pageable);
+    
+    // Requêtes optimisées avec JOIN FETCH pour éviter le problème N+1
+    @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer WHERE c.jobOffer.id = :jobOfferId")
+    List<Candidate> findByJobOfferIdWithDetails(@Param("jobOfferId") Long jobOfferId);
+    
+    @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer")
+    List<Candidate> findAllWithDetails();
 
     List<Candidate> findByStatus(Candidate.CandidateStatus status);
 
