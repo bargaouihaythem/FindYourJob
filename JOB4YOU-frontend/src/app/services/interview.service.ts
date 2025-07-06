@@ -89,20 +89,37 @@ export class InterviewService {
    * @param userRoles Rôles de l'utilisateur courant
    */
   canChangeStatus(currentStatus: string, newStatus: string, userRoles: string[]): boolean {
-    // Exemple de workflow :
-    // RH peut passer de SCHEDULED à IN_PROGRESS ou CANCELLED
-    // Manager peut passer de IN_PROGRESS à COMPLETED
-    // RH peut passer de COMPLETED à FEEDBACK_SENT
-    if (userRoles.includes('ROLE_HR')) {
-      if (currentStatus === 'SCHEDULED' && (newStatus === 'IN_PROGRESS' || newStatus === 'CANCELLED')) return true;
-      if (currentStatus === 'COMPLETED' && newStatus === 'FEEDBACK_SENT') return true;
-    }
-    if (userRoles.includes('ROLE_MANAGER')) {
-      if (currentStatus === 'IN_PROGRESS' && newStatus === 'COMPLETED') return true;
-    }
-    if (userRoles.includes('ROLE_ADMIN')) {
+    // Vérification des rôles admin d'abord
+    if (userRoles.includes('ROLE_ADMIN') || userRoles.includes('ADMIN')) {
       return true; // Admin peut tout faire
     }
+
+    // Vérification des rôles RH et Manager
+    const hasHRRole = userRoles.includes('ROLE_HR') || userRoles.includes('HR') || userRoles.includes('RH');
+    const hasManagerRole = userRoles.includes('ROLE_MANAGER') || userRoles.includes('MANAGER');
+    const hasTeamRole = userRoles.includes('ROLE_TEAM_LEAD') || userRoles.includes('TEAM_LEAD') || 
+                       userRoles.includes('ROLE_SENIOR_DEV') || userRoles.includes('SENIOR_DEV') ||
+                       userRoles.includes('ROLE_TEAM') || userRoles.includes('TEAM');
+
+    // Workflow d'entretien simplifié mais plus permissif
+    if (hasHRRole || hasManagerRole || hasTeamRole) {
+      // Ces rôles peuvent faire la plupart des transitions
+      switch (currentStatus) {
+        case 'SCHEDULED':
+          return ['IN_PROGRESS', 'CANCELLED', 'RESCHEDULED'].includes(newStatus);
+        case 'IN_PROGRESS':
+          return ['COMPLETED', 'CANCELLED', 'RESCHEDULED'].includes(newStatus);
+        case 'COMPLETED':
+          return ['CANCELLED'].includes(newStatus); // Permettre l'annulation même après completion si nécessaire
+        case 'CANCELLED':
+          return ['SCHEDULED', 'RESCHEDULED'].includes(newStatus); // Permettre de reprogrammer
+        case 'RESCHEDULED':
+          return ['SCHEDULED', 'IN_PROGRESS', 'CANCELLED'].includes(newStatus);
+        default:
+          return false;
+      }
+    }
+
     return false;
   }
 }

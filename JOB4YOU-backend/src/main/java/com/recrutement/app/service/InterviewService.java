@@ -5,6 +5,7 @@ import com.recrutement.app.dto.InterviewResponse;
 import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.Interview;
 import com.recrutement.app.entity.User;
+import com.recrutement.app.entity.Role;
 import com.recrutement.app.exception.ResourceNotFoundException;
 import com.recrutement.app.repository.CandidateRepository;
 import com.recrutement.app.repository.InterviewRepository;
@@ -14,7 +15,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.recrutement.app.entity.Interview;
+import com.recrutement.app.entity.User;
+import com.recrutement.app.exception.ResourceNotFoundException;
+import com.recrutement.app.repository.CandidateRepository;
+import com.recrutement.app.repository.InterviewRepository;
+import com.recrutement.app.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -245,6 +263,77 @@ public class InterviewService {
         
         System.out.println("[DEBUG] Réponses créées: " + responses.size());
         return responses;
+    }
+
+    /**
+     * Récupère la liste des interviewers (utilisateurs pouvant mener des entretiens)
+     */
+    public List<Map<String, Object>> getInterviewers() {
+        // Récupérer tous les utilisateurs qui ont des rôles d'interviewer potentiels
+        List<User> interviewers = userRepository.findAll().stream()
+                .filter(user -> user.getRoles().stream()
+                        .anyMatch(role -> 
+                            role.getName() == Role.ERole.ROLE_HR ||
+                            role.getName() == Role.ERole.ROLE_MANAGER ||
+                            role.getName() == Role.ERole.ROLE_ADMIN ||
+                            role.getName() == Role.ERole.ROLE_TEAM_LEAD ||
+                            role.getName() == Role.ERole.ROLE_SENIOR_DEV ||
+                            role.getName() == Role.ERole.ROLE_TEAM
+                        )
+                )
+                .collect(Collectors.toList());
+        
+        return interviewers.stream()
+                .map(this::mapUserToInterviewerResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Mappe un utilisateur vers un format de réponse pour les interviewers
+     */
+    private Map<String, Object> mapUserToInterviewerResponse(User user) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("id", user.getId());
+        response.put("name", generateDisplayName(user));
+        response.put("role", getMainRoleDisplay(user));
+        response.put("email", user.getEmail());
+        return response;
+    }
+
+    /**
+     * Génère le nom d'affichage pour un utilisateur
+     */
+    private String generateDisplayName(User user) {
+        if (user.getFirstName() != null && user.getLastName() != null) {
+            return user.getFirstName() + " " + user.getLastName();
+        }
+        return user.getUsername();
+    }
+
+    /**
+     * Récupère le rôle principal d'affichage pour un utilisateur
+     */
+    private String getMainRoleDisplay(User user) {
+        // Priorité des rôles (du plus élevé au plus bas)
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_ADMIN)) {
+            return "Administrateur";
+        }
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_HR)) {
+            return "RH Manager";
+        }
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_MANAGER)) {
+            return "Manager";
+        }
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_TEAM_LEAD)) {
+            return "Tech Lead";
+        }
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_SENIOR_DEV)) {
+            return "Senior Developer";
+        }
+        if (user.getRoles().stream().anyMatch(role -> role.getName() == Role.ERole.ROLE_TEAM)) {
+            return "Équipe";
+        }
+        return "Utilisateur";
     }
 }
 

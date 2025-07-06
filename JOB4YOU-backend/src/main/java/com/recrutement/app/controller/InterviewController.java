@@ -5,6 +5,7 @@ import com.recrutement.app.dto.InterviewResponse;
 import com.recrutement.app.dto.MessageResponse;
 import com.recrutement.app.entity.Interview;
 import com.recrutement.app.service.InterviewService;
+import com.recrutement.app.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -27,6 +29,9 @@ public class InterviewController {
 
     @Autowired
     private InterviewService interviewService;
+
+    @Autowired
+    private UserService userService;
 
     @PostMapping
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
@@ -151,6 +156,14 @@ public class InterviewController {
             @PathVariable String email) {
         List<InterviewResponse> interviews = interviewService.getInterviewsByEmail(email);
         return ResponseEntity.ok(interviews);
+    }
+
+    @GetMapping("/interviewers")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Récupérer la liste des interviewers")
+    public ResponseEntity<List<Map<String, Object>>> getInterviewers() {
+        List<Map<String, Object>> response = userService.getInterviewers();
+        return ResponseEntity.ok(response);
     }
 }
 

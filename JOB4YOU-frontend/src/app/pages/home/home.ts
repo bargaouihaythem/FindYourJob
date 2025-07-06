@@ -110,26 +110,34 @@ export class HomeComponent implements OnInit {
     console.log('isAuthenticated():', this.isAuthenticated());
     console.log('currentUser:', this.authService.getCurrentUser());
     
-    // Si l'utilisateur n'est pas connecté, il peut postuler (candidature publique)
+    // L'utilisateur DOIT être connecté pour postuler
     if (!this.isAuthenticated()) {
-      console.log('User not authenticated - can apply');
-      return true;
+      console.log('User not authenticated - cannot apply');
+      return false;
     }
 
-    // Si l'utilisateur est connecté, vérifier qu'il a seulement le rôle USER/CANDIDATE
+    // Si l'utilisateur est connecté, vérifier qu'il a le rôle USER/CANDIDATE et aucun rôle administratif
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && currentUser.roles) {
       console.log('User roles:', currentUser.roles);
-      // L'utilisateur peut postuler s'il a uniquement le rôle USER et aucun rôle administratif
-      const hasOnlyUserRole = currentUser.roles.includes('ROLE_USER') && 
-                              !currentUser.roles.includes('ROLE_ADMIN') &&
-                              !currentUser.roles.includes('ROLE_HR') &&
-                              !currentUser.roles.includes('ROLE_MANAGER') &&
-                              !currentUser.roles.includes('ROLE_TEAM_LEAD') &&
-                              !currentUser.roles.includes('ROLE_SENIOR_DEV') &&
-                              !currentUser.roles.includes('ROLE_TEAM');
-      console.log('hasOnlyUserRole:', hasOnlyUserRole);
-      return hasOnlyUserRole;
+      // L'utilisateur peut postuler s'il a le rôle USER et aucun rôle administratif
+      const hasUserRole = currentUser.roles.includes('ROLE_USER') || currentUser.roles.includes('USER');
+      const hasAdminRole = currentUser.roles.includes('ROLE_ADMIN') ||
+                          currentUser.roles.includes('ROLE_HR') ||
+                          currentUser.roles.includes('ROLE_MANAGER') ||
+                          currentUser.roles.includes('ROLE_TEAM_LEAD') ||
+                          currentUser.roles.includes('ROLE_SENIOR_DEV') ||
+                          currentUser.roles.includes('ROLE_TEAM') ||
+                          currentUser.roles.includes('ADMIN') ||
+                          currentUser.roles.includes('HR') ||
+                          currentUser.roles.includes('MANAGER') ||
+                          currentUser.roles.includes('TEAM_LEAD') ||
+                          currentUser.roles.includes('SENIOR_DEV') ||
+                          currentUser.roles.includes('TEAM');
+      
+      const canApply = hasUserRole && !hasAdminRole;
+      console.log('canApply:', canApply);
+      return canApply;
     }
 
     console.log('No roles found - cannot apply');

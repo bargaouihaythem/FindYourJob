@@ -24,10 +24,10 @@
             </a></li>
           </ul>
         </div>
-        <div class="btn-group me-2" *ngIf="selectedInterviews.length > 0">
+        <div class="btn-group me-2" *ngIf="selectedInterviews.size > 0">
           <button class="btn btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fas fa-tasks me-2"></i>
-            Actions ({{ selectedInterviews.length }})
+            Actions ({{ selectedInterviews.size }})
           </button>
           <ul class="dropdown-menu">
             <li><a class="dropdown-item" (click)="bulkUpdateStatus('IN_PROGRESS')">
@@ -161,8 +161,8 @@
               <th width="40">
                 <div class="form-check">
                   <input class="form-check-input" type="checkbox" 
-                         [checked]="selectedInterviews.length === getPaginatedInterviews().length && getPaginatedInterviews().length > 0"
-                         (change)="selectedInterviews.length === getPaginatedInterviews().length ? clearSelection() : selectAllInterviews()">
+                         [checked]="selectedInterviews.size === getPaginatedInterviews().length && getPaginatedInterviews().length > 0"
+                         (change)="selectedInterviews.size === getPaginatedInterviews().length ? clearSelection() : selectAllInterviews()">
                 </div>
               </th>
               <th (click)="changeSort('candidateName')" class="sortable">
@@ -224,22 +224,28 @@
                   {{ getStatusText(interview.status) }}
                 </span>
               </td>
-              <!-- Colonne CV -->
+              <!-- Colonne CV unique avec logique simplifiée -->
               <td class="text-center" *ngIf="userCanViewCV">
-                <div class="btn-group" role="group">
-                  <button class="btn btn-sm btn-outline-info"
-                          (click)="viewCandidateCV(interview.candidateId)"
-                          title="Voir le CV"
-                          [disabled]="!interview.candidateId">
-                    <i class="fas fa-file-pdf"></i>
-                  </button>
-                  <button class="btn btn-sm btn-outline-primary"
-                          (click)="downloadCandidateCV(interview.candidateId, interview.candidateName || 'Candidat')"
-                          title="Télécharger le CV"
-                          [disabled]="!interview.candidateId">
-                    <i class="fas fa-download"></i>
-                  </button>
-                </div>
+                <ng-container *ngIf="shouldShowCVButtons(interview); else noCvTemplate">
+                  <div class="btn-group" role="group">
+                    <button class="btn btn-sm btn-outline-info"
+                            (click)="viewCandidateCV(interview.candidateId)"
+                            title="Voir le CV">
+                      <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary"
+                            (click)="downloadCandidateCV(interview.candidateId)"
+                            title="Télécharger le CV">
+                      <i class="fas fa-download"></i>
+                    </button>
+                  </div>
+                </ng-container>
+                <ng-template #noCvTemplate>
+                  <span class="text-muted small">
+                    <i class="fas fa-user-slash me-1"></i>
+                    Pas de compte
+                  </span>
+                </ng-template>
               </td>
               <td class="text-center">
                 <div class="btn-group" role="group">
@@ -252,8 +258,7 @@
                   <!-- Modifier -->
                   <button class="btn btn-sm btn-outline-primary"
                           (click)="openInterviewModal(interview)"
-                          title="Modifier"
-                          [disabled]="!canChangeStatus(interview, 'IN_PROGRESS') && !canChangeStatus(interview, 'CANCELLED') && !canChangeStatus(interview, 'COMPLETED') && !canChangeStatus(interview, 'RESCHEDULED')">
+                          title="Modifier">
                     <i class="fas fa-edit"></i>
                   </button>
                   <!-- Feedback -->
@@ -300,7 +305,7 @@
                       <li><hr class="dropdown-divider"></li>
                       <!-- Supprimer -->
                       <li *ngIf="canChangeStatus(interview, 'CANCELLED') || canChangeStatus(interview, 'RESCHEDULED') || canChangeStatus(interview, 'IN_PROGRESS') || canChangeStatus(interview, 'COMPLETED')">
-                        <a class="dropdown-item text-danger" (click)="openDeleteModal(interview)">
+                        <a class="dropdown-item text-danger" (click)="confirmDeleteInterview(interview)">
                           <i class="fas fa-trash me-2"></i>Supprimer
                         </a>
                       </li>
@@ -506,48 +511,7 @@
   </div>
 </div>
 
-<!-- Modal Suppression -->
-<div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'" 
-     tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteModalLabel">
-          <i class="fas fa-exclamation-triangle me-2 text-danger"></i>
-          Confirmer la suppression
-        </h5>
-        <button type="button" class="btn-close" (click)="closeDeleteModal()" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-warning">
-          <i class="fas fa-exclamation-triangle me-2"></i>
-          <strong>Attention !</strong> Cette action est irréversible.
-        </div>
-        <p>Êtes-vous sûr de vouloir supprimer cet entretien ?</p>
-        <div *ngIf="selectedInterview" class="card bg-light">
-          <div class="card-body">
-            <h6 class="card-title">{{ selectedInterview.candidateName }}</h6>
-            <p class="card-text">
-              <strong>Offre :</strong> {{ selectedInterview.jobOfferTitle }}<br>
-              <strong>Date :</strong> {{ formatDateTime(selectedInterview.interviewDate) }}<br>
-              <strong>Interviewer :</strong> {{ selectedInterview.interviewerName }}
-            </p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="closeDeleteModal()">
-          <i class="fas fa-times me-2"></i>
-          Annuler
-        </button>
-        <button type="button" class="btn btn-danger" (click)="deleteInterview()">
-          <i class="fas fa-trash me-2"></i>
-          Supprimer
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Modal Suppression supprimée - utilisation de la modale de confirmation générique -->
 
 <!-- Modal Feedback -->
 <div class="modal fade" [class.show]="showFeedbackModal" [style.display]="showFeedbackModal ? 'block' : 'none'" 
@@ -881,7 +845,35 @@
   </div>
 </div>
 
+<!-- Modal de confirmation générique -->
+<div class="modal" [class.show]="showConfirmationModal" [style.display]="showConfirmationModal ? 'block' : 'none'">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-question-circle me-2 text-warning"></i>
+          {{ confirmationTitle }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeConfirmationModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p>{{ confirmationMessage }}</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeConfirmationModal()">
+          <i class="fas fa-times me-2"></i>
+          Annuler
+        </button>
+        <button type="button" class="btn btn-danger" (click)="confirmAction()">
+          <i class="fas fa-check me-2"></i>
+          Confirmer
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Backdrop pour les modaux -->
-<div class="modal-backdrop fade" [class.show]="showInterviewModal || showDeleteModal || showFeedbackModal || showConsultationModal || showNotificationModal" 
-     *ngIf="showInterviewModal || showDeleteModal || showFeedbackModal || showConsultationModal || showNotificationModal"></div>
+<div class="modal-backdrop fade" [class.show]="showInterviewModal || showFeedbackModal || showConsultationModal || showNotificationModal || showConfirmationModal" 
+     *ngIf="showInterviewModal || showFeedbackModal || showConsultationModal || showNotificationModal || showConfirmationModal"></div>
 

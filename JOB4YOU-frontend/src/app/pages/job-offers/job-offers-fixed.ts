@@ -269,4 +269,32 @@ export class JobOffersComponent implements OnInit {
 
     return false;
   }
+
+  /**
+   * Retourne le message approprié pour le bouton de candidature
+   */
+  getApplyButtonMessage(): string {
+    if (!this.authService.isAuthenticated()) {
+      return 'Connectez-vous pour postuler';
+    }
+
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && currentUser.roles) {
+      const hasOnlyUserRole = currentUser.roles.includes('ROLE_USER') && 
+                              !currentUser.roles.includes('ROLE_ADMIN') &&
+                              !currentUser.roles.includes('ROLE_HR') &&
+                              !currentUser.roles.includes('ROLE_MANAGER') &&
+                              !currentUser.roles.includes('ROLE_TEAM_LEAD') &&
+                              !currentUser.roles.includes('ROLE_SENIOR_DEV') &&
+                              !currentUser.roles.includes('ROLE_TEAM');
+      
+      if (hasOnlyUserRole) {
+        return 'Postuler';
+      } else {
+        return 'Accès réservé aux candidats';
+      }
+    }
+
+    return 'Postuler';
+  }
 }

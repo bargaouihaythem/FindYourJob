@@ -28,15 +28,11 @@
               Rechercher un emploi
             </a>
             
-            <!-- Utilisateur non connecté - Créer un compte OU Postuler -->
+            <!-- Utilisateur non connecté - Créer un compte seulement -->
             <ng-container *ngIf="!isAuthenticated()">
-              <a routerLink="/register" class="btn btn-outline-light btn-lg me-3">
+              <a routerLink="/register" class="btn btn-outline-light btn-lg">
                 <i class="fas fa-user-plus me-2"></i>
                 Créer un compte
-              </a>
-              <a routerLink="/job-offers" class="btn btn-outline-light btn-lg">
-                <i class="fas fa-briefcase me-2"></i>
-                Postuler à nos offres
               </a>
             </ng-container>
             

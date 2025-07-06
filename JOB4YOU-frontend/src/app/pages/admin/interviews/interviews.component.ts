@@ -2,7 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { InterviewService } from '../../../services/interview.service';
+import { InterviewerService, Interviewer } from '../../../services/interviewer.service';
 import { Interview } from '../../../models/interfaces';
 import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
@@ -23,12 +25,15 @@ export class InterviewsComponent implements OnInit {
   filteredInterviews: Interview[] = [];
   candidates: any[] = [];
   jobOffers: any[] = [];
-  interviewers: any[] = [];
+  interviewers: Interviewer[] = [];
   loading = true;
   error: string | null = null;
   
   // Propriété pour le contrôle d'accès aux CVs
   userCanViewCV = false;
+  
+  // Sélection des entretiens
+  selectedInterviews: Set<number> = new Set();
   
   // Pagination
   currentPage = 1;
@@ -38,19 +43,25 @@ export class InterviewsComponent implements OnInit {
   
   // Filters
   searchForm: FormGroup;
+  searchTerm = '';
   selectedStatus = '';
   selectedType = '';
   selectedDateRange = '';
+  dateFrom: Date | null = null;
+  dateTo: Date | null = null;
   sortBy = 'interviewDate';
   sortOrder = 'asc';
   
   // Modal states
   showInterviewModal = false;
-  showDeleteModal = false;
   showFeedbackModal = false;
   showConsultationModal = false;
   showNotificationModal = false;
+  showConfirmationModal = false;
   selectedInterview: Interview | null = null;
+  confirmationAction: (() => void) | null = null;
+  confirmationMessage = '';
+  confirmationTitle = '';
   interviewForm: FormGroup;
   feedbackForm: FormGroup;
   notificationForm: FormGroup;
@@ -77,7 +88,9 @@ export class InterviewsComponent implements OnInit {
     private cvService: CVService,
     private fb: FormBuilder,
     private toastrNotification: ToastrNotificationService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private http: HttpClient,
+    private interviewerService: InterviewerService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -115,16 +128,12 @@ export class InterviewsComponent implements OnInit {
   ngOnInit(): void {
     // Initialiser la propriété d'accès aux CVs
     this.userCanViewCV = this.canViewCV();
-    console.log('Debug ngOnInit - userCanViewCV:', this.userCanViewCV);
     
     this.loadInterviews();
     this.loadCandidates();
     this.loadJobOffers();
     this.loadInterviewers();
     this.setupSearchSubscription();
-    
-    // Debug pour vérifier canViewCV au chargement
-    console.log('Debug ngOnInit - canViewCV:', this.canViewCV());
   }
 
   loadInterviews(): void {
@@ -138,10 +147,6 @@ export class InterviewsComponent implements OnInit {
         this.totalPages = Math.ceil(this.totalInterviews / this.pageSize);
         this.applyFilters();
         this.loading = false;
-        
-        // Debug pour vérifier les données des entretiens
-        console.log('Debug loadInterviews - interviews:', interviews);
-        console.log('Debug loadInterviews - first interview candidateId:', interviews[0]?.candidateId);
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des entretiens:', error);
@@ -174,12 +179,26 @@ export class InterviewsComponent implements OnInit {
   }
 
   loadInterviewers(): void {
-    // Simuler la liste des interviewers (à adapter selon votre API)
-    this.interviewers = [
-      { id: 1, name: 'Jean Dupont', role: 'RH Manager' },
-      { id: 2, name: 'Marie Martin', role: 'Tech Lead' },
-      { id: 3, name: 'Pierre Durand', role: 'Senior Developer' }
-    ];
+    console.log('[DEBUG] Début du chargement des interviewers...');
+    // Charger dynamiquement la liste des interviewers depuis l'API
+    this.interviewerService.getInterviewers().subscribe({
+      next: (interviewers: Interviewer[]) => {
+        this.interviewers = interviewers;
+        console.log('[DEBUG] Interviewers chargés avec succès:', interviewers);
+        console.log('[DEBUG] Nombre d\'interviewers:', interviewers.length);
+      },
+      error: (error: any) => {
+        console.error('[ERROR] Erreur lors du chargement des interviewers:', error);
+        console.log('[DEBUG] Utilisation de la liste de fallback...');
+        // Fallback avec la liste statique en cas d'erreur
+        this.interviewers = [
+          { id: 1, name: 'Jean Dupont', role: 'RH Manager', email: 'jean.dupont@example.com' },
+          { id: 2, name: 'Marie Martin', role: 'Tech Lead', email: 'marie.martin@example.com' },
+          { id: 3, name: 'Pierre Durand', role: 'Senior Developer', email: 'pierre.durand@example.com' }
+        ];
+        console.log('[DEBUG] Liste de fallback activée:', this.interviewers);
+      }
+    });
   }
 
   setupSearchSubscription(): void {
@@ -258,6 +277,9 @@ export class InterviewsComponent implements OnInit {
     }
   }
 
+  /**
+   * Retourne les entretiens pour la page courante
+   */
   getPaginatedInterviews(): Interview[] {
     const startIndex = (this.currentPage - 1) * this.pageSize;
     const endIndex = startIndex + this.pageSize;
@@ -419,583 +441,83 @@ export class InterviewsComponent implements OnInit {
     }
   }
 
-  openDeleteModal(interview: Interview): void {
+  /**
+   * Confirme la suppression d'un entretien directement
+   */
+  confirmDeleteInterview(interview: Interview): void {
     this.selectedInterview = interview;
-    this.showDeleteModal = true;
+    this.confirmationTitle = 'Supprimer l\'entretien';
+    this.confirmationMessage = `Êtes-vous sûr de vouloir supprimer l'entretien avec ${interview.candidateName} ? Cette action est irréversible.`;
+    this.confirmationAction = () => {
+      this.performDeleteInterview();
+    };
+    this.showConfirmationModal = true;
   }
 
-  closeDeleteModal(): void {
-    this.showDeleteModal = false;
-    this.selectedInterview = null;
-  }
-
-  deleteInterview(): void {
+  private performDeleteInterview(): void {
     if (this.selectedInterview) {
-      if (confirm('Êtes-vous sûr de vouloir supprimer cet entretien ?')) {
-        this.interviewService.deleteInterview(this.selectedInterview.id).subscribe({
-          next: () => {
-            this.toastrNotification.showInterviewDeletedSuccess();
-            this.loadInterviews();
-            this.closeDeleteModal();
-          },
-          error: (error: any) => {
-            console.error('Erreur lors de la suppression de l\'entretien:', error);
-            this.toastrNotification.showInterviewError('Erreur lors de la suppression de l\'entretien');
-            this.error = 'Erreur lors de la suppression de l\'entretien';
-          }
-        });
-      }
+      this.interviewService.deleteInterview(this.selectedInterview.id).subscribe({
+        next: () => {
+          this.toastrNotification.showInterviewDeletedSuccess();
+          this.loadInterviews();
+          this.closeConfirmationModal();
+        },
+        error: (error: any) => {
+          console.error('Erreur lors de la suppression de l\'entretien:', error);
+          this.toastrNotification.showInterviewError('Erreur lors de la suppression de l\'entretien');
+          this.error = 'Erreur lors de la suppression de l\'entretien';
+        }
+      });
     }
   }
 
+  /**
+   * Ouvre le modal de feedback pour un entretien
+   */
   openFeedbackModal(interview: Interview): void {
     this.selectedInterview = interview;
-    this.feedbackForm.patchValue({
-      feedback: '',
-      rating: ''
-    });
+    this.feedbackForm.reset();
     this.showFeedbackModal = true;
   }
 
+  /**
+   * Ferme le modal de feedback
+   */
   closeFeedbackModal(): void {
     this.showFeedbackModal = false;
     this.selectedInterview = null;
     this.feedbackForm.reset();
   }
 
-  saveFeedback(): void {
+  /**
+   * Soumet un feedback pour l'entretien sélectionné
+   */
+  submitFeedback(): void {
     if (this.feedbackForm.valid && this.selectedInterview) {
-      const { feedback, rating } = this.feedbackForm.value;
-      this.feedbackService.createFeedback({
+      const feedbackData = {
         interviewId: this.selectedInterview.id,
+        feedback: this.feedbackForm.value.feedback,
+        rating: this.feedbackForm.value.rating,
         candidateId: this.selectedInterview.candidateId,
-        comments: feedback,
-        rating: rating ? parseInt(rating) : 0
-      }).subscribe({
-        next: () => {
-          this.toastrNotification.showFeedbackSentSuccess();
-          this.loadInterviews();
+        interviewerId: this.selectedInterview.interviewerId
+      };
+
+      this.feedbackService.createFeedback(feedbackData).subscribe({
+        next: (response: any) => {
+          this.toastrNotification.showSuccess('Feedback ajouté avec succès');
           this.closeFeedbackModal();
+          
+          // Optionnel : recharger les entretiens pour voir les feedbacks mis à jour
+          this.loadInterviews();
         },
         error: (error: any) => {
           console.error('Erreur lors de l\'ajout du feedback:', error);
-          this.toastrNotification.showFeedbackError();
-          this.error = 'Erreur lors de l\'ajout du feedback';
-        }
-      });
-    }
-  }
-
-  /**
-   * Ouvre le modal de consultation (visualisation) d'un entretien
-   */
-  openConsultationModal(interview: Interview): void {
-    this.selectedInterview = interview;
-    this.showConsultationModal = true;
-  }
-
-  closeConsultationModal(): void {
-    this.showConsultationModal = false;
-    this.selectedInterview = null;
-  }
-
-  /**
-   * Ouvre le modal de notification pour envoyer des emails
-   */
-  openNotificationModal(interview: Interview): void {
-    this.selectedInterview = interview;
-    
-    // Pré-remplir selon le type de notification
-    const defaultSubject = this.getDefaultNotificationSubject(interview);
-    const defaultMessage = this.getDefaultNotificationMessage(interview);
-    
-    this.notificationForm.patchValue({
-      notificationType: 'INTERVIEW_CONFIRMATION',
-      subject: defaultSubject,
-      message: defaultMessage,
-      sendToCandidate: true,
-      sendToInterviewer: false,
-      copyToHR: true
-    });
-    
-    this.showNotificationModal = true;
-  }
-
-  closeNotificationModal(): void {
-    this.showNotificationModal = false;
-    this.selectedInterview = null;
-    this.notificationForm.reset();
-  }
-
-  /**
-   * Envoie la notification par email
-   */
-  sendNotification(): void {
-    if (this.notificationForm.valid && this.selectedInterview) {
-      const formData = this.notificationForm.value;
-      
-      // Préparer les données pour l'email personnalisé
-      const emailData = {
-        to: this.selectedInterview.candidateEmail || '',
-        subject: formData.subject,
-        content: formData.message,
-        isHtml: true
-      };
-
-      // Envoyer l'email via le service
-      this.notificationService.sendCustomEmail(emailData).subscribe({
-        next: (response) => {
-          console.log('Email envoyé avec succès:', response);
-          this.toastrNotification.showNotificationSentSuccess();
-          this.closeNotificationModal();
-        },
-        error: (error) => {
-          console.error('Erreur lors de l\'envoi de l\'email:', error);
-          this.toastrNotification.showError('Erreur lors de l\'envoi de la notification');
+          this.toastrNotification.showError('Erreur lors de l\'ajout du feedback');
         }
       });
     } else {
-      this.toastrNotification.showError('Veuillez remplir tous les champs requis');
+      this.toastrNotification.showWarning('Veuillez remplir tous les champs requis');
     }
-  }
-
-  /**
-   * Génère un sujet par défaut selon le type de notification
-   */
-  private getDefaultNotificationSubject(interview: Interview): string {
-    const candidateName = interview.candidateName || 'Candidat';
-    const jobTitle = interview.jobOfferTitle || 'Poste';
-    
-    return `Entretien - ${candidateName} - ${jobTitle}`;
-  }
-
-  /**
-   * Génère un message par défaut selon le type de notification
-   */
-  private getDefaultNotificationMessage(interview: Interview): string {
-    const candidateName = interview.candidateName || 'Candidat';
-    const jobTitle = interview.jobOfferTitle || 'le poste';
-    const dateStr = this.formatDateTime(interview.interviewDate);
-    const location = interview.location || 'lieu à confirmer';
-    
-    return `Bonjour ${candidateName},
-
-Nous vous confirmons votre entretien pour ${jobTitle}.
-
-Détails :
-- Date et heure : ${dateStr}
-- Lieu : ${location}
-- Durée : ${interview.durationMinutes || 60} minutes
-- Type : ${this.getTypeText(interview.type)}
-
-Cordialement,
-L'équipe RH`;
-  }
-
-  /**
-   * Confirme un entretien et envoie une notification
-   */
-  confirmInterviewWithNotification(interview: Interview): void {
-    this.updateInterviewStatus(interview, 'IN_PROGRESS');
-    
-    // Envoyer automatiquement une notification de confirmation
-    setTimeout(() => {
-      this.openNotificationModal(interview);
-      this.notificationForm.patchValue({
-        notificationType: 'INTERVIEW_CONFIRMATION'
-      });
-    }, 500);
-  }
-
-  /**
-   * Reprogramme un entretien
-   */
-  rescheduleInterview(interview: Interview): void {
-    this.openInterviewModal(interview);
-    // Marquer comme reprogrammé après modification
-    this.selectedInterview = { ...interview, status: 'RESCHEDULED' as any };
-  }
-
-  /**
-   * Termine un entretien et demande un feedback
-   */
-  completeInterviewWithFeedback(interview: Interview): void {
-    this.updateInterviewStatus(interview, 'COMPLETED');
-    
-    // Ouvrir automatiquement le modal de feedback
-    setTimeout(() => {
-      this.openFeedbackModal(interview);
-    }, 500);
-  }
-
-  /**
-   * Exporte les entretiens avec plus d'options
-   */
-  exportInterviewsAdvanced(format: 'csv' | 'excel' = 'csv'): void {
-    const csvData = this.filteredInterviews.map(interview => ({
-      'ID': interview.id,
-      'Candidat': interview.candidateName || 'N/A',
-      'Email candidat': interview.candidateId ? `candidate_${interview.candidateId}@company.com` : 'N/A', // À adapter
-      'Offre d\'emploi': interview.jobOfferTitle || 'N/A',
-      'Interviewer': interview.interviewerName || 'N/A',
-      'Date': this.formatDate(interview.interviewDate),
-      'Heure': this.formatTime(interview.interviewDate),
-      'Durée (min)': interview.durationMinutes || 'N/A',
-      'Type': this.getTypeText(interview.type),
-      'Lieu': interview.location || 'N/A',
-      'Statut': this.getStatusText(interview.status),
-      'Notes': interview.notes || 'N/A',
-      'Créé le': new Date().toLocaleDateString('fr-FR')
-    }));
-    
-    if (format === 'csv') {
-      const csv = this.convertToCSV(csvData);
-      this.downloadCSV(csv, `entretiens_${new Date().getTime()}.csv`);
-    }
-    
-    this.toastrNotification.showExportSuccess(format);
-  }
-
-  /**
-   * Filtre les entretiens par statut avec action rapide
-   */
-  quickFilterByStatus(status: string): void {
-    this.searchForm.patchValue({ status });
-    this.currentPage = 1;
-  }
-
-  /**
-   * Actions en lot sur les entretiens sélectionnés
-   */
-  selectedInterviews: number[] = [];
-
-  toggleInterviewSelection(interviewId: number): void {
-    const index = this.selectedInterviews.indexOf(interviewId);
-    if (index > -1) {
-      this.selectedInterviews.splice(index, 1);
-    } else {
-      this.selectedInterviews.push(interviewId);
-    }
-  }
-
-  isInterviewSelected(interviewId: number): boolean {
-    return this.selectedInterviews.indexOf(interviewId) > -1;
-  }
-
-  selectAllInterviews(): void {
-    this.selectedInterviews = this.getPaginatedInterviews().map(i => i.id);
-  }
-
-  clearSelection(): void {
-    this.selectedInterviews = [];
-  }
-
-  /**
-   * Actions en lot
-   */
-  bulkUpdateStatus(newStatus: 'IN_PROGRESS' | 'CANCELLED' | 'COMPLETED'): void {
-    if (this.selectedInterviews.length === 0) {
-      this.toastrNotification.showNoSelectionWarning();
-      return;
-    }
-
-    if (confirm(`Êtes-vous sûr de vouloir mettre à jour ${this.selectedInterviews.length} entretien(s) ?`)) {
-      // Appliquer le changement à tous les entretiens sélectionnés
-      this.selectedInterviews.forEach(interviewId => {
-        const interview = this.interviews.find(i => i.id === interviewId);
-        if (interview) {
-          this.updateInterviewStatus(interview, newStatus);
-        }
-      });
-      
-      this.clearSelection();
-      this.toastrNotification.showBulkOperationSuccess('Mise à jour');
-    }
-  }
-
-  bulkDelete(): void {
-    if (this.selectedInterviews.length === 0) {
-      this.toastrNotification.showNoSelectionWarning();
-      return;
-    }
-
-    if (confirm(`Êtes-vous sûr de vouloir supprimer ${this.selectedInterviews.length} entretien(s) ? Cette action est irréversible.`)) {
-      // Supprimer tous les entretiens sélectionnés
-      this.selectedInterviews.forEach(interviewId => {
-        this.interviewService.deleteInterview(interviewId).subscribe({
-          next: () => {
-            this.interviews = this.interviews.filter(i => i.id !== interviewId);
-          },
-          error: (error) => {
-            console.error('Erreur lors de la suppression:', error);
-          }
-        });
-      });
-      
-      this.clearSelection();
-      this.loadInterviews(); // Recharger la liste
-      this.toastrNotification.showBulkOperationSuccess('Suppression');
-    }
-  }
-
-  // ===== MÉTHODES UTILITAIRES =====
-  
-  // Exposer Math pour le template
-  Math = Math;
-
-  updateInterviewStatus(interview: Interview, newStatus: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED'): void {
-    this.interviewService.updateInterviewStatus(interview.id, newStatus).subscribe({
-      next: () => {
-        this.toastrNotification.showInterviewStatusUpdatedSuccess();
-        interview.status = newStatus;
-      },
-      error: (error: any) => {
-        console.error('Erreur lors de la mise à jour du statut:', error);
-        this.toastrNotification.showInterviewError('Erreur lors de la mise à jour du statut');
-        this.error = 'Erreur lors de la mise à jour du statut';
-      }
-    });
-  }
-
-  getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'SCHEDULED': return 'badge bg-warning';
-      case 'IN_PROGRESS': return 'badge bg-success';
-      case 'COMPLETED': return 'badge bg-primary';
-      case 'CANCELLED': return 'badge bg-danger';
-      case 'RESCHEDULED': return 'badge bg-info';
-      default: return 'badge bg-secondary';
-    }
-  }
-
-  getStatusText(status: string): string {
-    switch (status) {
-      case 'SCHEDULED': return 'Planifié';
-      case 'IN_PROGRESS': return 'En cours';
-      case 'COMPLETED': return 'Terminé';
-      case 'CANCELLED': return 'Annulé';
-      case 'RESCHEDULED': return 'Reprogrammé';
-      default: return status;
-    }
-  }
-
-  getTypeIcon(type: string): string {
-    switch (type) {
-      case 'PHONE_SCREENING': return 'fas fa-phone';
-      case 'TECHNICAL': return 'fas fa-code';
-      case 'HR': return 'fas fa-user-tie';
-      case 'MANAGER': return 'fas fa-user-friends';
-      case 'FINAL': return 'fas fa-handshake';
-      case 'GROUP': return 'fas fa-users';
-      default: return 'fas fa-calendar-alt';
-    }
-  }
-
-  getTypeText(type: string): string {
-    switch (type) {
-      case 'PHONE_SCREENING': return 'Entretien téléphonique';
-      case 'TECHNICAL': return 'Entretien technique';
-      case 'HR': return 'Entretien RH';
-      case 'MANAGER': return 'Entretien manager';
-      case 'FINAL': return 'Entretien final';
-      case 'GROUP': return 'Entretien de groupe';
-      default: return type || 'Non défini';
-    }
-  }
-
-  formatDate(date: Date | string | null): string {
-    if (!date) return 'N/A';
-    const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) return 'Date invalide';
-    
-    return dateObj.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-  }
-
-  formatDateTime(date: Date | string | null): string {
-    if (!date) return 'N/A';
-    const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) return 'Date invalide';
-    
-    return dateObj.toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
-  formatTime(date: Date | string | null): string {
-    if (!date) return 'N/A';
-    const dateObj = new Date(date);
-    if (isNaN(dateObj.getTime())) return 'Heure invalide';
-    
-    return dateObj.toLocaleTimeString('fr-FR', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  }
-
-  private convertToCSV(data: any[]): string {
-    if (data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => headers.map(header => `"${row[header]}"`).join(','))
-    ].join('\n');
-    
-    return csvContent;
-  }
-
-  private downloadCSV(csv: string, filename: string): void {
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  }
-
-  // ===== FONCTIONNALITÉS AJOUTÉES =====
-
-  clearFilters(): void {
-    this.searchForm.reset();
-    this.currentPage = 1;
-  }
-
-  cancelInterview(interview: Interview): void {
-    this.updateInterviewStatus(interview, 'CANCELLED');
-  }
-
-  // Ajouté pour le contrôle de workflow
-  getCurrentUserRoles(): string[] {
-    const user = this.authService.getCurrentUser();
-    return user ? user.roles : [];
-  }
-
-  canChangeStatus(interview: Interview, newStatus: string): boolean {
-    // Simplification pour éviter les erreurs - à adapter selon les besoins
-    const currentUser = this.authService.getCurrentUser();
-    if (!currentUser || !currentUser.roles) return false;
-    
-    return this.interviewService.canChangeStatus(
-      interview.status,
-      newStatus,
-      currentUser.roles
-    );
-  }
-
-  // ===== CV MANAGEMENT =====
-
-  /**
-   * Vérifie si le candidat a un CV
-   */
-  candidateHasCV(candidateId: number): Promise<boolean> {
-    return this.cvService.candidateHasCV(candidateId).toPromise()
-      .then(hasCV => hasCV || false)
-      .catch(() => false);
-  }
-
-  /**
-   * Ouvre le CV du candidat dans un nouvel onglet
-   */
-  viewCandidateCV(candidateId: number): void {
-    if (!candidateId) {
-      this.toastrNotification.showValidationError('ID candidat manquant');
-      return;
-    }
-    
-    this.cvService.getCVByCandidate(candidateId).subscribe({
-      next: (cvResponse) => {
-        // Utiliser storedFilename en priorité, puis originalFilename en fallback
-        const fileName = cvResponse.storedFilename || cvResponse.originalFilename;
-        
-        if (cvResponse && fileName) {
-          this.viewFileAuthenticated(fileName);
-        } else {
-          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
-        }
-      },
-      error: (error) => {
-        console.error('Erreur lors de l\'ouverture du CV:', error);
-        if (error.status === 403) {
-          this.toastrNotification.showUnauthorizedError();
-        } else if (error.status === 404) {
-          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
-        } else {
-          this.toastrNotification.showError('Impossible d\'ouvrir le CV du candidat');
-        }
-      }
-    });
-  }
-
-  /**
-   * Visualise un fichier via une requête HTTP authentifiée
-   */
-  private viewFileAuthenticated(fileName: string): void {
-    const fileUrl = `http://localhost:8080/api/files/${fileName}`;
-    
-    this.cvService.getFileBlob(fileUrl).subscribe({
-      next: (blob: Blob) => {
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        this.toastrNotification.showSuccess('CV ouvert dans un nouvel onglet');
-        
-        // Nettoyer l'URL après un délai
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-      },
-      error: (error: any) => {
-        console.error('Erreur lors de la récupération du fichier:', error);
-        if (error.status === 403) {
-          this.toastrNotification.showUnauthorizedError();
-        } else if (error.status === 404) {
-          this.toastrNotification.showError('Fichier non trouvé');
-        } else {
-          this.toastrNotification.showError('Impossible d\'ouvrir le fichier');
-        }
-      }
-    });
-  }
-
-  /**
-   * Télécharge le CV du candidat
-   */
-  downloadCandidateCV(candidateId: number, candidateName: string): void {
-    if (!candidateId) {
-      this.toastrNotification.showValidationError('ID candidat manquant');
-      return;
-    }
-    
-    this.cvService.getCVByCandidate(candidateId).subscribe({
-      next: (cvResponse) => {        
-        // Utiliser storedFilename en priorité, puis originalFilename en fallback
-        const fileName = cvResponse.storedFilename || cvResponse.originalFilename;
-        
-        if (cvResponse && fileName) {
-          this.downloadFileAuthenticated(fileName, candidateName);
-        } else {
-          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
-        }
-      },
-      error: (error: any) => {
-        console.error('Erreur lors du téléchargement du CV:', error);
-        if (error.status === 403) {
-          this.toastrNotification.showUnauthorizedError();
-        } else if (error.status === 404) {
-          this.toastrNotification.showError('Aucun CV trouvé pour ce candidat');
-        } else {
-          this.toastrNotification.showError('Impossible de télécharger le CV du candidat');
-        }
-      }
-    });
   }
 
   /**
@@ -1004,17 +526,14 @@ L'équipe RH`;
   private downloadFileAuthenticated(fileName: string, candidateName: string): void {
     const fileUrl = `http://localhost:8080/api/files/${fileName}/download`;
     
-    // Utiliser HttpClient avec l'intercepteur JWT pour télécharger le fichier
     this.cvService.downloadFile(fileUrl).subscribe({
       next: (blob: Blob) => {
-        // Créer un lien de téléchargement
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
         link.download = `CV_${candidateName.replace(/\s+/g, '_')}.pdf`;
         link.click();
         
-        // Nettoyer l'URL
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         
         this.toastrNotification.showSuccess('Téléchargement du CV démarré');
@@ -1033,22 +552,582 @@ L'équipe RH`;
   }
 
   /**
-   * Vérifie si l'utilisateur actuel peut consulter les CVs
+   * Sauvegarde le feedback de l'entretien
+   */
+  saveFeedback(): void {
+    if (this.feedbackForm.valid && this.selectedInterview) {
+      const feedbackData = {
+        interviewId: this.selectedInterview.id,
+        rating: this.feedbackForm.get('rating')?.value,
+        feedback: this.feedbackForm.get('feedback')?.value,
+        recommendation: this.feedbackForm.get('recommendation')?.value
+      };
+
+      // Simuler l'envoi du feedback
+      // TODO: Remplacer par un vrai appel API
+      console.log('Envoi du feedback:', feedbackData);
+      
+      this.toastrNotification.showSuccess('Feedback enregistré avec succès');
+      this.closeFeedbackModal();
+    } else {
+      this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
+    }
+  }
+
+  /**
+   * Vérifie si l'utilisateur peut visualiser les CV
    */
   canViewCV(): boolean {
     const currentUser = this.authService.getCurrentUser();
-    if (!currentUser || !currentUser.roles) return false;
+    if (!currentUser || !currentUser.roles) {
+      return false;
+    }
+
+    // Seuls les utilisateurs avec des rôles administratifs peuvent voir les CV
+    return currentUser.roles.some((role: string) => 
+      ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER', 'ROLE_TEAM_LEAD'].includes(role)
+    );
+  }
+
+  // ======== MÉTHODES DE SÉLECTION ET ACTIONS GROUPÉES ========
+
+  /**
+   * Sélectionne tous les entretiens
+   */
+  selectAllInterviews(): void {
+    this.selectedInterviews = new Set(this.filteredInterviews.map(i => i.id));
+  }
+
+  /**
+   * Efface la sélection
+   */
+  clearSelection(): void {
+    this.selectedInterviews.clear();
+  }
+
+  /**
+   * Vérifie si un entretien est sélectionné
+   */
+  isInterviewSelected(interviewId: number): boolean {
+    return this.selectedInterviews.has(interviewId);
+  }
+
+  /**
+   * Bascule la sélection d'un entretien
+   */
+  toggleInterviewSelection(interviewId: number): void {
+    if (this.selectedInterviews.has(interviewId)) {
+      this.selectedInterviews.delete(interviewId);
+    } else {
+      this.selectedInterviews.add(interviewId);
+    }
+  }
+
+  /**
+   * Met à jour le statut en masse
+   */
+  bulkUpdateStatus(status: string): void {
+    if (this.selectedInterviews.size === 0) {
+      this.toastrNotification.showWarning('Aucun entretien sélectionné');
+      return;
+    }
+
+    this.showConfirmationModal = true;
+    this.confirmationMessage = `Êtes-vous sûr de vouloir changer le statut de ${this.selectedInterviews.size} entretien(s) vers "${status}" ?`;
+    this.confirmationAction = () => {
+      console.log(`Mise à jour du statut vers ${status} pour:`, Array.from(this.selectedInterviews));
+      this.toastrNotification.showSuccess(`Statut mis à jour pour ${this.selectedInterviews.size} entretien(s)`);
+      this.selectedInterviews.clear();
+      this.closeConfirmationModal();
+    };
+  }
+
+  /**
+   * Suppression en masse
+   */
+  bulkDelete(): void {
+    if (this.selectedInterviews.size === 0) {
+      this.toastrNotification.showWarning('Aucun entretien sélectionné');
+      return;
+    }
+
+    this.showConfirmationModal = true;
+    this.confirmationMessage = `Êtes-vous sûr de vouloir supprimer ${this.selectedInterviews.size} entretien(s) ? Cette action est irréversible.`;
+    this.confirmationAction = () => {
+      console.log('Suppression des entretiens:', Array.from(this.selectedInterviews));
+      this.toastrNotification.showSuccess(`${this.selectedInterviews.size} entretien(s) supprimé(s)`);
+      this.selectedInterviews.clear();
+      this.closeConfirmationModal();
+    };
+  }
+
+  // ======== MÉTHODES D'EXPORT ========
+
+  /**
+   * Export avancé des entretiens
+   */
+  exportInterviewsAdvanced(format: string): void {
+    const dataToExport = this.selectedInterviews.size > 0 
+      ? this.filteredInterviews.filter(i => this.selectedInterviews.has(i.id))
+      : this.filteredInterviews;
+
+    if (format === 'csv') {
+      this.exportToCSV(dataToExport);
+    } else if (format === 'excel') {
+      this.exportToExcel(dataToExport);
+    }
+  }
+
+  private exportToCSV(data: any[]): void {
+    const csvContent = this.convertToCSV(data);
+    this.downloadFile(csvContent, 'entretiens.csv', 'text/csv');
+    this.toastrNotification.showSuccess('Export CSV téléchargé');
+  }
+
+  private exportToExcel(data: any[]): void {
+    // Simulation d'export Excel
+    console.log('Export Excel des données:', data);
+    this.toastrNotification.showSuccess('Export Excel préparé');
+  }
+
+  private convertToCSV(data: any[]): string {
+    const headers = ['ID', 'Candidat', 'Date', 'Type', 'Statut', 'Interviewer'];
+    const rows = data.map(interview => [
+      interview.id,
+      interview.candidateName || 'N/A',
+      this.formatDateTime(interview.interviewDate),
+      this.getTypeText(interview.type),
+      this.getStatusText(interview.status),
+      interview.interviewer?.name || 'N/A'
+    ]);
+
+    return [headers, ...rows].map(row => row.join(',')).join('\n');
+  }
+
+  private downloadFile(content: string, fileName: string, mimeType: string): void {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ======== MÉTHODES DE FILTRAGE ========
+
+  /**
+   * Filtre rapide par statut
+   */
+  quickFilterByStatus(status: string): void {
+    this.selectedStatus = status;
+    this.filterInterviews();
+  }
+
+  /**
+   * Efface tous les filtres
+   */
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.selectedStatus = '';
+    this.selectedType = '';
+    this.dateFrom = null;
+    this.dateTo = null;
+    this.filterInterviews();
+  }
+
+  // ======== MÉTHODES DE FORMATAGE ========
+
+  /**
+   * Formate une date
+   */
+  formatDate(date: Date | string): string {
+    return new Date(date).toLocaleDateString('fr-FR');
+  }
+
+  /**
+   * Formate l'heure
+   */
+  formatTime(date: Date | string): string {
+    return new Date(date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  /**
+   * Formate la date et l'heure
+   */
+  formatDateTime(date: Date | string): string {
+    return new Date(date).toLocaleString('fr-FR');
+  }
+
+  /**
+   * Retourne l'icône pour le type d'entretien
+   */
+  getTypeIcon(type: string): string {
+    const icons: { [key: string]: string } = {
+      'PHONE': 'fas fa-phone',
+      'VIDEO': 'fas fa-video',
+      'IN_PERSON': 'fas fa-user',
+      'TECHNICAL': 'fas fa-code'
+    };
+    return icons[type] || 'fas fa-question';
+  }
+
+  /**
+   * Retourne le texte pour le type d'entretien
+   */
+  getTypeText(type: string): string {
+    const types: { [key: string]: string } = {
+      'PHONE': 'Téléphonique',
+      'VIDEO': 'Visioconférence',
+      'IN_PERSON': 'En personne',
+      'TECHNICAL': 'Technique'
+    };
+    return types[type] || type;
+  }
+
+  /**
+   * Retourne la classe CSS pour le badge de statut
+   */
+  getStatusBadgeClass(status: string): string {
+    const classes: { [key: string]: string } = {
+      'SCHEDULED': 'badge bg-warning text-dark',
+      'IN_PROGRESS': 'badge bg-success',
+      'COMPLETED': 'badge bg-primary',
+      'CANCELLED': 'badge bg-danger',
+      'RESCHEDULED': 'badge bg-info'
+    };
+    return classes[status] || 'badge bg-secondary';
+  }
+
+  /**
+   * Retourne le texte pour le statut
+   */
+  getStatusText(status: string): string {
+    const statuses: { [key: string]: string } = {
+      'SCHEDULED': 'Planifié',
+      'IN_PROGRESS': 'En cours',
+      'COMPLETED': 'Terminé',
+      'CANCELLED': 'Annulé',
+      'RESCHEDULED': 'Reprogrammé'
+    };
+    return statuses[status] || status;
+  }
+
+  // ======== MÉTHODES DE GESTION DES CV ========
+
+  /**
+   * Télécharge un fichier depuis un blob
+   */
+  private downloadFileFromBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
     
-    return currentUser.roles.includes('RH') || 
-           currentUser.roles.includes('MANAGER') || 
-           currentUser.roles.includes('ÉQUIPE') ||
-           currentUser.roles.includes('TEAM_LEAD') ||
-           currentUser.roles.includes('SENIOR_DEV') ||
-           currentUser.roles.includes('ROLE_HR') ||
-           currentUser.roles.includes('ROLE_MANAGER') ||
-           currentUser.roles.includes('ROLE_ÉQUIPE') ||
-           currentUser.roles.includes('ROLE_TEAM_LEAD') ||
-           currentUser.roles.includes('ROLE_SENIOR_DEV');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Nettoie l'URL du blob
+    window.URL.revokeObjectURL(url);
+    this.toastrNotification.showSuccess('CV téléchargé avec succès');
+  }
+
+  /**
+   * Vérifie si les boutons CV doivent être affichés
+   */
+  shouldShowCVButtons(interview: any): boolean {
+    return interview?.candidateId != null && interview.candidateId > 0;
+  }
+
+  /**
+   * Visualise le CV d'un candidat
+   */
+  viewCandidateCV(candidateId: number): void {
+    this.toastrNotification.showInfo('Ouverture du CV...');
+    
+    this.cvService.getCVByCandidate(candidateId).subscribe({
+      next: (cvResponse) => {
+        if (cvResponse && (cvResponse.fileUrl || cvResponse.downloadUrl)) {
+          const fileUrl = cvResponse.fileUrl || cvResponse.downloadUrl;
+          
+          if (fileUrl) {
+            // Télécharge le fichier via le service authentifié, puis l'ouvre dans un nouvel onglet
+            this.cvService.downloadFile(fileUrl).subscribe({
+              next: (blob) => {
+                // Crée une URL temporaire pour le blob et l'ouvre dans un nouvel onglet
+                const blobUrl = window.URL.createObjectURL(blob);
+                const newWindow = window.open(blobUrl, '_blank');
+                
+                if (newWindow) {
+                  // Nettoie l'URL du blob après un délai pour éviter les fuites mémoire
+                  setTimeout(() => {
+                    window.URL.revokeObjectURL(blobUrl);
+                  }, 10000); // 10 secondes
+                  
+                  this.toastrNotification.showSuccess('CV ouvert dans un nouvel onglet');
+                } else {
+                  // Si le popup est bloqué, propose de télécharger à la place
+                  this.toastrNotification.showWarning('Popup bloqué. Téléchargement du CV...');
+                  this.downloadFileFromBlob(blob, cvResponse.originalFilename || 'cv.pdf');
+                  window.URL.revokeObjectURL(blobUrl);
+                }
+              },
+              error: (error) => {
+                console.error('Erreur lors du téléchargement du fichier pour visualisation:', error);
+                this.toastrNotification.showError('Erreur lors de l\'ouverture du CV');
+              }
+            });
+          } else {
+            this.toastrNotification.showError('URL du CV non disponible');
+          }
+        } else {
+          this.toastrNotification.showError('URL du CV non disponible');
+        }
+      },
+      error: (error) => {
+        console.error('Erreur lors de la récupération du CV:', error);
+        this.toastrNotification.showError('Erreur lors de l\'ouverture du CV');
+      }
+    });
+  }
+
+  /**
+   * Télécharge le CV d'un candidat
+   */
+  downloadCandidateCV(candidateId: number): void {
+    this.toastrNotification.showInfo('Téléchargement du CV...');
+    
+    this.cvService.getCVByCandidate(candidateId).subscribe({
+      next: (cvResponse) => {
+        if (cvResponse && (cvResponse.fileUrl || cvResponse.downloadUrl)) {
+          const fileUrl = cvResponse.fileUrl || cvResponse.downloadUrl;
+          if (fileUrl) {
+            this.downloadFileFromUrl(fileUrl, cvResponse.originalFilename || 'cv.pdf');
+          } else {
+            this.toastrNotification.showError('URL de téléchargement non disponible');
+          }
+        } else {
+          this.toastrNotification.showError('URL de téléchargement non disponible');
+        }
+      },
+      error: (error) => {
+        console.error('Erreur lors de la récupération du CV:', error);
+        this.toastrNotification.showError('Erreur lors du téléchargement du CV');
+      }
+    });
+  }
+
+  /**
+   * Télécharge un fichier depuis une URL
+   */
+  private downloadFileFromUrl(fileUrl: string, filename: string): void {
+    this.cvService.downloadFile(fileUrl).subscribe({
+      next: (blob) => {
+        // Crée un lien de téléchargement
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        this.toastrNotification.showSuccess('CV téléchargé avec succès');
+      },
+      error: (error) => {
+        console.error('Erreur lors du téléchargement du fichier:', error);
+        this.toastrNotification.showError('Erreur lors du téléchargement du fichier');
+      }
+    });
+  }
+
+  // ======== MÉTHODES DE GESTION DES MODALES ========
+
+  /**
+   * Ouvre la modale de consultation
+   */
+  openConsultationModal(interview: any): void {
+    this.selectedInterview = interview;
+    this.showConsultationModal = true;
+  }
+
+  /**
+   * Ferme la modale de consultation
+   */
+  closeConsultationModal(): void {
+    this.showConsultationModal = false;
+    this.selectedInterview = null;
+  }
+
+  /**
+   * Ouvre la modale de notification
+   */
+  openNotificationModal(interview: any): void {
+    this.selectedInterview = interview;
+    this.showNotificationModal = true;
+  }
+
+  /**
+   * Ferme la modale de notification
+   */
+  closeNotificationModal(): void {
+    this.showNotificationModal = false;
+    this.selectedInterview = null;
+    this.notificationForm.reset();
+  }
+
+  /**
+   * Ferme la modale de confirmation
+   */
+  closeConfirmationModal(): void {
+    this.showConfirmationModal = false;
+    this.confirmationMessage = '';
+    this.confirmationAction = null;
+  }
+
+  /**
+   * Confirme l'action
+   */
+  confirmAction(): void {
+    if (this.confirmationAction) {
+      this.confirmationAction();
+    }
+  }
+
+  // ======== MÉTHODES DE GESTION DES STATUTS ========
+
+  /**
+   * Vérifie si le statut peut être changé
+   */
+  canChangeStatus(interview: any, newStatus: string): boolean {
+    const currentStatus = interview.status;
+    
+    // Logique de transition de statuts
+    const allowedTransitions: { [key: string]: string[] } = {
+      'SCHEDULED': ['IN_PROGRESS', 'CANCELLED', 'RESCHEDULED'],
+      'IN_PROGRESS': ['COMPLETED', 'CANCELLED'],
+      'COMPLETED': [], // Statut final
+      'CANCELLED': ['RESCHEDULED'],
+      'RESCHEDULED': ['SCHEDULED', 'CANCELLED']
+    };
+
+    return allowedTransitions[currentStatus]?.includes(newStatus) || false;
+  }
+
+  /**
+   * Confirme un entretien avec notification
+   */
+  confirmInterviewWithNotification(interview: any): void {
+    this.selectedInterview = interview;
+    this.openNotificationModal(interview);
+  }
+
+  /**
+   * Termine un entretien avec feedback
+   */
+  completeInterviewWithFeedback(interview: any): void {
+    this.selectedInterview = interview;
+    this.showFeedbackModal = true;
+  }
+
+  /**
+   * Reprogramme un entretien
+   */
+  rescheduleInterview(interview: any): void {
+    console.log('Reprogrammation de l\'entretien:', interview);
+    this.toastrNotification.showInfo('Fonctionnalité de reprogrammation en cours de développement');
+  }
+
+  /**
+   * Annule un entretien
+   */
+  cancelInterview(interview: any): void {
+    this.showConfirmationModal = true;
+    this.confirmationMessage = `Êtes-vous sûr de vouloir annuler l'entretien avec ${interview.candidateName} ?`;
+    this.confirmationAction = () => {
+      console.log('Annulation de l\'entretien:', interview);
+      interview.status = 'CANCELLED';
+      this.toastrNotification.showSuccess('Entretien annulé');
+      this.closeConfirmationModal();
+    };
+  }
+
+  /**
+   * Expose Math pour le template
+   */
+  Math = Math;
+
+  /**
+   * Filtre les entretiens selon les critères
+   */
+  filterInterviews(): void {
+    this.filteredInterviews = this.interviews.filter(interview => {
+      // Filtre par terme de recherche
+      if (this.searchTerm && this.searchTerm.trim()) {
+        const searchLower = this.searchTerm.toLowerCase();
+        const matchesSearch = 
+          interview.candidateName?.toLowerCase().includes(searchLower) ||
+          interview.type?.toLowerCase().includes(searchLower) ||
+          interview.status?.toLowerCase().includes(searchLower);
+        
+        if (!matchesSearch) return false;
+      }
+
+      // Filtre par statut
+      if (this.selectedStatus && interview.status !== this.selectedStatus) {
+        return false;
+      }
+
+      // Filtre par type
+      if (this.selectedType && interview.type !== this.selectedType) {
+        return false;
+      }
+
+      // Filtre par date
+      if (this.dateFrom || this.dateTo) {
+        const interviewDate = new Date(interview.interviewDate);
+        if (this.dateFrom && interviewDate < this.dateFrom) {
+          return false;
+        }
+        if (this.dateTo && interviewDate > this.dateTo) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+
+    // Mettre à jour le nombre total après filtrage
+    this.totalInterviews = this.filteredInterviews.length;
+    this.totalPages = Math.ceil(this.totalInterviews / this.pageSize);
+  }
+
+  /**
+   * Envoie la notification par email
+   */
+  sendNotification(): void {
+    if (this.notificationForm.valid && this.selectedInterview) {
+      const formData = this.notificationForm.value;
+      
+      // Préparer les données pour l'email personnalisé
+      const emailData = {
+        interviewId: this.selectedInterview.id,
+        candidateEmail: this.selectedInterview.candidateEmail || 'test@example.com',
+        type: formData.type,
+        subject: formData.subject,
+        message: formData.message,
+        copyToHR: formData.copyToHR
+      };
+
+      console.log('Envoi de notification:', emailData);
+      this.toastrNotification.showSuccess('Notification envoyée avec succès');
+      this.closeNotificationModal();
+    } else {
+      this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
+    }
   }
 }
 

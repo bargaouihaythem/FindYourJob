@@ -188,29 +188,67 @@ export class JobOffersComponent implements OnInit {
 
   /**
    * Vérifie si l'utilisateur peut postuler à une offre d'emploi
-   * Seuls les utilisateurs non connectés ou avec le rôle USER peuvent postuler
+   * Seuls les utilisateurs connectés avec un compte valide peuvent postuler
    */
   canApplyToJob(): boolean {
-    // Si l'utilisateur n'est pas connecté, il peut postuler (candidature publique)
+    // L'utilisateur DOIT être connecté pour postuler
     if (!this.authService.isAuthenticated()) {
-      return true;
+      return false;
     }
 
-    // Si l'utilisateur est connecté, vérifier qu'il a seulement le rôle USER/CANDIDATE
+    // Si l'utilisateur est connecté, vérifier qu'il a le rôle USER/CANDIDATE et aucun rôle administratif
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && currentUser.roles) {
-      // L'utilisateur peut postuler s'il a uniquement le rôle USER et aucun rôle administratif
-      const hasOnlyUserRole = currentUser.roles.includes('ROLE_USER') && 
-                              !currentUser.roles.includes('ROLE_ADMIN') &&
-                              !currentUser.roles.includes('ROLE_HR') &&
-                              !currentUser.roles.includes('ROLE_MANAGER') &&
-                              !currentUser.roles.includes('ROLE_TEAM_LEAD') &&
-                              !currentUser.roles.includes('ROLE_SENIOR_DEV') &&
-                              !currentUser.roles.includes('ROLE_TEAM');
-      return hasOnlyUserRole;
+      // L'utilisateur peut postuler s'il a le rôle USER et aucun rôle administratif
+      const hasUserRole = currentUser.roles.includes('ROLE_USER') || currentUser.roles.includes('USER');
+      const hasAdminRole = currentUser.roles.includes('ROLE_ADMIN') ||
+                          currentUser.roles.includes('ROLE_HR') ||
+                          currentUser.roles.includes('ROLE_MANAGER') ||
+                          currentUser.roles.includes('ROLE_TEAM_LEAD') ||
+                          currentUser.roles.includes('ROLE_SENIOR_DEV') ||
+                          currentUser.roles.includes('ROLE_TEAM') ||
+                          currentUser.roles.includes('ADMIN') ||
+                          currentUser.roles.includes('HR') ||
+                          currentUser.roles.includes('MANAGER') ||
+                          currentUser.roles.includes('TEAM_LEAD') ||
+                          currentUser.roles.includes('SENIOR_DEV') ||
+                          currentUser.roles.includes('TEAM');
+      
+      return hasUserRole && !hasAdminRole;
     }
 
     return false;
+  }
+
+  /**
+   * Retourne le message à afficher quand l'utilisateur ne peut pas postuler
+   */
+  getApplyButtonMessage(): string {
+    if (!this.authService.isAuthenticated()) {
+      return 'Connectez-vous pour postuler';
+    }
+    
+    const currentUser = this.authService.getCurrentUser();
+    if (currentUser && currentUser.roles) {
+      const hasAdminRole = currentUser.roles.includes('ROLE_ADMIN') ||
+                          currentUser.roles.includes('ROLE_HR') ||
+                          currentUser.roles.includes('ROLE_MANAGER') ||
+                          currentUser.roles.includes('ROLE_TEAM_LEAD') ||
+                          currentUser.roles.includes('ROLE_SENIOR_DEV') ||
+                          currentUser.roles.includes('ROLE_TEAM') ||
+                          currentUser.roles.includes('ADMIN') ||
+                          currentUser.roles.includes('HR') ||
+                          currentUser.roles.includes('MANAGER') ||
+                          currentUser.roles.includes('TEAM_LEAD') ||
+                          currentUser.roles.includes('SENIOR_DEV') ||
+                          currentUser.roles.includes('TEAM');
+      
+      if (hasAdminRole) {
+        return 'Les administrateurs ne peuvent pas postuler';
+      }
+    }
+    
+    return 'Postuler';
   }
 }
 

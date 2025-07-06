@@ -71,7 +71,7 @@
               <i class="fas fa-arrow-left me-2"></i> Retour aux offres
             </a>
             
-            <!-- Bouton Postuler pour les utilisateurs connectés -->
+            <!-- Bouton Postuler pour les utilisateurs connectés avec rôle USER -->
             <button *ngIf="job.status === 'ACTIVE' && canApplyToJob() && !hasAlreadyApplied" 
                     (click)="handleApplyAction()" 
                     class="btn btn-success btn-lg">
@@ -88,12 +88,21 @@
               </a>
             </div>
 
-            <!-- Bouton S'inscrire pour postuler (utilisateurs non connectés) -->
-            <button *ngIf="job.status === 'ACTIVE' && shouldRedirectToRegister()" 
-                    (click)="handleApplyAction()" 
-                    class="btn btn-primary btn-lg">
-              <i class="fas fa-user-plus me-2"></i> S'inscrire pour postuler
-            </button>
+            <!-- Message pour les utilisateurs non connectés -->
+            <div *ngIf="job.status === 'ACTIVE' && !isAuthenticated()" 
+                 class="alert alert-warning">
+              <i class="fas fa-sign-in-alt me-2"></i>
+              <strong>Connexion requise</strong>
+              <p class="mb-2 mt-2">
+                Vous devez créer un compte et vous connecter pour postuler à cette offre.
+              </p>
+              <a routerLink="/register" class="btn btn-primary me-2">
+                <i class="fas fa-user-plus me-1"></i> Créer un compte
+              </a>
+              <a routerLink="/login" class="btn btn-outline-primary">
+                <i class="fas fa-sign-in-alt me-1"></i> Se connecter
+              </a>
+            </div>
 
             <!-- Message pour les utilisateurs administratifs -->
             <div *ngIf="job.status === 'ACTIVE' && !canApplyToJob() && isAuthenticated()" 
@@ -103,16 +112,6 @@
               <p class="mb-0 mt-2">
                 Vous visualisez cette offre en tant qu'administrateur. 
                 Les candidatures sont gérées via l'interface d'administration.
-              </p>
-            </div>
-
-            <!-- Message informatif pour les visiteurs non connectés -->
-            <div *ngIf="job.status === 'ACTIVE' && shouldRedirectToRegister()" 
-                 class="alert alert-light border">
-              <i class="fas fa-lightbulb me-2 text-warning"></i>
-              <strong>Candidature simplifiée</strong>
-              <p class="mb-0 mt-2">
-                Créez un compte en 30 secondes pour postuler et suivre vos candidatures.
               </p>
             </div>
 
