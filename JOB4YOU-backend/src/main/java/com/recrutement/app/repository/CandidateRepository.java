@@ -57,5 +57,12 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     List<Candidate> findAllWithCV(Pageable pageable);
 
     List<Candidate> findByEmail(String email);
+
+    /**
+     * Retourne les candidats dont le statut fait partie de la liste.
+     * Utilisé par la vue Manager (dossiers validés par RH uniquement).
+     */
+    @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer WHERE c.status IN :statuses")
+    List<Candidate> findByStatusIn(@Param("statuses") List<Candidate.CandidateStatus> statuses);
 }
 

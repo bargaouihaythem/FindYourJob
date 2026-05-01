@@ -342,6 +342,15 @@
                 La date limite est obligatoire
               </div>
             </div>
+            <div class="col-md-6 mb-3">
+              <label for="managerEmail" class="form-label">Email du manager responsable</label>
+              <input type="email" class="form-control" id="managerEmail" formControlName="managerEmail"
+                     placeholder="manager@exemple.com">
+              <div *ngIf="jobOfferForm.get('managerEmail')?.invalid && jobOfferForm.get('managerEmail')?.touched" class="text-danger small">
+                Adresse email invalide
+              </div>
+              <small class="text-muted">L'Agent 2 enverra les candidatures validées à cet email</small>
+            </div>
           </div>
         </form>
       </div>

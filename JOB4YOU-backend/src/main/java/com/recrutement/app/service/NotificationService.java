@@ -105,10 +105,20 @@ public class NotificationService {
         String nextSteps = null;
         switch (candidate.getStatus()) {
             case ACCEPTED:
-                nextSteps = "Félicitations ! Votre candidature a été retenue. Nous vous contacterons prochainement pour discuter des détails de votre intégration.";
+                nextSteps = "Félicitations ! Votre candidature a été retenue. Nous vous contacterons prochainement pour planifier votre entretien.";
+                break;
+            case INTERVIEW_SCHEDULED:
+                nextSteps = "Votre entretien a été planifié. Vous recevrez une invitation avec tous les détails (date, heure, lien Meet).";
+                break;
+            case HIRED:
+                nextSteps = "Félicitations ! Nous avons le plaisir de vous confirmer votre embauche. Notre équipe RH vous contactera prochainement pour les formalités d'intégration.";
                 break;
             case REJECTED:
-                nextSteps = "Nous sommes désolés de vous informer que votre candidature n'a pas été retenue pour ce poste. Nous vous encourageons à consulter nos autres offres d'emploi.";
+            case AUTO_REJECTED:
+                nextSteps = "Nous sommes désolés de vous informer que votre candidature n'a pas été retenue suite à l'analyse automatique de votre CV. Nous vous encourageons à consulter nos autres offres d'emploi.";
+                break;
+            case MANAGER_REJECTED:
+                nextSteps = "Nous sommes désolés de vous informer que votre candidature n'a pas été retenue pour ce poste après examen par notre équipe. Nous vous encourageons à consulter nos autres offres d'emploi.";
                 break;
             case PHONE_SCREENING:
                 nextSteps = "Vous serez prochainement contacté(e) pour un entretien téléphonique.";

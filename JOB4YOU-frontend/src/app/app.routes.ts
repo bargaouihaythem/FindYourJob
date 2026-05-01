@@ -20,6 +20,9 @@ export const routes: Routes = [
   // Candidate routes
   { path: 'candidate/my-applications', loadComponent: () => import('./pages/candidate/my-applications/my-applications.component').then(m => m.MyApplicationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_USER'] } },
   { path: 'candidate/my-interviews', loadComponent: () => import('./pages/candidate/my-interviews/my-interviews.component').then(m => m.MyInterviewsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_USER'] } },
+
+  // Manager routes — lecture seule, dossiers validés par RH uniquement
+  { path: 'manager/candidates', loadComponent: () => import('./pages/admin/candidates/candidates.component').then(m => m.CandidatesComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_HR'] } },
   
   // Admin routes
   { path: 'admin/dashboard', loadComponent: () => import('./pages/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },

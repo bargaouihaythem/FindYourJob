@@ -10,6 +10,17 @@
         <p class="text-muted mb-0">{{ totalInterviews }} entretien(s) au total</p>
       </div>
       <div class="col-md-6 text-end">
+        <!-- Toggle Calendrier / Liste -->
+        <div class="btn-group me-2">
+          <button class="btn" [class.btn-primary]="!showCalendarView" [class.btn-outline-secondary]="showCalendarView"
+                  (click)="toggleCalendarView()" *ngIf="showCalendarView">
+            <i class="fas fa-list me-1"></i> Liste
+          </button>
+          <button class="btn" [class.btn-primary]="showCalendarView" [class.btn-outline-secondary]="!showCalendarView"
+                  (click)="toggleCalendarView()" *ngIf="!showCalendarView">
+            <i class="fas fa-calendar me-1"></i> Calendrier
+          </button>
+        </div>
         <div class="btn-group me-2">
           <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fas fa-download me-2"></i>
@@ -145,8 +156,73 @@
     {{ error }}
   </div>
 
+  <!-- ========== VUE CALENDRIER PLANNING ========== -->
+  <div *ngIf="!loading && !error && showCalendarView" class="card mb-4">
+    <div class="card-header d-flex align-items-center justify-content-between">
+      <button class="btn btn-sm btn-outline-secondary" (click)="prevMonth()">
+        <i class="fas fa-chevron-left"></i>
+      </button>
+      <h5 class="mb-0 text-capitalize">
+        <i class="fas fa-calendar-alt me-2 text-primary"></i>
+        {{ getCalendarMonthLabel() }}
+      </h5>
+      <button class="btn btn-sm btn-outline-secondary" (click)="nextMonth()">
+        <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+    <div class="card-body p-2">
+      <!-- Day headers -->
+      <div class="row g-0 mb-1">
+        <div class="col text-center fw-bold text-muted small py-1" *ngFor="let d of ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim']">
+          {{ d }}
+        </div>
+      </div>
+      <!-- Calendar grid -->
+      <div class="row g-0" *ngFor="let week of [0,1,2,3,4,5]; let wi = index">
+        <ng-container *ngIf="calendarDays.slice(wi*7, wi*7+7) as weekDays">
+          <ng-container *ngIf="weekDays.length > 0">
+            <div class="col border p-1" style="min-height:90px;"
+                 *ngFor="let day of weekDays"
+                 [style.background]="isToday(day.date) ? '#eff6ff' : isCurrentMonth(day.date) ? '#fff' : '#f9fafb'">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <span class="small fw-bold"
+                      [class.text-primary]="isToday(day.date)"
+                      [class.text-muted]="!isCurrentMonth(day.date)">
+                  {{ day.date.getDate() }}
+                </span>
+                <span *ngIf="isToday(day.date)" class="badge bg-primary" style="font-size:0.6rem;">Auj.</span>
+              </div>
+              <div *ngFor="let iv of day.interviews" class="mb-1">
+                <span class="badge w-100 text-start text-truncate"
+                      [style.background-color]="getInterviewDotColor(iv.status) + '22'"
+                      [style.color]="getInterviewDotColor(iv.status)"
+                      [style.border]="'1px solid ' + getInterviewDotColor(iv.status)"
+                      style="font-size:0.65rem; cursor:pointer;"
+                      (click)="openConsultationModal(iv)"
+                      [title]="iv.candidateName + ' — ' + getStatusText(iv.status)">
+                  {{ iv.interviewDate | date:'HH:mm' }} {{ iv.candidateName || 'Candidat' }}
+                </span>
+              </div>
+              <button *ngIf="isCurrentMonth(day.date)" class="btn btn-link btn-sm p-0 mt-1 text-muted"
+                      style="font-size:0.65rem;" (click)="openInterviewModal()" title="Nouvel entretien ce jour">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </ng-container>
+        </ng-container>
+      </div>
+      <!-- Legend -->
+      <div class="d-flex gap-3 mt-2 px-1">
+        <span class="small"><span class="badge me-1" style="background:#fef3c7;color:#92400e;border:1px solid #f59e0b;">■</span>Planifié</span>
+        <span class="small"><span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;border:1px solid #3b82f6;">■</span>En cours</span>
+        <span class="small"><span class="badge me-1" style="background:#dcfce7;color:#15803d;border:1px solid #22c55e;">■</span>Terminé</span>
+        <span class="small"><span class="badge me-1" style="background:#fee2e2;color:#dc2626;border:1px solid #ef4444;">■</span>Annulé</span>
+      </div>
+    </div>
+  </div>
+
   <!-- Interviews Table -->
-  <div *ngIf="!loading && !error" class="card">
+  <div *ngIf="!loading && !error && !showCalendarView" class="card">
     <div class="card-header">
       <h5 class="card-title mb-0">
         <i class="fas fa-list me-2"></i>

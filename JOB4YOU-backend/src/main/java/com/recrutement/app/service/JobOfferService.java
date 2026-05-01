@@ -209,6 +209,7 @@ public class JobOfferService {
         jobOffer.setLocation(request.getLocation());
         jobOffer.setSalaryRange(request.getSalaryRange());
         jobOffer.setDeadline(request.getDeadline());
+        jobOffer.setManagerEmail(request.getManagerEmail());
         
         if (request.getStatus() != null) {
             jobOffer.setStatus(request.getStatus());

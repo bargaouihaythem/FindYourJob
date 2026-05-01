@@ -42,7 +42,7 @@ export class HeaderComponent {
   }
 
   isCandidate(): boolean {
-    return this.isAuthenticated() && !this.isAdmin() && !this.isHR() && !this.isManager();
+    return this.authService.isCandidate();
   }
 
   logout(): void {

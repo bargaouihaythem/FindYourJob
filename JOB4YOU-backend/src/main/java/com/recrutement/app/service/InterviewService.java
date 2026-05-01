@@ -50,6 +50,9 @@ public class InterviewService {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private N8nService n8nService;
+
     /**
      * Planifie un nouvel entretien
      */
@@ -75,10 +78,13 @@ public class InterviewService {
         updateCandidateStatus(candidate, interviewRequest.getType());
 
         Interview savedInterview = interviewRepository.save(interview);
-        
-        // Envoyer un e-mail d'invitation au candidat
+
+        // Envoyer un e-mail d'invitation via Spring Mail
         notificationService.sendInterviewInvitation(savedInterview);
-        
+
+        // Déclencher l'Agent 3 n8n (Google Calendar + email enrichi) en arrière-plan
+        n8nService.triggerAgent3Scheduler(savedInterview);
+
         return new InterviewResponse(savedInterview);
     }
 
@@ -229,21 +235,26 @@ public class InterviewService {
      * Met à jour le statut du candidat en fonction du type d'entretien
      */
     private void updateCandidateStatus(Candidate candidate, Interview.InterviewType interviewType) {
-        switch (interviewType) {
-            case PHONE_SCREENING:
-                candidate.setStatus(Candidate.CandidateStatus.PHONE_SCREENING);
-                break;
-            case TECHNICAL:
-                candidate.setStatus(Candidate.CandidateStatus.TECHNICAL_TEST);
-                break;
-            case HR:
-            case MANAGER:
-            case GROUP:
-                candidate.setStatus(Candidate.CandidateStatus.INTERVIEW);
-                break;
-            case FINAL:
-                candidate.setStatus(Candidate.CandidateStatus.FINAL_INTERVIEW);
-                break;
+        // Si le candidat est déjà ACCEPTED, l'entretien planifié → INTERVIEW_SCHEDULED
+        if (candidate.getStatus() == Candidate.CandidateStatus.ACCEPTED) {
+            candidate.setStatus(Candidate.CandidateStatus.INTERVIEW_SCHEDULED);
+        } else {
+            switch (interviewType) {
+                case PHONE_SCREENING:
+                    candidate.setStatus(Candidate.CandidateStatus.PHONE_SCREENING);
+                    break;
+                case TECHNICAL:
+                    candidate.setStatus(Candidate.CandidateStatus.TECHNICAL_TEST);
+                    break;
+                case HR:
+                case MANAGER:
+                case GROUP:
+                    candidate.setStatus(Candidate.CandidateStatus.INTERVIEW);
+                    break;
+                case FINAL:
+                    candidate.setStatus(Candidate.CandidateStatus.FINAL_INTERVIEW);
+                    break;
+            }
         }
         candidate.setLastUpdated(LocalDateTime.now());
         candidateRepository.save(candidate);

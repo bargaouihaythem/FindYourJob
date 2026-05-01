@@ -33,5 +33,7 @@ public class JobOfferRequest {
 
     @NotNull(message = "La date limite est obligatoire")
     private LocalDateTime deadline;
+
+    private String managerEmail;
 }
 

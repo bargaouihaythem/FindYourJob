@@ -50,6 +50,15 @@ public class Candidate {
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
 
+    @Column(name = "ai_score")
+    private Integer aiScore;
+
+    @Column(name = "ai_summary", columnDefinition = "TEXT")
+    private String aiSummary;
+
+    @Column(name = "ai_recommendation")
+    private String aiRecommendation;
+
     // Relation avec l'offre d'emploi (nullable pour permettre les candidats sans offre spécifique, comme pour l'amélioration de CV)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_offer_id", nullable = true)
@@ -80,15 +89,19 @@ public class Candidate {
 
     // Enum pour le statut des candidats
     public enum CandidateStatus {
-        APPLIED,           // Candidature soumise
-        CV_REVIEWED,       // CV examiné
-        PHONE_SCREENING,   // Entretien téléphonique
-        TECHNICAL_TEST,    // Test technique
-        INTERVIEW,         // Entretien
-        FINAL_INTERVIEW,   // Entretien final
-        ACCEPTED,          // Accepté
-        REJECTED,          // Rejeté
-        WITHDRAWN          // Candidature retirée
+        APPLIED,              // Candidature soumise
+        CV_REVIEWED,          // CV examiné par RH
+        PHONE_SCREENING,      // Entretien téléphonique
+        TECHNICAL_TEST,       // Test technique
+        INTERVIEW,            // Entretien
+        FINAL_INTERVIEW,      // Entretien final
+        ACCEPTED,             // Accepté (pré-embauche)
+        REJECTED,             // Rejeté (générique — rétrocompatibilité)
+        AUTO_REJECTED,        // Rejeté automatiquement par l'IA (score < seuil)
+        MANAGER_REJECTED,     // Rejeté manuellement par le manager/RH
+        INTERVIEW_SCHEDULED,  // Entretien planifié (candidat ACCEPTED → agenda confirmé)
+        HIRED,                // Embauché — décision finale positive post-entretien
+        WITHDRAWN             // Candidature retirée
     }
 
 	

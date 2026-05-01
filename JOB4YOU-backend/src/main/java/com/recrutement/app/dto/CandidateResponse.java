@@ -29,6 +29,9 @@ public class CandidateResponse {
     private CVResponse cv;
     private Integer interviewsCount;
     private Integer feedbacksCount;
+    private Integer aiScore;
+    private String aiSummary;
+    private String aiRecommendation;
 
     // Constructeur pour mapper depuis l'entité Candidate
     public CandidateResponse(Candidate candidate) {
@@ -48,6 +51,9 @@ public class CandidateResponse {
         this.cv = candidate.getCv() != null ? new CVResponse(candidate.getCv()) : null;
         this.interviewsCount = candidate.getInterviews() != null ? candidate.getInterviews().size() : 0;
         this.feedbacksCount = candidate.getFeedbacks() != null ? candidate.getFeedbacks().size() : 0;
+        this.aiScore = candidate.getAiScore();
+        this.aiSummary = candidate.getAiSummary();
+        this.aiRecommendation = candidate.getAiRecommendation();
     }
 }
 

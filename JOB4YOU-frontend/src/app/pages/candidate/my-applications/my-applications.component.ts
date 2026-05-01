@@ -62,7 +62,11 @@ export class MyApplicationsComponent implements OnInit {
       case 'INTERVIEW': return 'Entretien';
       case 'FINAL_INTERVIEW': return 'Entretien final';
       case 'ACCEPTED': return 'Accepté';
+      case 'INTERVIEW_SCHEDULED': return 'Entretien planifié';
+      case 'HIRED': return 'Embauché';
       case 'REJECTED': return 'Rejeté';
+      case 'AUTO_REJECTED': return 'Rejeté (analyse IA)';
+      case 'MANAGER_REJECTED': return 'Rejeté (manager)';
       case 'WITHDRAWN': return 'Candidature retirée';
       default: return status;
     }
@@ -77,7 +81,11 @@ export class MyApplicationsComponent implements OnInit {
       case 'INTERVIEW': return 'badge bg-warning';
       case 'FINAL_INTERVIEW': return 'badge bg-warning';
       case 'ACCEPTED': return 'badge bg-success';
+      case 'INTERVIEW_SCHEDULED': return 'badge bg-info text-dark';
+      case 'HIRED': return 'badge bg-success';
       case 'REJECTED': return 'badge bg-danger';
+      case 'AUTO_REJECTED': return 'badge bg-danger';
+      case 'MANAGER_REJECTED': return 'badge bg-danger';
       case 'WITHDRAWN': return 'badge bg-secondary';
       default: return 'badge bg-secondary';
     }

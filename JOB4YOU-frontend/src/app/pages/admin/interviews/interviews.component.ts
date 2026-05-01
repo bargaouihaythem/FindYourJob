@@ -78,6 +78,9 @@ export class InterviewsComponent implements OnInit {
   // Calendar view
   showCalendarView = false;
   calendarDate = new Date();
+  calendarDays: { date: Date; interviews: Interview[] }[] = [];
+
+  readonly Math = Math;
 
   constructor(
     private interviewService: InterviewService,
@@ -1056,11 +1059,6 @@ export class InterviewsComponent implements OnInit {
   }
 
   /**
-   * Expose Math pour le template
-   */
-  Math = Math;
-
-  /**
    * Filtre les entretiens selon les critères
    */
   filterInterviews(): void {
@@ -1127,6 +1125,78 @@ export class InterviewsComponent implements OnInit {
       this.closeNotificationModal();
     } else {
       this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
+    }
+  }
+
+  // ======== CALENDRIER PLANNING ========
+
+  toggleCalendarView(): void {
+    this.showCalendarView = !this.showCalendarView;
+    if (this.showCalendarView) {
+      this.buildCalendarDays();
+    }
+  }
+
+  buildCalendarDays(): void {
+    const year = this.calendarDate.getFullYear();
+    const month = this.calendarDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+
+    // Start on Monday
+    const startOffset = (firstDay.getDay() + 6) % 7;
+    const days: { date: Date; interviews: Interview[] }[] = [];
+
+    for (let i = 0; i < startOffset; i++) {
+      days.push({ date: new Date(year, month, 1 - startOffset + i), interviews: [] });
+    }
+    for (let d = 1; d <= lastDay.getDate(); d++) {
+      const date = new Date(year, month, d);
+      const dayInterviews = this.interviews.filter(iv => {
+        const ivDate = new Date(iv.interviewDate);
+        return ivDate.getFullYear() === year && ivDate.getMonth() === month && ivDate.getDate() === d;
+      });
+      days.push({ date, interviews: dayInterviews });
+    }
+    // Fill remaining cells to complete last row (multiple of 7)
+    while (days.length % 7 !== 0) {
+      days.push({ date: new Date(year, month + 1, days.length - lastDay.getDate() - startOffset + 1), interviews: [] });
+    }
+    this.calendarDays = days;
+  }
+
+  prevMonth(): void {
+    this.calendarDate = new Date(this.calendarDate.getFullYear(), this.calendarDate.getMonth() - 1, 1);
+    this.buildCalendarDays();
+  }
+
+  nextMonth(): void {
+    this.calendarDate = new Date(this.calendarDate.getFullYear(), this.calendarDate.getMonth() + 1, 1);
+    this.buildCalendarDays();
+  }
+
+  isCurrentMonth(date: Date): boolean {
+    return date.getMonth() === this.calendarDate.getMonth();
+  }
+
+  isToday(date: Date): boolean {
+    const today = new Date();
+    return date.getFullYear() === today.getFullYear() &&
+           date.getMonth() === today.getMonth() &&
+           date.getDate() === today.getDate();
+  }
+
+  getCalendarMonthLabel(): string {
+    return this.calendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  }
+
+  getInterviewDotColor(status: string): string {
+    switch (status) {
+      case 'SCHEDULED': return '#f59e0b';
+      case 'IN_PROGRESS': return '#3b82f6';
+      case 'COMPLETED': return '#22c55e';
+      case 'CANCELLED': return '#ef4444';
+      default: return '#9ca3af';
     }
   }
 }

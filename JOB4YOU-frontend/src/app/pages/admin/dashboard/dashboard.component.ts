@@ -17,6 +17,11 @@ interface DashboardStats {
   scheduledInterviews: number;
   newCandidatesThisMonth: number;
   completedInterviews: number;
+  avgAiScore: number;
+  autoRejected: number;
+  managerRejected: number;
+  interviewScheduled: number;
+  hired: number;
 }
 
 interface RecentActivity {
@@ -44,7 +49,12 @@ export class DashboardComponent implements OnInit {
     activeJobOffers: 0,
     scheduledInterviews: 0,
     newCandidatesThisMonth: 0,
-    completedInterviews: 0
+    completedInterviews: 0,
+    avgAiScore: 0,
+    autoRejected: 0,
+    managerRejected: 0,
+    interviewScheduled: 0,
+    hired: 0
   };
 
   recentActivities: RecentActivity[] = [];
@@ -96,6 +106,18 @@ export class DashboardComponent implements OnInit {
           return candidateDate.getMonth() === currentMonth && 
                  candidateDate.getFullYear() === currentYear;
         }).length;
+
+        // Calculer le score IA moyen
+        const scored = candidates.filter((c: any) => c.aiScore != null && c.aiScore > 0);
+        this.stats.avgAiScore = scored.length > 0
+          ? Math.round(scored.reduce((sum: number, c: any) => sum + c.aiScore, 0) / scored.length)
+          : 0;
+
+        // Compteurs nouveaux statuts
+        this.stats.autoRejected = candidates.filter((c: any) => c.status === 'AUTO_REJECTED').length;
+        this.stats.managerRejected = candidates.filter((c: any) => c.status === 'MANAGER_REJECTED').length;
+        this.stats.interviewScheduled = candidates.filter((c: any) => c.status === 'INTERVIEW_SCHEDULED').length;
+        this.stats.hired = candidates.filter((c: any) => c.status === 'HIRED').length;
       },
       error: (error: any) => {
         this.toastrNotification.showError('Erreur lors du chargement des candidats');

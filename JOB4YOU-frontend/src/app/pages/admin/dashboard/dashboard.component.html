@@ -115,6 +115,29 @@
           </div>
         </div>
       </div>
+
+      <!-- Score IA moyen (Agent 1 n8n) -->
+      <div class="col-xl-3 col-md-6 mb-4">
+        <div class="card border-left-purple shadow h-100 py-2" style="border-left: 4px solid #8B5CF6 !important;">
+          <div class="card-body">
+            <div class="row no-gutters align-items-center">
+              <div class="col mr-2">
+                <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #8B5CF6;">
+                  🤖 Score IA Moyen
+                </div>
+                <div class="h5 mb-0 font-weight-bold" style="color: #8B5CF6;">
+                  {{ stats.avgAiScore > 0 ? stats.avgAiScore + '/100' : '—' }}
+                </div>
+                <div class="small text-muted mt-1">Basé sur {{ stats.totalCandidates }} CV analysés</div>
+              </div>
+              <div class="col-auto">
+                <i class="fas fa-robot fa-2x" style="color: #e9d5ff;"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- Secondary Statistics -->
@@ -177,6 +200,79 @@
               <div class="flex-grow-1 ms-3">
                 <div class="small text-muted">Total entretiens</div>
                 <div class="h6 mb-0">{{ stats.totalInterviews }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IA & Recrutement Statistics -->
+    <div class="row mb-4">
+      <div class="col-12 mb-2">
+        <h6 class="text-muted text-uppercase fw-bold" style="font-size:0.75rem; letter-spacing:0.05em;">
+          <i class="fas fa-robot me-2 text-primary"></i>Statuts IA &amp; Recrutement
+        </h6>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card shadow-sm h-100 border-start border-danger border-3">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-robot fa-2x text-danger opacity-75"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Rejetés par IA</div>
+                <div class="h5 mb-0 fw-bold text-danger">{{ stats.autoRejected }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card shadow-sm h-100 border-start border-warning border-3">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-user-slash fa-2x text-warning opacity-75"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Rejetés (manager)</div>
+                <div class="h5 mb-0 fw-bold text-warning">{{ stats.managerRejected }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card shadow-sm h-100 border-start border-info border-3">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-calendar-check fa-2x text-info opacity-75"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Entretiens planifiés</div>
+                <div class="h5 mb-0 fw-bold text-info">{{ stats.interviewScheduled }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card shadow-sm h-100 border-start border-success border-3">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-user-tie fa-2x text-success opacity-75"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Embauchés</div>
+                <div class="h5 mb-0 fw-bold text-success">{{ stats.hired }}</div>
               </div>
             </div>
           </div>

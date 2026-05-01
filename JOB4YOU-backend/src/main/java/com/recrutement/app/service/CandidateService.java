@@ -40,6 +40,9 @@ public class CandidateService {
     @Autowired
     private NotificationService notificationService;
 
+    @Autowired
+    private N8nService n8nService;
+
     /**
      * Soumet une candidature avec CV
      */
@@ -90,8 +93,11 @@ public class CandidateService {
 
         cvRepository.save(cv);
 
-        // Envoyer un e-mail de confirmation au candidat
+        // Envoyer un e-mail de confirmation au candidat (via Spring Mail)
         notificationService.sendApplicationConfirmation(savedCandidate);
+
+        // Déclencher l'Agent 1 n8n (CV Parser + scoring IA) en arrière-plan
+        n8nService.triggerAgent1CvParser(savedCandidate);
 
         return new CandidateResponse(savedCandidate);
     }
@@ -197,6 +203,30 @@ public class CandidateService {
     }
 
     /**
+     * Vue Manager : retourne uniquement les dossiers validés administrativement par RH.
+     *
+     * RESPONSABILITÉ RH      : a validé le dossier (statut >= CV_REVIEWED)
+     * RESPONSABILITÉ MANAGER : consulte, analyse, donne feedback technique
+     *
+     * Statuts inclus : CV_REVIEWED, PHONE_SCREENING, TECHNICAL_TEST,
+     *                  INTERVIEW, FINAL_INTERVIEW, ACCEPTED
+     * Statuts exclus : APPLIED (pas encore examiné par RH), REJECTED, WITHDRAWN
+     */
+    public List<CandidateResponse> getValidatedCandidatesForManager() {
+        List<Candidate.CandidateStatus> validatedStatuses = List.of(
+                Candidate.CandidateStatus.CV_REVIEWED,
+                Candidate.CandidateStatus.PHONE_SCREENING,
+                Candidate.CandidateStatus.TECHNICAL_TEST,
+                Candidate.CandidateStatus.INTERVIEW,
+                Candidate.CandidateStatus.FINAL_INTERVIEW,
+                Candidate.CandidateStatus.ACCEPTED
+        );
+        return candidateRepository.findByStatusIn(validatedStatuses).stream()
+                .map(CandidateResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Recherche des candidats par nom
      */
     public List<CandidateResponse> searchCandidatesByName(String name) {
@@ -206,17 +236,66 @@ public class CandidateService {
     }
 
     /**
-     * Met à jour le statut d'un candidat
+     * Met à jour le statut d'un candidat.
+     *
+     * Responsabilités :
+     *   RH          → valide administrativement (ex. CV_REVIEWED) via PATCH /candidates/{id}/status
+     *   Spring Boot → persiste le nouveau statut, déclenche Agent 2 si validation RH
+     *   n8n Agent 2 → notifie le manager, envoie le dossier, relance si nécessaire
      */
     @Transactional
     public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
-        candidate.setStatus(status);
+        // REJECTED générique envoyé par le frontend → MANAGER_REJECTED (décision humaine)
+        // AUTO_REJECTED est réservé au flux IA via saveAiScore()
+        Candidate.CandidateStatus effectiveStatus = (status == Candidate.CandidateStatus.REJECTED)
+                ? Candidate.CandidateStatus.MANAGER_REJECTED
+                : status;
+
+        candidate.setStatus(effectiveStatus);
         candidate.setLastUpdated(LocalDateTime.now());
 
         Candidate updatedCandidate = candidateRepository.save(candidate);
+
+        // Agent 2 — RH a validé le dossier → notifie le manager
+        if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
+            String offreTitre = updatedCandidate.getJobOffer() != null
+                ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
+            String cvUrl = updatedCandidate.getCv() != null
+                ? updatedCandidate.getCv().getFileUrl() : null;
+            String managerEmail = updatedCandidate.getJobOffer() != null
+                && updatedCandidate.getJobOffer().getManagerEmail() != null
+                ? updatedCandidate.getJobOffer().getManagerEmail()
+                : "bargaouihaythem1@gmail.com";
+            String nomComplet = updatedCandidate.getFirstName() + " " + updatedCandidate.getLastName();
+            n8nService.triggerAgent2HrValidation(
+                updatedCandidate.getId(), updatedCandidate.getEmail(), nomComplet,
+                offreTitre, cvUrl, effectiveStatus.name(), managerEmail
+            );
+        }
+
+        // Agent 3 — Décision finale → email au candidat
+        // AUTO_REJECTED    = rejeté par l'IA (score < seuil)
+        // MANAGER_REJECTED = rejeté manuellement par le manager/RH
+        // ACCEPTED         = accepté (pré-embauche)
+        // HIRED            = embauché (confirmation finale post-entretien)
+        if (effectiveStatus == Candidate.CandidateStatus.ACCEPTED
+                || effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
+                || effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
+                || effectiveStatus == Candidate.CandidateStatus.REJECTED
+                || effectiveStatus == Candidate.CandidateStatus.HIRED) {
+            String offreTitre = updatedCandidate.getJobOffer() != null
+                ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
+            String nomComplet = updatedCandidate.getFirstName() + " " + updatedCandidate.getLastName();
+            n8nService.triggerAgent3FinalDecision(
+                updatedCandidate.getId(), updatedCandidate.getEmail(), nomComplet,
+                offreTitre, effectiveStatus.name(),
+                updatedCandidate.getAiSummary(), updatedCandidate.getAiRecommendation()
+            );
+        }
+
         return new CandidateResponse(updatedCandidate);
     }
 
@@ -227,6 +306,35 @@ public class CandidateService {
         return candidateRepository.findByEmail(email).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Sauvegarde le score IA calculé par l'Agent 1 n8n
+     */
+    /**
+     * Score IA seuil : >= 60 → CV_REVIEWED automatique (Agent 2 notifie manager)
+     *                  < 60  → REJECTED automatique    (Agent 3 envoie email refus)
+     */
+    private static final int AI_SCORE_THRESHOLD = 60;
+
+    @Transactional
+    public CandidateResponse saveAiScore(Long id, Integer score, String summary, String recommendation) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+
+        candidate.setAiScore(score);
+        if (summary != null) candidate.setAiSummary(summary);
+        if (recommendation != null) candidate.setAiRecommendation(recommendation);
+        candidate.setLastUpdated(LocalDateTime.now());
+        Candidate saved = candidateRepository.save(candidate);
+
+        // Auto-transition basée sur le score IA
+        Candidate.CandidateStatus newStatus = score >= AI_SCORE_THRESHOLD
+                ? Candidate.CandidateStatus.CV_REVIEWED     // bon score → notifie manager (Agent 2)
+                : Candidate.CandidateStatus.AUTO_REJECTED;  // score bas → rejeté par IA (Agent 3)
+
+        // Déléguer à updateCandidateStatus pour déclencher Agent 2 ou Agent 3
+        return updateCandidateStatus(saved.getId(), newStatus);
     }
 
     /**

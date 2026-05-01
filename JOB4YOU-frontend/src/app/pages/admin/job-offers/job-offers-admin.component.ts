@@ -61,7 +61,8 @@ export class JobOffersAdminComponent implements OnInit {
       salary: [''], // Ajout du contrôle salary
       salaryRange: [''],
       status: ['ACTIVE', [Validators.required]],
-      deadline: ['', [Validators.required]]
+      deadline: ['', [Validators.required]],
+      managerEmail: ['', [Validators.email]]
     });
   }
 
@@ -189,7 +190,8 @@ export class JobOffersAdminComponent implements OnInit {
         salary: jobOffer.salary !== undefined && jobOffer.salary !== null && String(jobOffer.salary) !== '' ? Number(jobOffer.salary) : '',
         salaryRange: jobOffer.salaryRange || '',
         status: jobOffer.status || 'ACTIVE',
-        deadline: jobOffer.deadline ? jobOffer.deadline.substring(0, 16) : '' // pour input type="datetime-local"
+        deadline: jobOffer.deadline ? jobOffer.deadline.substring(0, 16) : '', // pour input type="datetime-local"
+        managerEmail: jobOffer.managerEmail || ''
       });
     } else {
       this.jobOfferForm.reset();

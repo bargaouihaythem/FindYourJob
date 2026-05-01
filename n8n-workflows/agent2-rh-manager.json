@@ -1,0 +1,53 @@
+{
+  "name": "Agent 2 — RH vers Manager (dossier validé)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent2-rh-manager",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-agent2",
+      "name": "Webhook — Dossier validé par RH",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "webhookId": "agent2-rh-manager"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nconst candidateId   = data.candidateId;\nconst firstName     = data.firstName || 'Candidat';\nconst lastName      = data.lastName  || '';\nconst jobTitle      = data.jobOfferTitle || 'le poste';\nconst status        = data.status || 'CV_REVIEWED';\nconst cvUrl         = data.cvUrl  || null;\nconst email         = data.email  || '';\nconst hrName        = data.updatedBy || 'RH';\nconst managerEmail  = data.managerEmail || null;\n\n// Mapping statut → label lisible\nconst statusLabels = {\n  CV_REVIEWED:       '✅ CV validé — en attente d\\'analyse Manager',\n  PHONE_SCREENING:   '📞 Pré-qualification téléphonique',\n  TECHNICAL_TEST:    '💻 Test technique à planifier',\n  INTERVIEW:         '🎤 Entretien à planifier',\n  FINAL_INTERVIEW:   '🏆 Entretien final',\n  ACCEPTED:          '🎉 Candidat accepté',\n  REJECTED:          '❌ Candidat refusé'\n};\nconst statusLabel = statusLabels[status] || status;\nconst profileUrl = `http://localhost:4200/admin/candidates`;\n\nreturn [{ json: {\n  candidateId, firstName, lastName, email, jobTitle,\n  status, statusLabel, cvUrl, hrName, managerEmail, profileUrl,\n  validatedAt: new Date().toISOString()\n} }];"
+      },
+      "id": "prepare-data",
+      "name": "Préparer données dossier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@job4you.com",
+        "toEmail": "={{ $json.managerEmail || 'manager1@job4you.com' }}",
+        "subject": "📋 Nouveau dossier à examiner — {{ $json.firstName }} {{ $json.lastName }} / {{ $json.jobTitle }}",
+        "emailType": "html",
+        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Nouveau dossier validé par RH</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Dossier à examiner</h2>\n    \n    <div style=\"background: white; border-left: 4px solid #1e40af; padding: 16px; margin: 16px 0;\">\n      <table style=\"width:100%; border-collapse: collapse;\">\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Candidat</td><td style=\"font-weight:bold;\">{{ $json.firstName }} {{ $json.lastName }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Email</td><td>{{ $json.email }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Poste</td><td style=\"font-weight:bold;\">{{ $json.jobTitle }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Statut</td><td>{{ $json.statusLabel }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Validé par</td><td>{{ $json.hrName }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Date</td><td>{{ $json.validatedAt }}</td></tr>\n      </table>\n    </div>\n\n    <a href=\"{{ $json.profileUrl }}\" style=\"display:inline-block; background:#1e40af; color:white; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; margin-top:8px;\">👁️ Voir le dossier sur JOB4YOU</a>\n\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par JOB4YOU Agent 2.\n    </p>\n  </div>\n</body></html>"
+      },
+      "id": "email-manager",
+      "name": "Email — Manager (dossier validé)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [720, 300]
+    }
+  ],
+  "connections": {
+    "Webhook — Dossier validé par RH": {
+      "main": [[ { "node": "Préparer données dossier", "type": "main", "index": 0 } ]]
+    },
+    "Préparer données dossier": {
+      "main": [[ { "node": "Email — Manager (dossier validé)", "type": "main", "index": 0 } ]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "tags": ["job4you", "agent2", "rh-manager"]
+}

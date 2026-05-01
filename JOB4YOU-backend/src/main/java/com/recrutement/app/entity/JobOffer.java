@@ -40,6 +40,9 @@ public class JobOffer {
     @Column(name = "salary_range")
     private String salaryRange;
 
+    @Column(name = "manager_email")
+    private String managerEmail;
+
     @Enumerated(EnumType.STRING)
     private JobStatus status = JobStatus.ACTIVE;
 

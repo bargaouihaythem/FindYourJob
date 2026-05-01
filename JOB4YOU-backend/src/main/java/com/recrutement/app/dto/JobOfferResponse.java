@@ -26,6 +26,7 @@ public class JobOfferResponse {
     private LocalDateTime deadline;
     private String createdByUsername;
     private Long candidatesCount;
+    private String managerEmail;
 
     // Constructeur pour mapper depuis l'entité JobOffer
     public JobOfferResponse(JobOffer jobOffer) {
@@ -43,6 +44,7 @@ public class JobOfferResponse {
         this.deadline = jobOffer.getDeadline();
         this.createdByUsername = jobOffer.getCreatedBy() != null ? jobOffer.getCreatedBy().getUsername() : null;
         this.candidatesCount = (long) (jobOffer.getCandidates() != null ? jobOffer.getCandidates().size() : 0);
+        this.managerEmail = jobOffer.getManagerEmail();
     }
 }
 

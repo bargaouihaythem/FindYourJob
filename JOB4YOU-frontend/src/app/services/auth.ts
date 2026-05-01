@@ -181,6 +181,15 @@ export class AuthService {
     return this.hasRole('ROLE_MANAGER');
   }
 
+  /**
+   * Candidat : rôle ROLE_USER
+   * Peut consulter offres, postuler, suivre sa candidature.
+   * Ne peut PAS valider ni planifier.
+   */
+  isCandidate(): boolean {
+    return this.hasRole('ROLE_USER');
+  }
+
   getAuthHeaders(): HttpHeaders {
     const token = this.getToken();
     return new HttpHeaders({

@@ -7,17 +7,42 @@
           <i class="fas fa-users me-2 text-primary"></i>
           Gestion des Candidats
         </h1>
-        <p class="text-muted mb-0">{{ totalCandidates }} candidat(s) au total</p>
+        <div class="d-flex align-items-center gap-2 mt-1">
+          <span class="badge bg-primary rounded-pill fs-6 px-3">{{ totalCandidates }}</span>
+          <span class="text-muted">candidat{{ totalCandidates > 1 ? 's' : '' }} au total</span>
+          <span *ngIf="filteredCandidates.length !== totalCandidates" class="badge bg-warning text-dark rounded-pill px-2">
+            {{ filteredCandidates.length }} résultat{{ filteredCandidates.length > 1 ? 's' : '' }} filtrés
+          </span>
+          <!-- Indicateur de rafraîchissement automatique -->
+          <span *ngIf="isRefreshing" class="text-muted small">
+            <i class="fas fa-sync-alt fa-spin me-1"></i>Mise à jour…
+          </span>
+          <span *ngIf="!isRefreshing" class="text-muted small" title="Rafraîchissement automatique toutes les 30s">
+            <i class="fas fa-circle text-success me-1" style="font-size:0.5em;vertical-align:middle"></i>Live
+          </span>
+        </div>
       </div>
       <div class="col-md-6 text-end">
         <button class="btn btn-outline-secondary me-2" (click)="exportCandidates()">
           <i class="fas fa-download me-2"></i>
           Exporter
         </button>
-        <button class="btn btn-primary" (click)="openCandidateModal()">
+        <button class="btn me-2" 
+                [class]="showRejected ? 'btn-danger' : 'btn-outline-danger'"
+                (click)="toggleShowRejected()"
+                [title]="showRejected ? 'Masquer les rejetés' : 'Afficher les rejetés'">
+          <i class="fas fa-user-times me-2"></i>
+          <span *ngIf="!showRejected">Rejetés ({{ getRejectedCount() }})</span>
+          <span *ngIf="showRejected">Masquer rejetés</span>
+        </button>
+        <!-- RH/Admin only : les managers ont accès en lecture seule -->
+        <button *ngIf="!isManagerView" class="btn btn-primary" (click)="openCandidateModal()">
           <i class="fas fa-plus me-2"></i>
           Nouveau Candidat
         </button>
+        <span *ngIf="isManagerView" class="badge bg-info fs-6 ms-2">
+          <i class="fas fa-eye me-1"></i>Vue Manager — dossiers validés par RH
+        </span>
       </div>
     </div>
   </div>
@@ -47,7 +72,11 @@
             <option value="INTERVIEW">Entretien</option>
             <option value="FINAL_INTERVIEW">Entretien final</option>
             <option value="ACCEPTED">Accepté</option>
-            <option value="REJECTED">Rejeté</option>
+            <option value="INTERVIEW_SCHEDULED">Entretien planifié</option>
+            <option value="HIRED">Embauché</option>
+            <option value="REJECTED">Rejeté (générique)</option>
+            <option value="AUTO_REJECTED">Rejeté (IA)</option>
+            <option value="MANAGER_REJECTED">Rejeté (manager)</option>
             <option value="WITHDRAWN">Candidature retirée</option>
           </select>
         </div>
@@ -110,6 +139,10 @@
                 <i [class]="getSortIcon('status')" class="me-2"></i>
                 Statut
               </th>
+              <th (click)="changeSort('aiScore')" class="sortable text-center">
+                <i class="fas fa-robot me-1 text-purple"></i>
+                Score IA
+              </th>
               <th>CV</th>
               <th (click)="changeSort('createdAt')" class="sortable">
                 <i [class]="getSortIcon('createdAt')" class="me-2"></i>
@@ -147,10 +180,19 @@
               </td>
               <td>
                 <div class="dropdown position-relative">
-                  <button class="btn btn-sm dropdown-toggle p-0 border-0" 
+                  <!-- Statut final : badge non-cliquable -->
+                  <span *ngIf="isStatusLocked(candidate.status)"
+                        [class]="getStatusBadgeClass(candidate.status)"
+                        title="Décision finale IA — non modifiable">
+                    {{ getStatusText(candidate.status) }}
+                    <i class="fas fa-lock ms-1" style="font-size:0.7em"></i>
+                  </span>
+                  <!-- Statut en cours : dropdown modifiable -->
+                  <button *ngIf="!isStatusLocked(candidate.status)"
+                          class="btn btn-sm dropdown-toggle p-0 border-0" 
                           [class]="getStatusBadgeClass(candidate.status)"
                           type="button" 
-                          (click)="toggleStatusDropdown(candidate.id)"
+                          (click)="toggleStatusDropdown(candidate.id, candidate.status)"
                           [attr.aria-expanded]="isStatusDropdownOpen(candidate.id)">
                     {{ getStatusText(candidate.status) }}
                   </button>
@@ -188,6 +230,20 @@
                   </ul>
                 </div>
               </td>
+              <!-- Score IA (Agent 1 n8n) -->
+              <td class="text-center">
+                <ng-container *ngIf="candidate.aiScore != null && candidate.aiScore > 0; else noScore">
+                  <span class="badge rounded-pill px-2 py-1"
+                        [style.background-color]="candidate.aiScore >= 80 ? '#d1fae5' : candidate.aiScore >= 60 ? '#fef3c7' : '#fee2e2'"
+                        [style.color]="candidate.aiScore >= 80 ? '#065f46' : candidate.aiScore >= 60 ? '#92400e' : '#991b1b'"
+                        title="Score analysé par l'Agent 1 n8n">
+                    <i class="fas fa-robot me-1"></i>{{ candidate.aiScore }}/100
+                  </span>
+                </ng-container>
+                <ng-template #noScore>
+                  <span class="text-muted small" title="Analyse IA non encore effectuée">—</span>
+                </ng-template>
+              </td>
               <td>
                 <button *ngIf="candidate.cv && candidate.cv.fileUrl" 
                         class="btn btn-sm btn-outline-primary" 
@@ -204,7 +260,8 @@
               </td>
               <td class="text-center">
                 <div class="btn-group" role="group">
-                  <button class="btn btn-sm btn-outline-primary" 
+                  <!-- Édition : RH/Admin uniquement -->
+                  <button *ngIf="!isManagerView" class="btn btn-sm btn-outline-primary" 
                           (click)="openCandidateModal(candidate)"
                           title="Modifier">
                     <i class="fas fa-edit"></i>
@@ -240,11 +297,18 @@
                       </a></li>
                     </ul>
                   </div>
-                  <button class="btn btn-sm btn-outline-danger" 
+                  <!-- Suppression : RH/Admin uniquement -->
+                  <button *ngIf="!isManagerView" class="btn btn-sm btn-outline-danger" 
                           (click)="openDeleteModal(candidate)"
                           title="Supprimer">
                     <i class="fas fa-trash"></i>
                   </button>
+                  <!-- Feedback : Manager peut accéder directement -->
+                  <a *ngIf="isManagerView" class="btn btn-sm btn-outline-warning"
+                     routerLink="/admin/feedbacks"
+                     title="Donner un feedback technique">
+                    <i class="fas fa-comments"></i>
+                  </a>
                 </div>
               </td>
             </tr>
@@ -252,30 +316,54 @@
         </table>
       </div>
 
-      <!-- Pagination -->
-      <nav *ngIf="totalPages > 1" class="mt-4">
-        <ul class="pagination justify-content-center">
-          <li class="page-item" [class.disabled]="currentPage === 1">
-            <a class="page-link" (click)="changePage(currentPage - 1)">
-              <i class="fas fa-chevron-left"></i>
-            </a>
-          </li>
-          <li *ngFor="let page of [].constructor(totalPages); let i = index" 
-              class="page-item" 
-              [class.active]="currentPage === i + 1">
-            <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
-          </li>
-          <li class="page-item" [class.disabled]="currentPage === totalPages">
-            <a class="page-link" (click)="changePage(currentPage + 1)">
-              <i class="fas fa-chevron-right"></i>
-            </a>
-          </li>
-        </ul>
-        <div class="text-center text-muted">
-          Page {{ currentPage }} sur {{ totalPages }} 
-          ({{ filteredCandidates.length }} candidat(s))
+      <!-- Footer pagination -->
+      <div class="d-flex align-items-center justify-content-between mt-3 pt-3 border-top flex-wrap gap-2">
+        <!-- Info résultats -->
+        <div class="text-muted small">
+          Affichage de
+          <strong>{{ (currentPage - 1) * pageSize + 1 }}</strong>
+          à
+          <strong>{{ Math.min(currentPage * pageSize, filteredCandidates.length) }}</strong>
+          sur
+          <strong>{{ filteredCandidates.length }}</strong>
+          résultat{{ filteredCandidates.length > 1 ? 's' : '' }}
+          <span *ngIf="filteredCandidates.length !== totalCandidates" class="text-warning">
+            (filtrés sur {{ totalCandidates }} au total)
+          </span>
         </div>
-      </nav>
+
+        <!-- Sélecteur nb lignes + pagination -->
+        <div class="d-flex align-items-center gap-3">
+          <div class="d-flex align-items-center gap-2">
+            <label class="text-muted small mb-0">Lignes :</label>
+            <select class="form-select form-select-sm" style="width:80px" [(ngModel)]="pageSize" (change)="onPageSizeChange()">
+              <option [value]="5">5</option>
+              <option [value]="10">10</option>
+              <option [value]="25">25</option>
+              <option [value]="50">50</option>
+            </select>
+          </div>
+          <nav *ngIf="totalPages > 1">
+            <ul class="pagination pagination-sm mb-0">
+              <li class="page-item" [class.disabled]="currentPage === 1">
+                <a class="page-link" (click)="changePage(currentPage - 1)" title="Précédent">
+                  <i class="fas fa-chevron-left"></i>
+                </a>
+              </li>
+              <li *ngFor="let page of [].constructor(totalPages); let i = index"
+                  class="page-item"
+                  [class.active]="currentPage === i + 1">
+                <a class="page-link" (click)="changePage(i + 1)">{{ i + 1 }}</a>
+              </li>
+              <li class="page-item" [class.disabled]="currentPage === totalPages">
+                <a class="page-link" (click)="changePage(currentPage + 1)" title="Suivant">
+                  <i class="fas fa-chevron-right"></i>
+                </a>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -336,7 +424,11 @@
                 <option value="INTERVIEW">Entretien</option>
                 <option value="FINAL_INTERVIEW">Entretien final</option>
                 <option value="ACCEPTED">Accepté</option>
-                <option value="REJECTED">Rejeté</option>
+                <option value="INTERVIEW_SCHEDULED">Entretien planifié</option>
+                <option value="HIRED">Embauché</option>
+                <option value="REJECTED">Rejeté (générique)</option>
+                <option value="AUTO_REJECTED">Rejeté (IA)</option>
+                <option value="MANAGER_REJECTED">Rejeté (manager)</option>
                 <option value="WITHDRAWN">Candidature retirée</option>
               </select>
             </div>
@@ -469,12 +561,12 @@
               <p>
                 <span class="badge"
                       [ngClass]="{
-                        'bg-primary': selectedCandidate.status === 'APPLIED',
-                        'bg-info': selectedCandidate.status === 'CV_REVIEWED',
+                        'bg-success': selectedCandidate.status === 'ACCEPTED' || selectedCandidate.status === 'HIRED',
+                        'bg-info': selectedCandidate.status === 'CV_REVIEWED' || selectedCandidate.status === 'INTERVIEW_SCHEDULED',
                         'bg-warning': selectedCandidate.status === 'PHONE_SCREENING' || selectedCandidate.status === 'TECHNICAL_TEST',
                         'bg-secondary': selectedCandidate.status === 'INTERVIEW' || selectedCandidate.status === 'FINAL_INTERVIEW',
-                        'bg-success': selectedCandidate.status === 'ACCEPTED',
-                        'bg-danger': selectedCandidate.status === 'REJECTED',
+                        'bg-primary': selectedCandidate.status === 'APPLIED',
+                        'bg-danger': selectedCandidate.status === 'REJECTED' || selectedCandidate.status === 'AUTO_REJECTED' || selectedCandidate.status === 'MANAGER_REJECTED',
                         'bg-dark': selectedCandidate.status === 'WITHDRAWN'
                       }">
                   {{ getStatusLabel(selectedCandidate.status) }}
@@ -505,6 +597,78 @@
               <span *ngIf="!selectedCandidate.cv || !selectedCandidate.cv.fileUrl" class="text-muted">
                 Aucun CV disponible
               </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analyse IA (Agent 1 n8n) -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <div class="card border-0 rounded-3" style="background: #f0fdf4; border: 1px solid #86efac !important;">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="fas fa-robot text-success me-2"></i>
+                  <h6 class="mb-0 text-success">Analyse IA — Agent 1 n8n</h6>
+                  <span *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0"
+                        class="ms-auto badge rounded-pill px-3 py-2 fs-6"
+                        [style.background-color]="selectedCandidate.aiScore >= 80 ? '#dcfce7' : selectedCandidate.aiScore >= 60 ? '#fef9c3' : '#fee2e2'"
+                        [style.color]="selectedCandidate.aiScore >= 80 ? '#15803d' : selectedCandidate.aiScore >= 60 ? '#a16207' : '#dc2626'">
+                    Score : {{ selectedCandidate.aiScore }}/100
+                  </span>
+                  <span *ngIf="!selectedCandidate.aiScore || selectedCandidate.aiScore === 0"
+                        class="ms-auto text-muted small">En attente d'analyse…</span>
+                </div>
+                <div *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0">
+                  <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar"
+                         role="progressbar"
+                         [style.width.%]="selectedCandidate.aiScore"
+                         [style.background-color]="selectedCandidate.aiScore >= 80 ? '#22c55e' : selectedCandidate.aiScore >= 60 ? '#f59e0b' : '#ef4444'">
+                    </div>
+                  </div>
+                  <div class="row mt-2">
+                    <div class="col-md-6">
+                      <p class="small mb-1"><i class="fas fa-check-circle text-success me-1"></i> Compétences techniques analysées</p>
+                      <p class="small mb-1"><i class="fas fa-check-circle text-success me-1"></i> Email de confirmation envoyé</p>
+                    </div>
+                    <div class="col-md-6">
+                      <p class="small mb-0 text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Score calculé automatiquement par l'Agent 1 lors de la réception du CV.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Historique activités agents n8n -->
+        <div class="row mt-4">
+          <div class="col-12">
+            <h6 class="text-primary mb-3">
+              <i class="fas fa-history me-2"></i>
+              Activité des Agents n8n
+            </h6>
+            <div class="timeline-simple">
+              <div class="d-flex align-items-start mb-2">
+                <span class="badge rounded-pill me-2" style="background:#dbeafe;color:#1d4ed8;min-width:90px;font-size:0.7rem;">🤖 Agent 1</span>
+                <span class="small text-muted me-2">{{ formatDate(selectedCandidate.applicationDate) }}</span>
+                <span class="small">CV reçu et analysé
+                  <span *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0"> — Score {{ selectedCandidate.aiScore }}/100</span>
+                </span>
+              </div>
+              <div class="d-flex align-items-start mb-2">
+                <span class="badge rounded-pill me-2" style="background:#dbeafe;color:#1d4ed8;min-width:90px;font-size:0.7rem;">📧 Agent 1</span>
+                <span class="small text-muted me-2">{{ formatDate(selectedCandidate.applicationDate) }}</span>
+                <span class="small">Email de confirmation envoyé au candidat</span>
+              </div>
+              <div class="d-flex align-items-start mb-2">
+                <span class="badge rounded-pill me-2" style="background:#f3f4f6;color:#6b7280;min-width:90px;font-size:0.7rem;">👤 RH</span>
+                <span class="small text-muted me-2">—</span>
+                <span class="small text-muted">En attente de validation RH → déclenchera l'Agent 2</span>
+              </div>
             </div>
           </div>
         </div>

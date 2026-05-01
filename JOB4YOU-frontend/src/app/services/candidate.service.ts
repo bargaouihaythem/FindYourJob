@@ -64,4 +64,14 @@ export class CandidateService {
     const headers = this.authService.getAuthHeaders();
     return this.http.get<Candidate[]>(`${this.apiUrl}/by-email/${email}`, { headers });
   }
+
+  /**
+   * Vue Manager : retourne uniquement les dossiers validés par RH (statut CV_REVIEWED ou plus).
+   * MANAGER : peut analyser CV, score IA, donner feedback technique.
+   * N'inclut PAS les candidatures en statut APPLIED (pas encore examinées par RH).
+   */
+  getValidatedCandidates(): Observable<Candidate[]> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<Candidate[]>(`${this.apiUrl}/validated`, { headers });
+  }
 }

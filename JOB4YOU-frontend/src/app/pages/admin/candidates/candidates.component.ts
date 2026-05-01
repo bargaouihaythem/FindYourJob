@@ -1,7 +1,8 @@
-import { Component, OnInit, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { interval, Subscription } from 'rxjs';
 import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { CVService } from '../../../services/cv.service';
@@ -9,6 +10,7 @@ import { NotificationService } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { Candidate, JobOffer } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-candidates',
@@ -17,7 +19,7 @@ import { ToastrNotificationService } from '../../../services/toastr-notification
   templateUrl: './candidates.component.html',
   styleUrl: './candidates.component.scss'
 })
-export class CandidatesComponent implements OnInit {
+export class CandidatesComponent implements OnInit, OnDestroy {
   candidates: Candidate[] = [];
   filteredCandidates: Candidate[] = [];
   jobOffers: any[] = [];
@@ -29,6 +31,7 @@ export class CandidatesComponent implements OnInit {
   pageSize = 10;
   totalCandidates = 0;
   totalPages = 0;
+  readonly Math = Math;
   
   // Filters
   searchForm: FormGroup;
@@ -50,9 +53,24 @@ export class CandidatesComponent implements OnInit {
   
   // Status dropdown management
   openStatusDropdownId: number | null = null;
-  
+
   // Email dropdown management
   openEmailDropdownId: number | null = null;
+
+  // Masquer les candidats rejetés par défaut
+  showRejected = false;
+
+  // Auto-refresh
+  private pollSubscription: Subscription | null = null;
+  private readonly POLL_INTERVAL_MS = 30_000;
+  isRefreshing = false;
+
+  /**
+   * Vue Manager : true si l'utilisateur connecté est MANAGER.
+   * Dans ce mode : lecture seule, seuls les dossiers validés par RH sont visibles.
+   * Dans ce mode : boutons édition/suppression/statut sont cachés.
+   */
+  isManagerView = false;
 
   constructor(
     private candidateService: CandidateService,
@@ -60,7 +78,8 @@ export class CandidatesComponent implements OnInit {
     private cvService: CVService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private toastrNotification: ToastrNotificationService
+    private toastrNotification: ToastrNotificationService,
+    private authService: AuthService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -82,16 +101,53 @@ export class CandidatesComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.isManagerView = this.authService.isManager() && !this.authService.isHR() && !this.authService.isAdmin();
     this.loadCandidates();
     this.loadJobOffers();
     this.setupSearchSubscription();
+    this.startPolling();
+  }
+
+  ngOnDestroy(): void {
+    this.pollSubscription?.unsubscribe();
+  }
+
+  private startPolling(): void {
+    this.pollSubscription = interval(this.POLL_INTERVAL_MS).subscribe(() => {
+      this.silentRefresh();
+    });
+  }
+
+  /** Rafraîchit les données sans afficher le spinner principal */
+  silentRefresh(): void {
+    this.isRefreshing = true;
+    const fetch$ = this.isManagerView
+      ? this.candidateService.getValidatedCandidates()
+      : this.candidateService.getCandidates();
+
+    fetch$.subscribe({
+      next: (candidates: Candidate[]) => {
+        this.candidates = candidates;
+        this.totalCandidates = candidates.length;
+        this.totalPages = Math.ceil(this.totalCandidates / this.pageSize);
+        this.applyFilters();
+        this.isRefreshing = false;
+      },
+      error: () => { this.isRefreshing = false; }
+    });
   }
 
   loadCandidates(): void {
     this.loading = true;
     this.error = null;
-    
-    this.candidateService.getCandidates().subscribe({
+
+    // MANAGER : voit uniquement les dossiers validés par RH (statut CV_REVIEWED+)
+    // RH/ADMIN : voit tous les candidats
+    const fetch$ = this.isManagerView
+      ? this.candidateService.getValidatedCandidates()
+      : this.candidateService.getCandidates();
+
+    fetch$.subscribe({
       next: (candidates: Candidate[]) => {
         this.candidates = candidates;
         this.totalCandidates = candidates.length;
@@ -126,21 +182,48 @@ export class CandidatesComponent implements OnInit {
 
   applyFilters(): void {
     const { searchTerm, status, jobOffer } = this.searchForm.value;
-    
+
     this.filteredCandidates = this.candidates.filter(candidate => {
-      const matchesSearch = !searchTerm || 
+      const matchesSearch = !searchTerm ||
         candidate.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         candidate.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         candidate.email.toLowerCase().includes(searchTerm.toLowerCase());
-      
+
       const matchesStatus = !status || candidate.status === status;
       const matchesJobOffer = !jobOffer || candidate.jobOfferId?.toString() === jobOffer;
-      
-      return matchesSearch && matchesStatus && matchesJobOffer;
+
+      // Masquer REJECTED/AUTO_REJECTED/MANAGER_REJECTED/HIRED/WITHDRAWN par défaut sauf si showRejected = true
+      const isFinal = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
+        || candidate.status === 'MANAGER_REJECTED' || candidate.status === 'WITHDRAWN'
+        || candidate.status === 'HIRED';
+      const matchesVisibility = this.showRejected || !isFinal;
+
+      return matchesSearch && matchesStatus && matchesJobOffer && matchesVisibility;
     });
-    
+
     this.sortCandidates();
     this.updatePagination();
+  }
+
+  toggleShowRejected(): void {
+    this.showRejected = !this.showRejected;
+    this.applyFilters();
+  }
+
+  getRejectedCount(): number {
+    return this.candidates.filter(c =>
+      c.status === 'REJECTED' || c.status === 'AUTO_REJECTED' ||
+      c.status === 'MANAGER_REJECTED' || c.status === 'WITHDRAWN' ||
+      c.status === 'HIRED'
+    ).length;
+  }
+
+  /** Statuts finaux — plus aucune modification possible */
+  isStatusLocked(status: string): boolean {
+    return status === 'ACCEPTED' || status === 'REJECTED' ||
+           status === 'AUTO_REJECTED' || status === 'MANAGER_REJECTED' ||
+           status === 'INTERVIEW_SCHEDULED' || status === 'HIRED' ||
+           status === 'WITHDRAWN';
   }
 
   sortCandidates(): void {
@@ -185,6 +268,11 @@ export class CandidatesComponent implements OnInit {
     }
   }
 
+  onPageSizeChange(): void {
+    this.currentPage = 1;
+    this.totalPages = Math.ceil(this.filteredCandidates.length / this.pageSize);
+  }
+
   changeSort(field: string): void {
     if (this.sortBy === field) {
       this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
@@ -201,7 +289,8 @@ export class CandidatesComponent implements OnInit {
   }
 
   // Status dropdown methods
-  toggleStatusDropdown(candidateId: number): void {
+  toggleStatusDropdown(candidateId: number, currentStatus: string): void {
+    if (this.isStatusLocked(currentStatus)) return;
     this.openStatusDropdownId = this.openStatusDropdownId === candidateId ? null : candidateId;
   }
 
@@ -410,8 +499,7 @@ export class CandidatesComponent implements OnInit {
 
   deleteCandidate(): void {
     if (this.selectedCandidate) {
-      if (confirm('Êtes-vous sûr de vouloir supprimer ce candidat ?')) {
-        this.candidateService.deleteCandidate(this.selectedCandidate.id).subscribe({
+      this.candidateService.deleteCandidate(this.selectedCandidate.id).subscribe({
           next: () => {
             this.toastrNotification.showCandidateDeletedSuccess();
             this.loadCandidates();
@@ -423,7 +511,6 @@ export class CandidatesComponent implements OnInit {
             this.error = 'Erreur lors de la suppression du candidat';
           }
         });
-      }
     }
   }
 
@@ -466,8 +553,21 @@ export class CandidatesComponent implements OnInit {
         return 'ACCEPTED';
       case 'REJECTED':
         return 'REJECTED';
+      case 'AUTO_REJECTED':
+        return 'AUTO_REJECTED';
+      case 'MANAGER_REJECTED':
+        return 'MANAGER_REJECTED';
       case 'INACTIVE':
         return 'WITHDRAWN';
+      // Statuts déjà au format backend — pass-through
+      case 'APPLIED':
+      case 'CV_REVIEWED':
+      case 'PHONE_SCREENING':
+      case 'TECHNICAL_TEST':
+      case 'INTERVIEW':
+      case 'FINAL_INTERVIEW':
+      case 'WITHDRAWN':
+        return status;
       default:
         return 'APPLIED';
     }
@@ -486,8 +586,13 @@ export class CandidatesComponent implements OnInit {
       case 'FINAL_INTERVIEW':
         return 'badge bg-primary';
       case 'ACCEPTED':
+      case 'HIRED':
         return 'badge bg-success';
+      case 'INTERVIEW_SCHEDULED':
+        return 'badge bg-info text-dark';
       case 'REJECTED':
+      case 'AUTO_REJECTED':
+      case 'MANAGER_REJECTED':
         return 'badge bg-danger';
       case 'WITHDRAWN':
         return 'badge bg-secondary';
@@ -614,7 +719,11 @@ export class CandidatesComponent implements OnInit {
       'INTERVIEW': 'Entretien',
       'FINAL_INTERVIEW': 'Entretien final',
       'ACCEPTED': 'Accepté',
+      'INTERVIEW_SCHEDULED': 'Entretien planifié',
+      'HIRED': 'Embauché',
       'REJECTED': 'Rejeté',
+      'AUTO_REJECTED': 'Rejeté (IA)',
+      'MANAGER_REJECTED': 'Rejeté (manager)',
       'WITHDRAWN': 'Candidature retirée'
     };
     return statusLabels[status] || status;

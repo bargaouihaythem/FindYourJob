@@ -25,14 +25,27 @@ public class Role {
     }
 
     // Enum pour les différents types de rôles
+    /**
+     * Mapping des rôles métier :
+     *
+     *  ROLE_USER       → Candidat  : consulter offres, postuler, suivre sa candidature
+     *  ROLE_HR         → RH        : gérer offres, valider dossiers administratifs, envoyer réponses finales
+     *  ROLE_MANAGER    → Manager   : consulter dossiers validés, feedback technique, valider/refuser
+     *  ROLE_ADMIN      → Admin     : gestion utilisateurs, rôles, supervision globale
+     *  ROLE_TEAM_LEAD  → Tech Lead : lecture entretiens et CV (pas de modification)
+     *  ROLE_SENIOR_DEV → Senior    : lecture entretiens et CV (pas de modification)
+     *  ROLE_TEAM       → Équipe    : lecture entretiens et CV (pas de modification)
+     *
+     *  Note : ROLE_USER correspond au rôle "Candidat" dans le processus métier.
+     */
     public enum ERole {
-        ROLE_USER,       // Utilisateur standard/Candidats
-        ROLE_HR,         // Ressources Humaines
-        ROLE_MANAGER,    // Manager d'équipe
-        ROLE_ADMIN,      // Administrateur
-        ROLE_TEAM_LEAD,  // Chef d'équipe technique
-        ROLE_SENIOR_DEV, // Développeur senior
-        ROLE_TEAM        // Membre d'équipe générique
+        ROLE_USER,       // Candidat : postuler, consulter offres, suivre statut candidature
+        ROLE_HR,         // RH       : validation administrative, gestion offres, réponse finale
+        ROLE_MANAGER,    // Manager  : validation technique, feedback, demande entretien
+        ROLE_ADMIN,      // Admin    : supervision globale, gestion utilisateurs et rôles
+        ROLE_TEAM_LEAD,  // Tech Lead   : lecture seule (entretiens, CV)
+        ROLE_SENIOR_DEV, // Senior Dev  : lecture seule (entretiens, CV)
+        ROLE_TEAM        // Équipe      : lecture seule (entretiens, CV)
     }
 }
 

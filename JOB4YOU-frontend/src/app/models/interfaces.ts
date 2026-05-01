@@ -53,6 +53,7 @@ export interface JobOffer {
   experienceLevel: string; // Added for backend compatibility
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED';
   deadline: string; // Added for backend compatibility
+  managerEmail?: string;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -70,6 +71,7 @@ export interface JobOfferRequest {
   experienceLevel: string; // Added for backend compatibility
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED'; // Added for backend compatibility
   deadline: string; // Added for backend compatibility
+  managerEmail?: string;
 }
 
 export interface Candidate {
@@ -95,7 +97,8 @@ export interface Candidate {
   skills?: string;
   education?: string;
   applicationDate: Date;
-  status: 'APPLIED' | 'CV_REVIEWED' | 'PHONE_SCREENING' | 'TECHNICAL_TEST' | 'INTERVIEW' | 'FINAL_INTERVIEW' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
+  status: 'APPLIED' | 'CV_REVIEWED' | 'PHONE_SCREENING' | 'TECHNICAL_TEST' | 'INTERVIEW' | 'FINAL_INTERVIEW' | 'ACCEPTED' | 'REJECTED' | 'AUTO_REJECTED' | 'MANAGER_REJECTED' | 'INTERVIEW_SCHEDULED' | 'HIRED' | 'WITHDRAWN';
+  aiScore?: number;
   jobOfferId: number;
   jobOfferTitle: string;
   jobOffers?: JobOffer[];

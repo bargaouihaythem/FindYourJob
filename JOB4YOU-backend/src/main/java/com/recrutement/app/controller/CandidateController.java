@@ -134,7 +134,7 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or isAnonymous()")
     @Operation(summary = "Mettre à jour le statut d'un candidat")
     public ResponseEntity<CandidateResponse> updateCandidateStatus(
             @PathVariable Long id,
@@ -144,9 +144,35 @@ public class CandidateController {
         return ResponseEntity.ok(response);
     }
 
+    @PatchMapping("/{id}/ai-score")
+    @Operation(summary = "Sauvegarder le score IA calculé par l'Agent 1 n8n")
+    public ResponseEntity<CandidateResponse> saveAiScore(
+            @PathVariable Long id,
+            @RequestParam Integer score,
+            @RequestParam(required = false) String summary,
+            @RequestParam(required = false) String recommendation) {
+        CandidateResponse response = candidateService.saveAiScore(id, score, summary, recommendation);
+        return ResponseEntity.ok(response);
+    }
+
     /**
-     * Récupère les candidatures d'un utilisateur par son email
+     * Vue Manager : retourne uniquement les dossiers validés administrativement par RH
+     * (statut CV_REVIEWED ou plus avancé).
+     *
+     * MANAGER : consulte, analyse le CV + score IA, donne feedback technique
+     * RH/Admin : peuvent aussi utiliser cet endpoint pour filtrer
+     *
+     * ❌ Statut APPLIED exclus : pas encore examiné par RH
+     * ❌ Statuts REJECTED / WITHDRAWN exclus
      */
+    @GetMapping("/validated")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Dossiers validés par RH (vue Manager)", description = "Retourne uniquement les candidats dont le dossier a été validé administrativement par RH")
+    public ResponseEntity<List<CandidateResponse>> getValidatedCandidates() {
+        List<CandidateResponse> response = candidateService.getValidatedCandidatesForManager();
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/by-email/{email}")
     @PreAuthorize("hasRole('USER') or hasRole('ADMIN') or hasRole('HR')")
     @Operation(summary = "Récupérer les candidatures par email", description = "Récupère toutes les candidatures d'un utilisateur par son email")
