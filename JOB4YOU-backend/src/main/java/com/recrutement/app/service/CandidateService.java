@@ -93,6 +93,9 @@ public class CandidateService {
 
         cvRepository.save(cv);
 
+        // Lier le CV au candidat en mémoire pour que l'Agent 1 reçoive l'URL du CV
+        savedCandidate.setCv(cv);
+
         // Envoyer un e-mail de confirmation au candidat (via Spring Mail)
         notificationService.sendApplicationConfirmation(savedCandidate);
 
@@ -284,7 +287,6 @@ public class CandidateService {
         if (effectiveStatus == Candidate.CandidateStatus.ACCEPTED
                 || effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
                 || effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
-                || effectiveStatus == Candidate.CandidateStatus.REJECTED
                 || effectiveStatus == Candidate.CandidateStatus.HIRED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
