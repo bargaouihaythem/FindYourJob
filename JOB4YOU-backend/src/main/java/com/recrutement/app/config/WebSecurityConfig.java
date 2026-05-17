@@ -96,6 +96,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/init/**").permitAll() // Allow role initialization
                 .requestMatchers("/api/candidates/*/ai-score").permitAll() // n8n Agent 1 saves AI score
                 .requestMatchers("/api/candidates/*/status").permitAll() // n8n Agent 1 auto CV_REVIEWED
+                .requestMatchers("/api/notifications/n8n/**").permitAll() // n8n Agent 2 reads daily candidates
                 .requestMatchers("/error").permitAll()     // <-- Ajout pour éviter 401 sur /error
                 
                 // Endpoints pour tous les utilisateurs authentifiés

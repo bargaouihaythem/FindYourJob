@@ -10,6 +10,7 @@ import com.recrutement.app.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -33,6 +34,9 @@ public class NotificationController {
 
     @Autowired
     private InterviewRepository interviewRepository;
+
+    @Value("${n8n.api.key:}")
+    private String n8nApiKey;
 
     /**
      * Envoie un email personnalisé
@@ -65,9 +69,8 @@ public class NotificationController {
     public ResponseEntity<?> getCandidaturesDuJour(
             @RequestHeader(value = "X-N8N-API-Key", required = false) String apiKey) {
 
-        // Vérification simple de la clé API n8n
-        String expectedKey = System.getenv("N8N_API_KEY");
-        if (expectedKey != null && !expectedKey.isBlank() && !expectedKey.equals(apiKey)) {
+        // Vérification simple de la clé API n8n (lue depuis application.properties)
+        if (n8nApiKey != null && !n8nApiKey.isBlank() && !n8nApiKey.equals(apiKey)) {
             return ResponseEntity.status(401).body(Map.of("error", "Clé API invalide"));
         }
 
