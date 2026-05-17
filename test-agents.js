@@ -70,8 +70,14 @@ async function runBilan() {
   console.log('\n==================================================');
   console.log('  BILAN -- Verification webhooks n8n');
   console.log('==================================================');
-  for (var entry of [['Agent 1 -- CV Parser', 'agent1-cv-parser'], ['Agent 2 -- RH Manager', 'agent2-rh-manager'], ['Agent 3 -- Entretien', 'agent3-entretien']]) {
-    await testWebhookDirect(entry[1], { event: 'PING', candidatId: 99, email: 'ping@test.com', nom: 'Test', prenom: 'Ping', offreTitre: 'Test', cvUrl: 'http://test.pdf' });
+  // Chaque agent attend des champs specifiques — payloads par agent
+  var pingPayloads = [
+    ['Agent 1 -- CV Parser', 'agent1-cv-parser', { event: 'PING', candidateId: 99, candidatId: 99, email: 'ping@test.com', nom: 'Test', prenom: 'Ping', offreTitre: 'Poste Test', cvUrl: 'http://test.pdf', cvContent: '' }],
+    ['Agent 2 -- RH Manager', 'agent2-rh-manager', { event: 'PING', candidatId: 99, candidatEmail: 'ping@test.com', candidatNom: 'Test Ping', candidatPrenom: 'Ping', offreTitre: 'Poste Test', cvUrl: 'http://test.pdf', nouveauStatut: 'CV_REVIEWED', managerEmail: 'ping@test.com' }],
+    ['Agent 3 -- Entretien', 'agent3-entretien', { event: 'PING', candidateId: 99, email: 'ping@test.com', nom: 'Test', prenom: 'Ping', offreTitre: 'Poste Test', dateEntretien: new Date().toISOString(), lieu: 'Salle Test', type: 'PING' }],
+  ];
+  for (var entry of pingPayloads) {
+    await testWebhookDirect(entry[1], entry[2]);
   }
   console.log('\n  Tests termines!');
   console.log('  -> Logs n8n: http://localhost:5678');
@@ -113,11 +119,12 @@ async function main() {
   var pdfContent = Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\nxref\n0 4\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n192\n%%EOF');
 
   var boundary = '----FormBoundary' + Date.now();
+  var uniqueEmail = 'test.' + Date.now() + '@test.com';
   var applicationJson = JSON.stringify({
     firstName: 'Test', lastName: 'Candidat',
-    email: 'candidat1@test.com', phone: '0600000000',
+    email: uniqueEmail, phone: '0600000000',
     address: 'Paris, France',
-    coverLetter: 'Je suis passionne par ce poste. Competences: Java 17, Spring Boot 3, Angular 20, PostgreSQL, Docker.',
+    coverLetter: 'Je suis passionne par ce poste. Competences: Java 17, Spring Boot 3, Angular 20, PostgreSQL, Docker, Git, REST API, Agile, Scrum.',
     jobOfferId: offre.id
   });
 
@@ -147,8 +154,8 @@ async function main() {
   var cand = applyR.body;
   console.log('  Candidature creee! ID=' + cand.id + ' Status=' + cand.status);
   console.log('  Agent 1 declenche par Spring Boot automatiquement');
-  console.log('  Attente 6s que Agent 1 traite...');
-  await sleep(6000);
+  console.log('  Attente 15s que Agent 1 traite (emails + callback)...');
+  await sleep(15000);
 
   var candR = await getJSON(BASE + '/api/candidates/' + cand.id, adminToken);
   if (candR.body && candR.body.aiScore !== undefined) {

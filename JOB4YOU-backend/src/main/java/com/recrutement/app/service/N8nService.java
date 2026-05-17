@@ -93,6 +93,8 @@ public class N8nService {
         payload.put("offreTitre", candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : "Candidature générale");
         payload.put("cvUrl", candidate.getCv() != null ? candidate.getCv().getFileUrl() : null);
         payload.put("dateCandidature", candidate.getApplicationDate() != null ? candidate.getApplicationDate().toString() : null);
+        // cvContent = lettre de motivation (texte) pour le scoring IA basé sur mots-clés
+        payload.put("cvContent", candidate.getCoverLetter() != null ? candidate.getCoverLetter() : "");
 
         sendWithRetry(agent1Webhook, payload, "Agent 1 (CV Parser)");
     }

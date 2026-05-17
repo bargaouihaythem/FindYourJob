@@ -57,5 +57,33 @@ public class DatabaseConstraintFixer implements CommandLineRunner {
         }
         
         System.out.println("=== FIN CORRECTION CONTRAINTE ===");
+
+        // Correction contrainte candidates_status_check pour ajouter AUTO_REJECTED, MANAGER_REJECTED, INTERVIEW_SCHEDULED, HIRED, WITHDRAWN
+        try {
+            System.out.println("=== CORRECTION CONTRAINTE candidates_status_check ===");
+            // Vérifier si AUTO_REJECTED est déjà dans la contrainte
+            var rows = jdbcTemplate.queryForList(
+                "SELECT constraint_name FROM information_schema.table_constraints " +
+                "WHERE table_name='candidates' AND constraint_type='CHECK' AND constraint_name='candidates_status_check'"
+            );
+            if (!rows.isEmpty()) {
+                // Vérifier si la contrainte bloque AUTO_REJECTED
+                try {
+                    jdbcTemplate.execute("DO $$ BEGIN PERFORM 1 FROM candidates WHERE status = 'AUTO_REJECTED' LIMIT 0; END $$");
+                    System.out.println("✅ AUTO_REJECTED déjà autorisé");
+                } catch (Exception ignored) {
+                    // Recréer la contrainte avec toutes les valeurs
+                    jdbcTemplate.execute("ALTER TABLE candidates DROP CONSTRAINT IF EXISTS candidates_status_check");
+                    jdbcTemplate.execute(
+                        "ALTER TABLE candidates ADD CONSTRAINT candidates_status_check CHECK (status IN (" +
+                        "'APPLIED','CV_REVIEWED','PHONE_SCREENING','TECHNICAL_TEST','INTERVIEW','FINAL_INTERVIEW'," +
+                        "'ACCEPTED','REJECTED','AUTO_REJECTED','MANAGER_REJECTED','INTERVIEW_SCHEDULED','HIRED','WITHDRAWN'))"
+                    );
+                    System.out.println("✅ Contrainte candidates_status_check corrigée avec AUTO_REJECTED");
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur correction status_check: " + e.getMessage());
+        }
     }
 }
