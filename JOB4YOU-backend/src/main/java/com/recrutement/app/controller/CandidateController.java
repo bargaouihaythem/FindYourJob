@@ -157,8 +157,8 @@ public class CandidateController {
     }
 
     @PostMapping("/{id}/ai-score/recompute")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
-    @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via HuggingFace, avec fallback simulé si indisponible")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or isAnonymous()")
+    @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via Cohere, avec fallback simulé si indisponible. Appelé par n8n Agent 1 à chaque nouvelle candidature, ou manuellement par le RH/Manager.")
     public ResponseEntity<CandidateResponse> recomputeAiScore(@PathVariable Long id) {
         CandidateResponse response = candidateService.recomputeAiScore(id);
         return ResponseEntity.ok(response);
