@@ -16,19 +16,53 @@
       }
     }
     
-    // Styles pour le logo Sésame dans l'authentification
-    .auth-logo {
-      .sesame-logo-auth {
-        max-width: 180px; // Augmentation à 180px pour meilleure visibilité
-        height: auto;
-        margin-bottom: 1rem;
-        filter: brightness(1.1);
-        transition: transform 0.3s ease;
-        
-        &:hover {
-          transform: scale(1.05);
-        }
+    // Styles pour les logos dans l'authentification
+    .auth-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 1rem;
+    }
+
+    .logo-card {
+      background: white;
+      border-radius: 12px;
+      padding: 10px 18px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
       }
+    }
+
+    .sesame-logo-auth {
+      max-width: 140px;
+      height: 44px;
+      object-fit: contain;
+      filter: brightness(1.2) contrast(1.1);
+      transition: filter 0.3s ease;
+    }
+
+    .sopra-logo-auth {
+      max-width: 140px;
+      height: 44px;
+      object-fit: contain;
+      filter: brightness(1.05);
+      transition: filter 0.3s ease;
+    }
+
+    .logo-divider {
+      width: 1px;
+      height: 40px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 1px;
+      flex-shrink: 0;
     }
     
     .card-title {

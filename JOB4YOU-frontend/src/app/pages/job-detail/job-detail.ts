@@ -234,10 +234,12 @@ export class JobDetailComponent implements OnInit {
       this.applicationError = null;
 
       // Créer l'objet ApplicationRequest
+      // Toujours utiliser l'email du compte connecté pour lier la candidature au bon profil
+      const currentUser = this.authService.getCurrentUser();
       const applicationData = {
         firstName: this.applicationForm.value.firstName,
         lastName: this.applicationForm.value.lastName,
-        email: this.applicationForm.value.email,
+        email: currentUser?.email || this.applicationForm.value.email,
         phone: this.applicationForm.value.phone,
         coverLetter: this.applicationForm.value.coverLetter || '',
         jobOfferId: this.job.id

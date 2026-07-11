@@ -191,7 +191,12 @@
                        class="form-control" 
                        id="email" 
                        formControlName="email"
+                       [readonly]="isAuthenticated()"
+                       [class.bg-light]="isAuthenticated()"
                        [class.is-invalid]="applicationForm.get('email')?.invalid && applicationForm.get('email')?.touched">
+                <div class="form-text text-muted" *ngIf="isAuthenticated()">
+                  <small><i class="bi bi-lock-fill"></i> Email de votre compte (non modifiable)</small>
+                </div>
                 <div class="invalid-feedback" 
                      *ngIf="applicationForm.get('email')?.invalid && applicationForm.get('email')?.touched">
                   <span *ngIf="applicationForm.get('email')?.errors?.['required']">L'email est requis.</span>

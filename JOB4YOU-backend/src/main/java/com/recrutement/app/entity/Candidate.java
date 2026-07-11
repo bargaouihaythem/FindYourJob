@@ -59,6 +59,33 @@ public class Candidate {
     @Column(name = "ai_recommendation")
     private String aiRecommendation;
 
+    // ── Score IA par critères (technique / communication / séniorité) ──
+    @Column(name = "ai_score_technical")
+    private Integer aiScoreTechnical;
+
+    @Column(name = "ai_score_communication")
+    private Integer aiScoreCommunication;
+
+    @Column(name = "ai_score_seniority_match")
+    private Integer aiScoreSeniorityMatch;
+
+    /** "COHERE" si calculé via l'API Cohere, "SIMULATED" en mode dégradé (fallback) */
+    @Column(name = "ai_score_source")
+    private String aiScoreSource;
+
+    // ── Correction manuelle du score IA par le RH ──
+    @Column(name = "manual_score")
+    private Integer manualScore;
+
+    @Column(name = "manual_score_reason", columnDefinition = "TEXT")
+    private String manualScoreReason;
+
+    @Column(name = "manual_score_by")
+    private String manualScoreBy;
+
+    @Column(name = "manual_score_date")
+    private LocalDateTime manualScoreDate;
+
     // Relation avec l'offre d'emploi (nullable pour permettre les candidats sans offre spécifique, comme pour l'amélioration de CV)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_offer_id", nullable = true)

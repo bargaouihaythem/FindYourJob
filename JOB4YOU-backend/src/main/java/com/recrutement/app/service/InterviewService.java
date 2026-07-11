@@ -83,7 +83,7 @@ public class InterviewService {
         notificationService.sendInterviewInvitation(savedInterview);
 
         // Déclencher l'Agent 3 n8n (Google Calendar + email enrichi) en arrière-plan
-        n8nService.triggerAgent3Scheduler(savedInterview);
+        n8nService.triggerAgent2InterviewScheduler(savedInterview);
 
         return new InterviewResponse(savedInterview);
     }

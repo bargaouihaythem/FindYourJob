@@ -192,11 +192,13 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       const matchesStatus = !status || candidate.status === status;
       const matchesJobOffer = !jobOffer || candidate.jobOfferId?.toString() === jobOffer;
 
-      // Masquer REJECTED/AUTO_REJECTED/MANAGER_REJECTED/HIRED/WITHDRAWN par défaut sauf si showRejected = true
+      // Masquer REJECTED/AUTO_REJECTED/MANAGER_REJECTED/HIRED/WITHDRAWN par défaut
+      // showRejected=true → afficher UNIQUEMENT les dossiers fermés
+      // showRejected=false → afficher UNIQUEMENT les dossiers actifs
       const isFinal = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
         || candidate.status === 'MANAGER_REJECTED' || candidate.status === 'WITHDRAWN'
         || candidate.status === 'HIRED';
-      const matchesVisibility = this.showRejected || !isFinal;
+      const matchesVisibility = this.showRejected ? isFinal : !isFinal;
 
       return matchesSearch && matchesStatus && matchesJobOffer && matchesVisibility;
     });

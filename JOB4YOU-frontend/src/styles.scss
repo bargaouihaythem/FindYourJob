@@ -567,16 +567,21 @@ body {
 
 .sesame-logo-auth {
   display: block;
-  max-width: 180px; // Augmentation à 180px pour meilleure visibilité
+  max-width: 180px;
   height: auto;
   margin: 0 auto 1rem;
-  filter: brightness(1.1);
-  transition: transform 0.3s ease;
+  filter: brightness(1.2) contrast(1.1);
+  transition: filter 0.3s ease;
   image-rendering: crisp-edges;
-  
-  &:hover {
-    transform: scale(1.05);
-  }
+}
+
+.sopra-logo-auth {
+  display: block;
+  max-width: 180px;
+  height: auto;
+  filter: brightness(1.05);
+  transition: filter 0.3s ease;
+  image-rendering: crisp-edges;
 }
 
 // Styles responsifs pour le logo

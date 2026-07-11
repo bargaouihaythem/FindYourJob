@@ -19,6 +19,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -153,6 +154,53 @@ public class CandidateController {
             @RequestParam(required = false) String recommendation) {
         CandidateResponse response = candidateService.saveAiScore(id, score, summary, recommendation);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/ai-score/recompute")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via HuggingFace, avec fallback simulé si indisponible")
+    public ResponseEntity<CandidateResponse> recomputeAiScore(@PathVariable Long id) {
+        CandidateResponse response = candidateService.recomputeAiScore(id);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/ai-score/override")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Corriger manuellement le score IA (RH)", description = "Le RH peut surcharger le score IA avec une justification obligatoire")
+    public ResponseEntity<?> overrideAiScore(
+            @PathVariable Long id,
+            @RequestParam Integer manualScore,
+            @RequestParam String reason,
+            Authentication authentication) {
+        try {
+            String correctedBy = authentication != null ? authentication.getName() : "RH";
+            CandidateResponse response = candidateService.overrideAiScore(id, manualScore, reason, correctedBy);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/job-offer/{jobOfferId}/ranking")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Classement des candidats d'une offre", description = "Retourne les candidats triés par score effectif décroissant (score manuel RH si présent, sinon score IA)")
+    public ResponseEntity<List<CandidateResponse>> getRanking(@PathVariable Long jobOfferId) {
+        List<CandidateResponse> response = candidateService.getRankingForJobOffer(jobOfferId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/manager-decision")
+    @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Décision du manager sur un dossier validé", description = "ACCEPTED ou REJECTED — le dossier doit déjà être validé par le RH (CV_REVIEWED ou plus avancé)")
+    public ResponseEntity<?> managerDecision(
+            @PathVariable Long id,
+            @RequestParam Candidate.CandidateStatus decision) {
+        try {
+            CandidateResponse response = candidateService.managerDecision(id, decision);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
     }
 
     /**

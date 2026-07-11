@@ -32,6 +32,15 @@ public class CandidateResponse {
     private Integer aiScore;
     private String aiSummary;
     private String aiRecommendation;
+    private Integer aiScoreTechnical;
+    private Integer aiScoreCommunication;
+    private Integer aiScoreSeniorityMatch;
+    private String aiScoreSource;
+    private Integer manualScore;
+    private String manualScoreReason;
+    private String manualScoreBy;
+    private LocalDateTime manualScoreDate;
+    private Integer effectiveScore;
 
     // Constructeur pour mapper depuis l'entité Candidate
     public CandidateResponse(Candidate candidate) {
@@ -54,6 +63,15 @@ public class CandidateResponse {
         this.aiScore = candidate.getAiScore();
         this.aiSummary = candidate.getAiSummary();
         this.aiRecommendation = candidate.getAiRecommendation();
+        this.aiScoreTechnical = candidate.getAiScoreTechnical();
+        this.aiScoreCommunication = candidate.getAiScoreCommunication();
+        this.aiScoreSeniorityMatch = candidate.getAiScoreSeniorityMatch();
+        this.aiScoreSource = candidate.getAiScoreSource();
+        this.manualScore = candidate.getManualScore();
+        this.manualScoreReason = candidate.getManualScoreReason();
+        this.manualScoreBy = candidate.getManualScoreBy();
+        this.manualScoreDate = candidate.getManualScoreDate();
+        this.effectiveScore = candidate.getManualScore() != null ? candidate.getManualScore() : candidate.getAiScore();
     }
 }
 

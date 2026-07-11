@@ -140,7 +140,7 @@ class CandidateServiceTest {
             candidateService.updateCandidateStatus(10L, CandidateStatus.CV_REVIEWED);
 
             verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.CV_REVIEWED));
-            verify(n8nService).triggerAgent2HrValidation(eq(10L), anyString(), anyString(), anyString(), anyString(), anyString(), any());
+            verify(n8nService).triggerAgent3HrValidation(eq(10L), anyString(), anyString(), anyString(), anyString(), anyString(), anyString(), any(), any());
         }
 
         @Test
@@ -152,7 +152,7 @@ class CandidateServiceTest {
 
             candidateService.updateCandidateStatus(11L, CandidateStatus.INTERVIEW);
 
-            verify(n8nService, never()).triggerAgent2HrValidation(any(), any(), any(), any(), any(), any(), any());
+            verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test

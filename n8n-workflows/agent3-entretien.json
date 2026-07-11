@@ -1,19 +1,19 @@
 {
-  "name": "Agent 3 — Planification entretien + Email participants",
+  "name": "Agent 2 — Planification entretien + Email participants",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "agent3-entretien",
+        "path": "agent2-entretien",
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "webhook-agent3",
+      "id": "webhook-agent2",
       "name": "Webhook — Entretien créé",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [240, 300],
-      "webhookId": "agent3-entretien"
+      "webhookId": "agent2-entretien"
     },
     {
       "parameters": {
@@ -68,5 +68,5 @@
     }
   },
   "settings": { "executionOrder": "v1" },
-  "tags": ["job4you", "agent3", "entretien"]
+  "tags": ["job4you", "agent2", "entretien"]
 }

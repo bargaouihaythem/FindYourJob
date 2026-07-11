@@ -1,0 +1,736 @@
+{
+  "updatedAt": "2026-05-17T02:19:20.000Z",
+  "createdAt": "2026-04-26T19:48:13.108Z",
+  "id": "abHc50O9XFYNXIa8",
+  "name": "Agent 1 — CV Parser + Score IA + Emails",
+  "description": null,
+  "active": true,
+  "isArchived": false,
+  "nodes": [
+    {
+      "id": "webhook-agent1",
+      "name": "Webhook — Nouvelle candidature",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent1-cv-parser",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "webhookId": "agent1-cv-parser"
+    },
+    {
+      "id": "score-ia",
+      "name": "Score IA — Analyse CV",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst candidateId = data.candidateId || data.candidatId;\nconst firstName   = data.prenom     || data.firstName  || 'Candidat';\nconst lastName    = data.nom        || data.lastName   || '';\nconst email       = data.email;\nconst cvContent   = data.cvContent  || data.cv || '';\nconst offreTitre  = data.offreTitre || 'le poste';\n\nfunction scoreCV(content) {\n  let score = 40;\n  const c = (content || '').toLowerCase();\n  const keywords = ['javascript','typescript','angular','react','vue','node','spring','java','python','sql','docker','git','agile','scrum','rest','api'];\n  const found = keywords.filter(k => c.includes(k));\n  score += Math.min(found.length * 3, 30);\n  if (c.length > 500)  score += 10;\n  if (c.length > 1500) score += 10;\n  if (c.includes('experience') || c.includes('expérience')) score += 5;\n  if (c.includes('formation') || c.includes('diplôme') || c.includes('master') || c.includes('licence')) score += 5;\n  return Math.min(score, 100);\n}\n\nconst score = scoreCV(cvContent);\n\nconst css = '<style>' +\n  'body{font-family:Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px}' +\n  '.hdr{color:white;padding:28px 20px;text-align:center;border-radius:8px 8px 0 0}' +\n  '.hdr h1{margin:0 0 6px;font-size:22px}' +\n  '.hdr p{margin:0;opacity:.9;font-size:14px}' +\n  '.cnt{background:#fff;padding:30px;border:1px solid #e8eaed;border-top:none;border-radius:0 0 8px 8px}' +\n  '.step{display:flex;align-items:flex-start;margin:12px 0;padding:14px;background:#f8f9fa;border-radius:6px;border-left:4px solid #1a73e8}' +\n  '.num{background:#1a73e8;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;flex-shrink:0;margin-right:12px;font-size:12px}' +\n  '.badge{display:inline-block;padding:6px 20px;border-radius:20px;color:white;font-weight:600;font-size:14px;margin:12px 0}' +\n  '.box{background:#f8f9fa;border-radius:8px;padding:18px;margin:16px 0}' +\n  '.divider{border:none;border-top:1px solid #e8eaed;margin:22px 0}' +\n  '.ftr{text-align:center;margin-top:20px;color:#80868b;font-size:12px}' +\n  '</style>';\n\nconst receiptHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#1a73e8\"><h1>📧 Candidature reçue</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous accusons bonne réception de votre candidature pour le poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#1a73e8;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div class=\"box\"><p style=\"margin:0\">🔍 Votre dossier est en cours d\\'analyse. Vous recevrez un retour très prochainement.</p></div>' +\n  '<hr class=\"divider\">' +\n  '<p style=\"color:#80868b;font-size:13px\">Si vous n\\'êtes pas à l\\'origine de cette candidature, veuillez ignorer cet email.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\nconst goodProfileHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#34a853\"><h1>🌟 Excellente candidature !</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous avons bien reçu votre candidature pour le poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#34a853;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div style=\"text-align:center\"><span class=\"badge\" style=\"background:#34a853\">🌟 Excellent profil</span></div>' +\n  '<div class=\"box\">' +\n  '<p style=\"margin:0 0 8px;font-weight:600\">✅ Votre profil est excellent !</p>' +\n  '<p style=\"margin:0\">Votre dossier a été transmis à notre équipe pour examen approfondi. Nous allons étudier votre candidature avec la plus grande attention.</p>' +\n  '</div>' +\n  '<hr class=\"divider\">' +\n  '<p><strong>Prochaines étapes :</strong></p>' +\n  '<div class=\"step\"><div class=\"num\">1</div><div>Examen de votre dossier par notre équipe RH.</div></div>' +\n  '<div class=\"step\"><div class=\"num\">2</div><div>Si votre profil est retenu, vous serez contacté(e) pour un entretien téléphonique.</div></div>' +\n  '<div class=\"step\"><div class=\"num\">3</div><div>Un retour définitif vous sera communiqué dans les meilleurs délais.</div></div>' +\n  '<hr class=\"divider\">' +\n  '<p>Nous vous remercions pour l\\'intérêt que vous portez à notre entreprise.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\nconst badProfileHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#5f6368\"><h1>Résultat de votre candidature</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous vous remercions de l\\'intérêt que vous portez au poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#5f6368;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div class=\"box\">' +\n  '<p style=\"margin:0 0 8px\">Après analyse de votre dossier, nous avons le regret de vous informer que votre profil ne correspond pas aux critères requis pour ce poste à ce stade.</p>' +\n  '<p style=\"margin:0;color:#80868b;font-size:13px\">Cette décision ne remet pas en cause vos compétences. Elle reflète simplement l\\'adéquation avec les besoins spécifiques du poste.</p>' +\n  '</div>' +\n  '<hr class=\"divider\">' +\n  '<p>Nous conservons votre CV et n\\'hésiterons pas à vous recontacter si une opportunité correspondant mieux à votre profil se présente.</p>' +\n  '<p>Nous vous souhaitons plein succès dans vos recherches.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\n\n\nreturn [{ json: { candidateId, firstName, lastName, email, offreTitre, score, receiptHtml, goodProfileHtml, badProfileHtml } }];"
+      }
+    },
+    {
+      "id": "email-receipt",
+      "name": "Email — Accusé réception",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        720,
+        80
+      ],
+      "parameters": {
+        "fromEmail": "noreply@job4you.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "={{ '📧 Candidature reçue — ' + $json.offreTitre }}",
+        "emailType": "html",
+        "html": "={{ $json.receiptHtml }}"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "id": "save-score",
+      "name": "Spring Boot — Sauvegarder score",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ 'http://localhost:8080/api/candidates/' + $json.candidateId + '/ai-score' }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "score",
+              "value": "={{ $json.score }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": false,
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "check-score",
+      "name": "Score suffisant ? (≥75)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        500
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-score",
+              "leftValue": "={{ $json.score }}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "auto-cv-reviewed",
+      "name": "Spring Boot — Auto CV_REVIEWED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        380
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://localhost:8080/api/candidates/{{ $('Score IA — Analyse CV').first().json.candidateId }}/status",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "CV_REVIEWED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": false,
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "auto-rejected",
+      "name": "Spring Boot — Auto REJECTED",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        620
+      ],
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://localhost:8080/api/candidates/{{ $('Score IA — Analyse CV').first().json.candidateId }}/status",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "REJECTED"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": false,
+      "onError": "stopWorkflow"
+    },
+    {
+      "id": "email-good",
+      "name": "Email — Excellent profil",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1180,
+        380
+      ],
+      "parameters": {
+        "fromEmail": "noreply@job4you.com",
+        "toEmail": "={{ $('Score IA — Analyse CV').first().json.email }}",
+        "subject": "={{ '🌟 Votre profil a retenu notre attention — ' + $('Score IA — Analyse CV').first().json.offreTitre }}",
+        "emailType": "html",
+        "html": "={{ $('Score IA — Analyse CV').first().json.goodProfileHtml }}"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "id": "email-bad",
+      "name": "Email — Profil insuffisant",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1180,
+        620
+      ],
+      "parameters": {
+        "fromEmail": "noreply@job4you.com",
+        "toEmail": "={{ $('Score IA — Analyse CV').first().json.email }}",
+        "subject": "={{ 'Résultat de votre candidature — ' + $('Score IA — Analyse CV').first().json.offreTitre }}",
+        "emailType": "html",
+        "html": "={{ $('Score IA — Analyse CV').first().json.badProfileHtml }}"
+      },
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "onError": "continueRegularOutput",
+      "continueOnFail": true
+    },
+    {
+      "id": "response",
+      "name": "Réponse webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1400,
+        500
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok: true, score: $('Score IA — Analyse CV').first().json.score, candidateId: $('Score IA — Analyse CV').first().json.candidateId } }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Nouvelle candidature": {
+      "main": [
+        [
+          {
+            "node": "Score IA — Analyse CV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score IA — Analyse CV": {
+      "main": [
+        [
+          {
+            "node": "Email — Accusé réception",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spring Boot — Sauvegarder score",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Score suffisant ? (≥75)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score suffisant ? (≥75)": {
+      "main": [
+        [
+          {
+            "node": "Spring Boot — Auto CV_REVIEWED",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Spring Boot — Auto REJECTED",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spring Boot — Auto CV_REVIEWED": {
+      "main": [
+        [
+          {
+            "node": "Email — Excellent profil",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email — Excellent profil": {
+      "main": [
+        [
+          {
+            "node": "Réponse webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spring Boot — Auto REJECTED": {
+      "main": [
+        [
+          {
+            "node": "Email — Profil insuffisant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email — Profil insuffisant": {
+      "main": [
+        [
+          {
+            "node": "Réponse webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "staticData": null,
+  "meta": null,
+  "pinData": null,
+  "versionId": "8387d452-a2e9-4725-9825-82a14f8ba63d",
+  "activeVersionId": "8387d452-a2e9-4725-9825-82a14f8ba63d",
+  "versionCounter": 97,
+  "triggerCount": 1,
+  "shared": [
+    {
+      "updatedAt": "2026-04-26T19:48:13.112Z",
+      "createdAt": "2026-04-26T19:48:13.112Z",
+      "role": "workflow:owner",
+      "workflowId": "abHc50O9XFYNXIa8",
+      "projectId": "Rv3Uuw6mgdDSfHLj",
+      "project": {
+        "updatedAt": "2026-05-17T00:39:39.475Z",
+        "createdAt": "2026-04-26T19:44:00.383Z",
+        "id": "Rv3Uuw6mgdDSfHLj",
+        "name": "Haythem Bargaoui <bargaouihaythem1@gmail.com>",
+        "type": "personal",
+        "icon": null,
+        "description": null,
+        "creatorId": "83659df1-d832-4979-963f-d99e25f33dfc"
+      }
+    }
+  ],
+  "tags": [],
+  "parentFolder": null,
+  "activeVersion": {
+    "updatedAt": "2026-05-17T02:18:59.199Z",
+    "createdAt": "2026-05-17T02:18:59.199Z",
+    "versionId": "8387d452-a2e9-4725-9825-82a14f8ba63d",
+    "workflowId": "abHc50O9XFYNXIa8",
+    "nodes": [
+      {
+        "id": "webhook-agent1",
+        "name": "Webhook — Nouvelle candidature",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [
+          240,
+          300
+        ],
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "agent1-cv-parser",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "webhookId": "agent1-cv-parser"
+      },
+      {
+        "id": "score-ia",
+        "name": "Score IA — Analyse CV",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          480,
+          300
+        ],
+        "parameters": {
+          "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst candidateId = data.candidateId || data.candidatId;\nconst firstName   = data.prenom     || data.firstName  || 'Candidat';\nconst lastName    = data.nom        || data.lastName   || '';\nconst email       = data.email;\nconst cvContent   = data.cvContent  || data.cv || '';\nconst offreTitre  = data.offreTitre || 'le poste';\n\nfunction scoreCV(content) {\n  let score = 40;\n  const c = (content || '').toLowerCase();\n  const keywords = ['javascript','typescript','angular','react','vue','node','spring','java','python','sql','docker','git','agile','scrum','rest','api'];\n  const found = keywords.filter(k => c.includes(k));\n  score += Math.min(found.length * 3, 30);\n  if (c.length > 500)  score += 10;\n  if (c.length > 1500) score += 10;\n  if (c.includes('experience') || c.includes('expérience')) score += 5;\n  if (c.includes('formation') || c.includes('diplôme') || c.includes('master') || c.includes('licence')) score += 5;\n  return Math.min(score, 100);\n}\n\nconst score = scoreCV(cvContent);\n\nconst css = '<style>' +\n  'body{font-family:Arial,sans-serif;line-height:1.6;color:#333;max-width:600px;margin:0 auto;padding:20px}' +\n  '.hdr{color:white;padding:28px 20px;text-align:center;border-radius:8px 8px 0 0}' +\n  '.hdr h1{margin:0 0 6px;font-size:22px}' +\n  '.hdr p{margin:0;opacity:.9;font-size:14px}' +\n  '.cnt{background:#fff;padding:30px;border:1px solid #e8eaed;border-top:none;border-radius:0 0 8px 8px}' +\n  '.step{display:flex;align-items:flex-start;margin:12px 0;padding:14px;background:#f8f9fa;border-radius:6px;border-left:4px solid #1a73e8}' +\n  '.num{background:#1a73e8;color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;flex-shrink:0;margin-right:12px;font-size:12px}' +\n  '.badge{display:inline-block;padding:6px 20px;border-radius:20px;color:white;font-weight:600;font-size:14px;margin:12px 0}' +\n  '.box{background:#f8f9fa;border-radius:8px;padding:18px;margin:16px 0}' +\n  '.divider{border:none;border-top:1px solid #e8eaed;margin:22px 0}' +\n  '.ftr{text-align:center;margin-top:20px;color:#80868b;font-size:12px}' +\n  '</style>';\n\nconst receiptHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#1a73e8\"><h1>📧 Candidature reçue</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous accusons bonne réception de votre candidature pour le poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#1a73e8;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div class=\"box\"><p style=\"margin:0\">🔍 Votre dossier est en cours d\\'analyse. Vous recevrez un retour très prochainement.</p></div>' +\n  '<hr class=\"divider\">' +\n  '<p style=\"color:#80868b;font-size:13px\">Si vous n\\'êtes pas à l\\'origine de cette candidature, veuillez ignorer cet email.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\nconst goodProfileHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#34a853\"><h1>🌟 Excellente candidature !</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous avons bien reçu votre candidature pour le poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#34a853;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div style=\"text-align:center\"><span class=\"badge\" style=\"background:#34a853\">🌟 Excellent profil</span></div>' +\n  '<div class=\"box\">' +\n  '<p style=\"margin:0 0 8px;font-weight:600\">✅ Votre profil est excellent !</p>' +\n  '<p style=\"margin:0\">Votre dossier a été transmis à notre équipe pour examen approfondi. Nous allons étudier votre candidature avec la plus grande attention.</p>' +\n  '</div>' +\n  '<hr class=\"divider\">' +\n  '<p><strong>Prochaines étapes :</strong></p>' +\n  '<div class=\"step\"><div class=\"num\">1</div><div>Examen de votre dossier par notre équipe RH.</div></div>' +\n  '<div class=\"step\"><div class=\"num\">2</div><div>Si votre profil est retenu, vous serez contacté(e) pour un entretien téléphonique.</div></div>' +\n  '<div class=\"step\"><div class=\"num\">3</div><div>Un retour définitif vous sera communiqué dans les meilleurs délais.</div></div>' +\n  '<hr class=\"divider\">' +\n  '<p>Nous vous remercions pour l\\'intérêt que vous portez à notre entreprise.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\nconst badProfileHtml =\n  '<!DOCTYPE html><html><head><meta charset=\"UTF-8\">' + css + '</head><body>' +\n  '<div class=\"hdr\" style=\"background:#5f6368\"><h1>Résultat de votre candidature</h1><p>' + offreTitre + '</p></div>' +\n  '<div class=\"cnt\">' +\n  '<p>Bonjour <strong>' + firstName + ' ' + lastName + '</strong>,</p>' +\n  '<p>Nous vous remercions de l\\'intérêt que vous portez au poste :</p>' +\n  '<p style=\"text-align:center;font-size:17px;font-weight:600;color:#5f6368;margin:18px 0\">' + offreTitre + '</p>' +\n  '<div class=\"box\">' +\n  '<p style=\"margin:0 0 8px\">Après analyse de votre dossier, nous avons le regret de vous informer que votre profil ne correspond pas aux critères requis pour ce poste à ce stade.</p>' +\n  '<p style=\"margin:0;color:#80868b;font-size:13px\">Cette décision ne remet pas en cause vos compétences. Elle reflète simplement l\\'adéquation avec les besoins spécifiques du poste.</p>' +\n  '</div>' +\n  '<hr class=\"divider\">' +\n  '<p>Nous conservons votre CV et n\\'hésiterons pas à vous recontacter si une opportunité correspondant mieux à votre profil se présente.</p>' +\n  '<p>Nous vous souhaitons plein succès dans vos recherches.</p>' +\n  '<p>Cordialement,<br><strong>L\\'équipe de recrutement JOB4YOU</strong></p>' +\n  '</div><div class=\"ftr\"><p>JOB4YOU — Plateforme de recrutement intelligente</p></div>' +\n  '</body></html>';\n\n\n\nreturn [{ json: { candidateId, firstName, lastName, email, offreTitre, score, receiptHtml, goodProfileHtml, badProfileHtml } }];"
+        }
+      },
+      {
+        "id": "email-receipt",
+        "name": "Email — Accusé réception",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          720,
+          80
+        ],
+        "parameters": {
+          "fromEmail": "noreply@job4you.com",
+          "toEmail": "={{ $json.email }}",
+          "subject": "={{ '📧 Candidature reçue — ' + $json.offreTitre }}",
+          "emailType": "html",
+          "html": "={{ $json.receiptHtml }}"
+        },
+        "credentials": {
+          "smtp": {
+            "id": "IfwIPrT1KMjf4UMR",
+            "name": "SMTP account"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "continueOnFail": true
+      },
+      {
+        "id": "save-score",
+        "name": "Spring Boot — Sauvegarder score",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          720,
+          300
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "={{ 'http://localhost:8080/api/candidates/' + $json.candidateId + '/ai-score' }}",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "score",
+                "value": "={{ $json.score }}"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "continueOnFail": false,
+        "onError": "stopWorkflow"
+      },
+      {
+        "id": "check-score",
+        "name": "Score suffisant ? (≥75)",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [
+          720,
+          500
+        ],
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "loose"
+            },
+            "conditions": [
+              {
+                "id": "cond-score",
+                "leftValue": "={{ $json.score }}",
+                "rightValue": 75,
+                "operator": {
+                  "type": "number",
+                  "operation": "gte"
+                }
+              }
+            ],
+            "combinator": "and"
+          }
+        }
+      },
+      {
+        "id": "auto-cv-reviewed",
+        "name": "Spring Boot — Auto CV_REVIEWED",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          960,
+          380
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=http://localhost:8080/api/candidates/{{ $('Score IA — Analyse CV').first().json.candidateId }}/status",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "CV_REVIEWED"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "continueOnFail": false,
+        "onError": "stopWorkflow"
+      },
+      {
+        "id": "auto-rejected",
+        "name": "Spring Boot — Auto REJECTED",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [
+          960,
+          620
+        ],
+        "parameters": {
+          "method": "PATCH",
+          "url": "=http://localhost:8080/api/candidates/{{ $('Score IA — Analyse CV').first().json.candidateId }}/status",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "status",
+                "value": "REJECTED"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "continueOnFail": false,
+        "onError": "stopWorkflow"
+      },
+      {
+        "id": "email-good",
+        "name": "Email — Excellent profil",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          380
+        ],
+        "parameters": {
+          "fromEmail": "noreply@job4you.com",
+          "toEmail": "={{ $('Score IA — Analyse CV').first().json.email }}",
+          "subject": "={{ '🌟 Votre profil a retenu notre attention — ' + $('Score IA — Analyse CV').first().json.offreTitre }}",
+          "emailType": "html",
+          "html": "={{ $('Score IA — Analyse CV').first().json.goodProfileHtml }}"
+        },
+        "credentials": {
+          "smtp": {
+            "id": "IfwIPrT1KMjf4UMR",
+            "name": "SMTP account"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "continueOnFail": true
+      },
+      {
+        "id": "email-bad",
+        "name": "Email — Profil insuffisant",
+        "type": "n8n-nodes-base.emailSend",
+        "typeVersion": 2.1,
+        "position": [
+          1180,
+          620
+        ],
+        "parameters": {
+          "fromEmail": "noreply@job4you.com",
+          "toEmail": "={{ $('Score IA — Analyse CV').first().json.email }}",
+          "subject": "={{ 'Résultat de votre candidature — ' + $('Score IA — Analyse CV').first().json.offreTitre }}",
+          "emailType": "html",
+          "html": "={{ $('Score IA — Analyse CV').first().json.badProfileHtml }}"
+        },
+        "credentials": {
+          "smtp": {
+            "id": "IfwIPrT1KMjf4UMR",
+            "name": "SMTP account"
+          }
+        },
+        "onError": "continueRegularOutput",
+        "continueOnFail": true
+      },
+      {
+        "id": "response",
+        "name": "Réponse webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [
+          1400,
+          500
+        ],
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { ok: true, score: $('Score IA — Analyse CV').first().json.score, candidateId: $('Score IA — Analyse CV').first().json.candidateId } }}"
+        }
+      }
+    ],
+    "connections": {
+      "Webhook — Nouvelle candidature": {
+        "main": [
+          [
+            {
+              "node": "Score IA — Analyse CV",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Score IA — Analyse CV": {
+        "main": [
+          [
+            {
+              "node": "Email — Accusé réception",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Spring Boot — Sauvegarder score",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Score suffisant ? (≥75)",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Score suffisant ? (≥75)": {
+        "main": [
+          [
+            {
+              "node": "Spring Boot — Auto CV_REVIEWED",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Spring Boot — Auto REJECTED",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Spring Boot — Auto CV_REVIEWED": {
+        "main": [
+          [
+            {
+              "node": "Email — Excellent profil",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email — Excellent profil": {
+        "main": [
+          [
+            {
+              "node": "Réponse webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Spring Boot — Auto REJECTED": {
+        "main": [
+          [
+            {
+              "node": "Email — Profil insuffisant",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Email — Profil insuffisant": {
+        "main": [
+          [
+            {
+              "node": "Réponse webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "authors": "import",
+    "name": null,
+    "description": null,
+    "autosaved": false,
+    "workflowPublishHistory": [
+      {
+        "createdAt": "2026-05-17T02:25:04.557Z",
+        "id": 168,
+        "workflowId": "abHc50O9XFYNXIa8",
+        "versionId": "8387d452-a2e9-4725-9825-82a14f8ba63d",
+        "event": "activated",
+        "userId": "83659df1-d832-4979-963f-d99e25f33dfc"
+      },
+      {
+        "createdAt": "2026-05-17T02:25:02.434Z",
+        "id": 167,
+        "workflowId": "abHc50O9XFYNXIa8",
+        "versionId": "8387d452-a2e9-4725-9825-82a14f8ba63d",
+        "event": "deactivated",
+        "userId": "83659df1-d832-4979-963f-d99e25f33dfc"
+      }
+    ]
+  },
+  "scopes": [
+    "workflow:create",
+    "workflow:delete",
+    "workflow:execute",
+    "workflow:execute-chat",
+    "workflow:list",
+    "workflow:move",
+    "workflow:publish",
+    "workflow:read",
+    "workflow:share",
+    "workflow:unpublish",
+    "workflow:update"
+  ],
+  "checksum": "cb93caf18fce434afa0edb87bd2086bb56465b2ef2856733951b511a6147bf77"
+}

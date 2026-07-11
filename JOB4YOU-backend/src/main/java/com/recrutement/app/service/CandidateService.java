@@ -43,6 +43,9 @@ public class CandidateService {
     @Autowired
     private N8nService n8nService;
 
+    @Autowired
+    private AiScoringService aiScoringService;
+
     /**
      * Soumet une candidature avec CV
      */
@@ -262,7 +265,7 @@ public class CandidateService {
 
         Candidate updatedCandidate = candidateRepository.save(candidate);
 
-        // Agent 2 — RH a validé le dossier → notifie le manager
+        // Agent 2 + Agent 3 — Score IA validé → CV_REVIEWED
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
@@ -272,10 +275,17 @@ public class CandidateService {
                 && updatedCandidate.getJobOffer().getManagerEmail() != null
                 ? updatedCandidate.getJobOffer().getManagerEmail()
                 : "bargaouihaythem1@gmail.com";
-            String nomComplet = updatedCandidate.getFirstName() + " " + updatedCandidate.getLastName();
-            n8nService.triggerAgent2HrValidation(
-                updatedCandidate.getId(), updatedCandidate.getEmail(), nomComplet,
-                offreTitre, cvUrl, effectiveStatus.name(), managerEmail
+            // Agent 3 : notifie le manager avec le dossier complet
+            n8nService.triggerAgent3HrValidation(
+                updatedCandidate.getId(), updatedCandidate.getEmail(),
+                updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
+                offreTitre, cvUrl, effectiveStatus.name(), managerEmail, "RH"
+            );
+            // Agent 2 : email automatique "profil sélectionné" au candidat
+            n8nService.triggerAgent2CvSelected(
+                updatedCandidate.getId(), updatedCandidate.getEmail(),
+                updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
+                offreTitre, managerEmail
             );
         }
 
@@ -290,9 +300,9 @@ public class CandidateService {
                 || effectiveStatus == Candidate.CandidateStatus.HIRED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
-            String nomComplet = updatedCandidate.getFirstName() + " " + updatedCandidate.getLastName();
             n8nService.triggerAgent3FinalDecision(
-                updatedCandidate.getId(), updatedCandidate.getEmail(), nomComplet,
+                updatedCandidate.getId(), updatedCandidate.getEmail(),
+                updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
                 offreTitre, effectiveStatus.name(),
                 updatedCandidate.getAiSummary(), updatedCandidate.getAiRecommendation()
             );
@@ -337,6 +347,111 @@ public class CandidateService {
 
         // Déléguer à updateCandidateStatus pour déclencher Agent 2 ou Agent 3
         return updateCandidateStatus(saved.getId(), newStatus);
+    }
+
+    /**
+     * Recalcule le score IA d'un candidat en utilisant le scoring par critères
+     * (technique / communication / séniorité), via HuggingFace si configuré,
+     * sinon en mode simulé (fallback automatique).
+     *
+     * Déclenché manuellement par le RH/Admin/Manager (bouton "Recalculer avec IA").
+     */
+    @Transactional
+    public CandidateResponse recomputeAiScore(Long id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+
+        AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+        candidate.setAiScore(result.finalScore);
+        candidate.setAiScoreTechnical(result.technicalScore);
+        candidate.setAiScoreCommunication(result.communicationScore);
+        candidate.setAiScoreSeniorityMatch(result.seniorityMatchScore);
+        candidate.setAiScoreSource(result.source);
+        candidate.setAiSummary(result.summary);
+        candidate.setAiRecommendation(result.recommendation);
+        candidate.setLastUpdated(LocalDateTime.now());
+        Candidate saved = candidateRepository.save(candidate);
+
+        Candidate.CandidateStatus newStatus = result.finalScore >= AI_SCORE_THRESHOLD
+                ? Candidate.CandidateStatus.CV_REVIEWED
+                : Candidate.CandidateStatus.AUTO_REJECTED;
+
+        return updateCandidateStatus(saved.getId(), newStatus);
+    }
+
+    /**
+     * Correction manuelle du score IA par le RH (avec justification obligatoire).
+     * Le score original (aiScore) est conservé pour audit ; manualScore devient
+     * la référence utilisée pour la décision (CV_REVIEWED / AUTO_REJECTED).
+     */
+    @Transactional
+    public CandidateResponse overrideAiScore(Long id, Integer manualScore, String reason, String correctedBy) {
+        if (manualScore == null || manualScore < 0 || manualScore > 100) {
+            throw new IllegalArgumentException("Le score manuel doit être compris entre 0 et 100");
+        }
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Une justification est obligatoire pour corriger le score IA");
+        }
+
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+
+        candidate.setManualScore(manualScore);
+        candidate.setManualScoreReason(reason);
+        candidate.setManualScoreBy(correctedBy);
+        candidate.setManualScoreDate(LocalDateTime.now());
+        candidate.setLastUpdated(LocalDateTime.now());
+        Candidate saved = candidateRepository.save(candidate);
+
+        Candidate.CandidateStatus newStatus = manualScore >= AI_SCORE_THRESHOLD
+                ? Candidate.CandidateStatus.CV_REVIEWED
+                : Candidate.CandidateStatus.AUTO_REJECTED;
+
+        return updateCandidateStatus(saved.getId(), newStatus);
+    }
+
+    /**
+     * Classement des candidats d'une offre par score effectif décroissant
+     * (score manuel RH si présent, sinon score IA). Utilisé pour la vue
+     * "ranking" du RH/Manager.
+     */
+    public List<CandidateResponse> getRankingForJobOffer(Long jobOfferId) {
+        return candidateRepository.findByJobOfferIdWithDetails(jobOfferId).stream()
+                .sorted((a, b) -> {
+                    int scoreA = a.getManualScore() != null ? a.getManualScore() : (a.getAiScore() != null ? a.getAiScore() : -1);
+                    int scoreB = b.getManualScore() != null ? b.getManualScore() : (b.getAiScore() != null ? b.getAiScore() : -1);
+                    return Integer.compare(scoreB, scoreA);
+                })
+                .map(CandidateResponse::new)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Décision du manager sur un dossier déjà validé par le RH (CV_REVIEWED ou plus avancé).
+     * Restreint à ACCEPTED (validation) ou REJECTED (refus → MANAGER_REJECTED).
+     */
+    @Transactional
+    public CandidateResponse managerDecision(Long id, Candidate.CandidateStatus decision) {
+        if (decision != Candidate.CandidateStatus.ACCEPTED && decision != Candidate.CandidateStatus.REJECTED) {
+            throw new IllegalArgumentException("Décision manager invalide : doit être ACCEPTED ou REJECTED");
+        }
+
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+
+        List<Candidate.CandidateStatus> reviewable = List.of(
+                Candidate.CandidateStatus.CV_REVIEWED,
+                Candidate.CandidateStatus.PHONE_SCREENING,
+                Candidate.CandidateStatus.TECHNICAL_TEST,
+                Candidate.CandidateStatus.INTERVIEW,
+                Candidate.CandidateStatus.FINAL_INTERVIEW
+        );
+        if (!reviewable.contains(candidate.getStatus())) {
+            throw new IllegalArgumentException("Le dossier doit d'abord être validé par le RH (CV_REVIEWED) avant décision manager");
+        }
+
+        return updateCandidateStatus(id, decision);
     }
 
     /**

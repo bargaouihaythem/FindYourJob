@@ -1,19 +1,19 @@
 {
-  "name": "Agent 2 — RH vers Manager (dossier validé)",
+  "name": "Agent 3 — RH vers Manager (dossier validé)",
   "nodes": [
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "agent2-rh-manager",
+        "path": "agent3-rh-manager",
         "responseMode": "lastNode",
         "options": {}
       },
-      "id": "webhook-agent2",
+      "id": "webhook-agent3",
       "name": "Webhook — Dossier validé par RH",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
       "position": [240, 300],
-      "webhookId": "agent2-rh-manager"
+      "webhookId": "agent3-rh-manager"
     },
     {
       "parameters": {
@@ -49,5 +49,5 @@
     }
   },
   "settings": { "executionOrder": "v1" },
-  "tags": ["job4you", "agent2", "rh-manager"]
+  "tags": ["job4you", "agent3", "rh-manager"]
 }

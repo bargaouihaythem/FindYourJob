@@ -108,31 +108,31 @@ class N8nServiceTest {
     }
 
     // ────────────────────────────────────────────────────────────────────
-    // triggerAgent2HrValidation()
+    // triggerAgent3HrValidation()
     // ────────────────────────────────────────────────────────────────────
 
     @Nested
-    @DisplayName("triggerAgent2HrValidation()")
-    class TriggerAgent2Tests {
+    @DisplayName("triggerAgent3HrValidation()")
+    class TriggerAgent3HrTests {
 
         @Test
-        @DisplayName("ne fait aucun appel HTTP si le webhook Agent 2 n'est pas configuré")
+        @DisplayName("ne fait aucun appel HTTP si le webhook Agent 3 n'est pas configuré")
         void shouldDoNothingWhenWebhookEmpty() {
-            ReflectionTestUtils.setField(n8nService, "agent2Webhook", "");
+            ReflectionTestUtils.setField(n8nService, "agent3Webhook", "");
 
-            n8nService.triggerAgent2HrValidation(1L, "marie@example.com", "Marie", "Curie", "Offre Test", null, null);
+            n8nService.triggerAgent3HrValidation(1L, "marie@example.com", "Marie", "Curie", "Offre Test", null, null, null, null);
 
             verifyNoInteractions(restTemplate);
         }
 
         @Test
-        @DisplayName("appelle POST sur le webhook Agent 2 avec statut CV_REVIEWED")
+        @DisplayName("appelle POST sur le webhook Agent 3 avec statut CV_REVIEWED")
         void shouldCallWebhookWithCvReviewedStatus() {
-            ReflectionTestUtils.setField(n8nService, "agent2Webhook", FAKE_WEBHOOK);
+            ReflectionTestUtils.setField(n8nService, "agent3Webhook", FAKE_WEBHOOK);
             when(restTemplate.postForEntity(anyString(), any(HttpEntity.class), eq(String.class)))
                     .thenReturn(ResponseEntity.ok("OK"));
 
-            n8nService.triggerAgent2HrValidation(5L, "marie@example.com", "Marie", "Curie", "Offre Test", "CV_REVIEWED", null);
+            n8nService.triggerAgent3HrValidation(5L, "marie@example.com", "Marie", "Curie", "Offre Test", null, "CV_REVIEWED", null, "RH");
 
             verify(restTemplate).postForEntity(eq(FAKE_WEBHOOK), any(HttpEntity.class), eq(String.class));
         }
@@ -140,13 +140,13 @@ class N8nServiceTest {
         @Test
         @DisplayName("payload contient l'événement DOSSIER_VALIDE_RH")
         void shouldSendCorrectEventInPayload() {
-            ReflectionTestUtils.setField(n8nService, "agent2Webhook", FAKE_WEBHOOK);
+            ReflectionTestUtils.setField(n8nService, "agent3Webhook", FAKE_WEBHOOK);
 
             ArgumentCaptor<HttpEntity<Object>> captor = ArgumentCaptor.forClass(HttpEntity.class);
             when(restTemplate.postForEntity(anyString(), captor.capture(), eq(String.class)))
                     .thenReturn(ResponseEntity.ok("OK"));
 
-            n8nService.triggerAgent2HrValidation(7L, "marie@example.com", "Marie", "Curie", "Offre Test", "CV_REVIEWED", null);
+            n8nService.triggerAgent3HrValidation(7L, "marie@example.com", "Marie", "Curie", "Offre Test", null, "CV_REVIEWED", null, "RH");
 
             Object body = captor.getValue().getBody();
             assertThat(body.toString()).contains("DOSSIER_VALIDE_RH");

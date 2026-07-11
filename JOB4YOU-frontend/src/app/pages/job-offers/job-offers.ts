@@ -77,7 +77,7 @@ export class JobOffersComponent implements OnInit {
 
   loadJobOffers(): void {
     this.loading = true;
-    this.jobOfferService.getJobOffers(this.currentPage, this.pageSize).subscribe({
+    this.jobOfferService.getPublicJobOffers(this.currentPage, this.pageSize).subscribe({
       next: (jobs: JobOffer[]) => {
         this.jobOffers = jobs;
         this.filteredJobs = jobs;
