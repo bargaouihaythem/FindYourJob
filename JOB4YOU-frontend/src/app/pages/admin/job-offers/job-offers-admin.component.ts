@@ -60,6 +60,8 @@ export class JobOffersAdminComponent implements OnInit {
       requiredSkills: ['', [Validators.required]],
       requirements: ['', [Validators.required]], // Ajout du contrôle requirements
       experienceLevel: ['', [Validators.required]],
+      jobFamily: ['OTHER'],
+      seniorityLevel: ['MID'],
       contractType: ['CDI', [Validators.required]],
       location: ['', [Validators.required]],
       salary: [''], // Ajout du contrôle salary
@@ -197,6 +199,8 @@ export class JobOffersAdminComponent implements OnInit {
         // requirements côté backend n'existe pas, on copie requiredSkills si besoin
         requirements: jobOffer.requirements || jobOffer.requiredSkills || '',
         experienceLevel: jobOffer.experienceLevel || '',
+        jobFamily: jobOffer.jobFamily || 'OTHER',
+        seniorityLevel: jobOffer.seniorityLevel || 'MID',
         contractType: jobOffer.contractType || 'CDI',
         location: jobOffer.location || '',
         // salary côté backend n'existe pas, on laisse vide ou on parse salaryRange si besoin
@@ -209,7 +213,7 @@ export class JobOffersAdminComponent implements OnInit {
       });
     } else {
       this.jobOfferForm.reset();
-      this.jobOfferForm.patchValue({ contractType: 'CDI', status: 'ACTIVE' });
+      this.jobOfferForm.patchValue({ contractType: 'CDI', status: 'ACTIVE', jobFamily: 'OTHER', seniorityLevel: 'MID' });
     }
     this.showJobOfferModal = true;
   }

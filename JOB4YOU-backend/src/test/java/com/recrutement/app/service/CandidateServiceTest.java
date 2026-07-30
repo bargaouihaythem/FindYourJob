@@ -57,6 +57,7 @@ class CandidateServiceTest {
     @Mock AuditLogService     auditLogService;
     @Mock CvTextExtractionService cvTextExtractionService;
     @Mock UserRepository      userRepository;
+    @Mock ManagerRoutingService managerRoutingService;
 
     @InjectMocks
     CandidateService candidateService;
@@ -140,6 +141,27 @@ class CandidateServiceTest {
             List<CandidateResponse> result = candidateService.getValidatedCandidatesForManager(null);
 
             assertThat(result).isEmpty();
+        }
+
+        @Test
+        @DisplayName("un manager (non privilégié) interroge le repository scopé avec sa famille de métier")
+        void shouldQueryScopedRepositoryWithJobFamilyForManager() {
+            User manager = new User();
+            manager.setUsername("manager_cs");
+            manager.setEmail("manager.cs@company.com");
+            manager.setJobFamily(JobOffer.JobFamily.CS);
+            Role managerRole = new Role(Role.ERole.ROLE_MANAGER);
+            manager.setRoles(Set.of(managerRole));
+
+            when(userRepository.findByUsername("manager_cs")).thenReturn(Optional.of(manager));
+            when(candidateRepository.findByStatusInAndJobOfferManagerEmailOrDepartment(
+                    anyList(), eq("manager.cs@company.com"), isNull(), eq(JobOffer.JobFamily.CS)))
+                    .thenReturn(List.of());
+
+            candidateService.getValidatedCandidatesForManager("manager_cs");
+
+            verify(candidateRepository).findByStatusInAndJobOfferManagerEmailOrDepartment(
+                    anyList(), eq("manager.cs@company.com"), isNull(), eq(JobOffer.JobFamily.CS));
         }
     }
 
@@ -467,6 +489,15 @@ class CandidateServiceTest {
             return candidate;
         }
 
+        private Candidate candidateWithOfferJobFamily(Long id, JobOffer.JobFamily jobFamily) {
+            Candidate candidate = makeCandidate(id, CandidateStatus.CV_REVIEWED);
+            JobOffer jobOffer = new JobOffer();
+            jobOffer.setId(1L);
+            jobOffer.setJobFamily(jobFamily);
+            candidate.setJobOffer(jobOffer);
+            return candidate;
+        }
+
         @Test
         @DisplayName("un manager peut agir sur un candidat de sa propre offre (managerEmail)")
         void shouldAllowManagerOwningTheJobOfferByEmail() {
@@ -496,6 +527,22 @@ class CandidateServiceTest {
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             assertThatCode(() -> candidateService.updateCandidateStatus(51L, CandidateStatus.ACCEPTED))
+                    .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("un manager peut agir sur un candidat via sa famille de métier assignée (routage automatique)")
+        void shouldAllowManagerOwningTheJobOfferByJobFamily() {
+            Candidate candidate = candidateWithOfferJobFamily(54L, JobOffer.JobFamily.CS);
+            User manager = makeManagerUser("manager_cs", "manager.cs@company.com", null);
+            manager.setJobFamily(JobOffer.JobFamily.CS);
+
+            authenticateAs("manager_cs", Role.ERole.ROLE_MANAGER);
+            when(userRepository.findByUsername("manager_cs")).thenReturn(Optional.of(manager));
+            when(candidateRepository.findById(54L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThatCode(() -> candidateService.updateCandidateStatus(54L, CandidateStatus.ACCEPTED))
                     .doesNotThrowAnyException();
         }
 

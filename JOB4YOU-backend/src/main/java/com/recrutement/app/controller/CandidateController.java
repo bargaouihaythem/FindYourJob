@@ -154,8 +154,9 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or isAnonymous()")
-    @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager, ou n8n en anonyme)")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or " +
+            "(isAnonymous() and (#status.name() == 'CV_REVIEWED' or #status.name() == 'AUTO_REJECTED'))")
+    @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager, ou n8n en anonyme limité à CV_REVIEWED/AUTO_REJECTED)")
     public ResponseEntity<CandidateResponse> updateCandidateStatus(
             @PathVariable Long id,
             @Parameter(description = "Nouveau statut")

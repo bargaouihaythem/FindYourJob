@@ -1,5 +1,6 @@
 package com.recrutement.app.dto;
 
+import com.recrutement.app.entity.JobOffer;
 import com.recrutement.app.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -21,6 +22,7 @@ public class UserResponse {
     private String displayName;
     private Long departmentId;
     private String departmentName;
+    private JobOffer.JobFamily jobFamily;
 
     // Constructeur pour mapper depuis l'entité User
     public UserResponse(User user) {
@@ -35,6 +37,7 @@ public class UserResponse {
         this.displayName = generateDisplayName(user);
         this.departmentId = user.getDepartment() != null ? user.getDepartment().getId() : null;
         this.departmentName = user.getDepartment() != null ? user.getDepartment().getName() : null;
+        this.jobFamily = user.getJobFamily();
     }
 
     private String generateDisplayName(User user) {

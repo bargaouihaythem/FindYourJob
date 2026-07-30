@@ -17,6 +17,8 @@ public class JobOfferResponse {
     private String description;
     private String requiredSkills;
     private String experienceLevel;
+    private JobOffer.JobFamily jobFamily;
+    private JobOffer.SeniorityLevel seniorityLevel;
     private String contractType;
     private String location;
     private String salaryRange;
@@ -37,6 +39,8 @@ public class JobOfferResponse {
         this.description = jobOffer.getDescription();
         this.requiredSkills = jobOffer.getRequiredSkills();
         this.experienceLevel = jobOffer.getExperienceLevel();
+        this.jobFamily = jobOffer.getJobFamily();
+        this.seniorityLevel = jobOffer.getSeniorityLevel();
         this.contractType = jobOffer.getContractType();
         this.location = jobOffer.getLocation();
         this.salaryRange = jobOffer.getSalaryRange();

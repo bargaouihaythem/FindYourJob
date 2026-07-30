@@ -78,8 +78,13 @@ public class MatchingService {
             log.info("[MatchingService] Mode mots-clés utilisé (Cohere indisponible) : {}", e.getMessage());
         }
 
-        aiPool.sort(Comparator.comparingInt(JobMatchResponse::getMatchScore).reversed());
-        return aiPool;
+        // Un score de 0 (mots-clés comme Cohere) signifie "aucun rapport" — inutile de le
+        // présenter comme une "suggestion", ça décrédibilise le résultat pour l'utilisateur.
+        List<JobMatchResponse> relevant = aiPool.stream()
+                .filter(m -> m.getMatchScore() > 0)
+                .sorted(Comparator.comparingInt(JobMatchResponse::getMatchScore).reversed())
+                .collect(Collectors.toList());
+        return relevant;
     }
 
     private int computeKeywordScore(String cvTextLower, String requiredSkills) {

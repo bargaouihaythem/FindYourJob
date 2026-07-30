@@ -23,7 +23,7 @@
             Offres d'emploi
           </a>
         </li>
-        <li class="nav-item">
+        <li class="nav-item" *ngIf="!isAuthenticated() || isCandidate()">
           <a class="nav-link" routerLink="/job-matching" routerLinkActive="active">
             <i class="fas fa-magic me-1"></i>
             Job idéal
@@ -96,6 +96,10 @@
             <li><a class="dropdown-item" routerLink="/admin/kanban">
               <i class="fas fa-columns me-2"></i>
               Pipeline (Kanban)
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/scoring-settings">
+              <i class="fas fa-sliders-h me-2"></i>
+              Paramétrage du scoring IA
             </a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" routerLink="/admin/interviews">

@@ -1,11 +1,14 @@
 package com.recrutement.app.controller;
 
+import com.recrutement.app.dto.MessageResponse;
 import com.recrutement.app.dto.UserResponse;
 import com.recrutement.app.entity.Department;
+import com.recrutement.app.entity.JobOffer;
 import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.exception.ResourceNotFoundException;
 import com.recrutement.app.repository.DepartmentRepository;
+import com.recrutement.app.repository.RoleRepository;
 import com.recrutement.app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,7 +17,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
@@ -29,6 +35,41 @@ public class UserController {
     @Autowired
     private DepartmentRepository departmentRepository;
 
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @PatchMapping("/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Remplacer les rôles d'un utilisateur (Admin uniquement)",
+            description = "Seul point d'entrée pour attribuer des rôles internes (HR/MANAGER/ADMIN/...) — "
+                    + "l'inscription publique (/api/auth/signup) attribue toujours ROLE_USER, jamais un rôle interne. "
+                    + "Valeurs acceptées : user, hr, manager, admin, team_lead, senior_dev, team.")
+    public ResponseEntity<?> assignRoles(@PathVariable Long id, @RequestParam Set<String> roles) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+
+        Set<Role> newRoles = new HashSet<>();
+        for (String roleName : roles) {
+            Role.ERole eRole;
+            try {
+                eRole = Role.ERole.valueOf("ROLE_" + roleName.toUpperCase(Locale.ROOT));
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Rôle inconnu : " + roleName));
+            }
+            Role role = roleRepository.findByName(eRole)
+                    .orElseThrow(() -> new ResourceNotFoundException("Rôle non trouvé en base : " + eRole));
+            newRoles.add(role);
+        }
+        if (newRoles.isEmpty()) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Au moins un rôle est requis"));
+        }
+
+        user.setRoles(newRoles);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new UserResponse(user));
+    }
+
     @PatchMapping("/{id}/department")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Assigner un département à un utilisateur (Admin uniquement)")
@@ -39,6 +80,19 @@ public class UserController {
                 .orElseThrow(() -> new ResourceNotFoundException("Département non trouvé avec l'ID: " + departmentId));
 
         user.setDepartment(department);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new UserResponse(user));
+    }
+
+    @PatchMapping("/{id}/job-family")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Assigner une famille de métier à un manager (Admin uniquement)", description = "Utilisée pour router automatiquement les dossiers validés RH vers ce manager")
+    public ResponseEntity<?> assignJobFamily(@PathVariable Long id, @RequestParam JobOffer.JobFamily jobFamily) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+
+        user.setJobFamily(jobFamily);
         userRepository.save(user);
 
         return ResponseEntity.ok(new UserResponse(user));

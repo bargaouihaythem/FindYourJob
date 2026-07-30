@@ -32,6 +32,18 @@ public class JobOffer {
     @Column(name = "experience_level")
     private String experienceLevel;
 
+    // Famille de métier et niveau de séniorité structurés, utilisés pour
+    // sélectionner le profil de pondération du score IA (ScoringWeightProfile).
+    // Nullable : distinct de experienceLevel (texte libre conservé tel quel
+    // pour l'affichage) afin de ne pas casser les offres existantes.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_family")
+    private JobFamily jobFamily;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "seniority_level")
+    private SeniorityLevel seniorityLevel;
+
     @Column(name = "contract_type")
     private String contractType; // CDI, CDD, Stage, etc.
 
@@ -87,6 +99,21 @@ public class JobOffer {
         CLOSED,     // Offre fermée
         DRAFT,      // Brouillon
         EXPIRED     // Expirée
+    }
+
+    // Famille de métier, utilisée pour paramétrer la pondération du score IA
+    public enum JobFamily {
+        CS,         // Consultant / Customer Success
+        PRODOPS,    // Product Ops
+        RSD,        // Responsable / Représentant Solutions & Développement
+        OTHER
+    }
+
+    // Niveau de séniorité demandé par l'offre
+    public enum SeniorityLevel {
+        JUNIOR,
+        MID,
+        SENIOR
     }
 }
 

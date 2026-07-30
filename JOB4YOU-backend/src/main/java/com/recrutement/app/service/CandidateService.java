@@ -59,6 +59,9 @@ public class CandidateService {
     private UserRepository userRepository;
 
     @Autowired
+    private ManagerRoutingService managerRoutingService;
+
+    @Autowired
     private AuditLogService auditLogService;
 
     @Autowired
@@ -269,10 +272,10 @@ public class CandidateService {
             // RH/Admin (ou appel système) : vue complète, non filtrée
             candidates = candidateRepository.findByStatusIn(validatedStatuses);
         } else {
-            // MANAGER seul : scope à ses offres (email) ou son département
+            // MANAGER seul : scope à ses offres (email), son département, ou sa famille de métier assignée
             Long departmentId = currentUser.getDepartment() != null ? currentUser.getDepartment().getId() : null;
             candidates = candidateRepository.findByStatusInAndJobOfferManagerEmailOrDepartment(
-                    validatedStatuses, currentUser.getEmail(), departmentId);
+                    validatedStatuses, currentUser.getEmail(), departmentId, currentUser.getJobFamily());
         }
 
         return candidates.stream()
@@ -326,9 +329,9 @@ public class CandidateService {
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             String cvUrl = updatedCandidate.getCv() != null
                 ? updatedCandidate.getCv().getFileUrl() : null;
-            String managerEmail = updatedCandidate.getJobOffer() != null
-                && updatedCandidate.getJobOffer().getManagerEmail() != null
-                ? updatedCandidate.getJobOffer().getManagerEmail()
+            String resolvedManagerEmail = managerRoutingService.resolveManagerEmail(updatedCandidate.getJobOffer());
+            String managerEmail = resolvedManagerEmail != null
+                ? resolvedManagerEmail
                 : "bargaouihaythem1@gmail.com";
             // Agent 3 : notifie le manager avec le dossier complet
             n8nService.triggerAgent3HrValidation(
@@ -406,8 +409,11 @@ public class CandidateService {
         boolean ownsByDepartment = jobOffer != null && jobOffer.getDepartment() != null
                 && currentUser.getDepartment() != null
                 && jobOffer.getDepartment().getId().equals(currentUser.getDepartment().getId());
+        boolean ownsByJobFamily = jobOffer != null && jobOffer.getJobFamily() != null
+                && currentUser.getJobFamily() != null
+                && jobOffer.getJobFamily() == currentUser.getJobFamily();
 
-        if (!ownsByEmail && !ownsByDepartment) {
+        if (!ownsByEmail && !ownsByDepartment && !ownsByJobFamily) {
             throw new AccessDeniedException(
                     "Vous n'êtes pas autorisé à agir sur ce candidat : il ne fait pas partie de votre périmètre (offre/département)");
         }

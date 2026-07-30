@@ -47,6 +47,13 @@ public class User {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    // Famille de métier dont s'occupe ce manager (utilisée pour router
+    // automatiquement les dossiers validés RH vers le bon manager selon
+    // JobOffer.jobFamily, au lieu du champ managerEmail saisi à la main).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "job_family")
+    private JobOffer.JobFamily jobFamily;
+
     // Constructeur avec les champs essentiels
     public User(String username, String email, String password) {
         this.username = username;

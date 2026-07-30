@@ -27,13 +27,21 @@
           <i class="fas fa-download me-2"></i>
           Exporter
         </button>
-        <button class="btn me-2" 
-                [class]="showRejected ? 'btn-danger' : 'btn-outline-danger'"
+        <button class="btn me-2"
+                [class]="visibilityFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
                 (click)="toggleShowRejected()"
-                [title]="showRejected ? 'Masquer les rejetés' : 'Afficher les rejetés'">
+                [title]="visibilityFilter === 'rejected' ? 'Revenir aux dossiers actifs' : 'Afficher les rejetés'">
           <i class="fas fa-user-times me-2"></i>
-          <span *ngIf="!showRejected">Rejetés ({{ getRejectedCount() }})</span>
-          <span *ngIf="showRejected">Masquer rejetés</span>
+          <span *ngIf="visibilityFilter !== 'rejected'">Rejetés ({{ getRejectedCount() }})</span>
+          <span *ngIf="visibilityFilter === 'rejected'">Masquer rejetés</span>
+        </button>
+        <button class="btn me-2"
+                [class]="visibilityFilter === 'hired' ? 'btn-success' : 'btn-outline-success'"
+                (click)="toggleShowHired()"
+                [title]="visibilityFilter === 'hired' ? 'Revenir aux dossiers actifs' : 'Afficher les embauchés'">
+          <i class="fas fa-user-check me-2"></i>
+          <span *ngIf="visibilityFilter !== 'hired'">Embauchés ({{ getHiredCount() }})</span>
+          <span *ngIf="visibilityFilter === 'hired'">Masquer embauchés</span>
         </button>
         <!-- RH/Admin only : les managers ont accès en lecture seule -->
         <button *ngIf="!isManagerView" class="btn btn-primary" (click)="openCandidateModal()">
@@ -615,35 +623,75 @@
                 <div class="d-flex align-items-center mb-2">
                   <i class="fas fa-robot text-success me-2"></i>
                   <h6 class="mb-0 text-success">Analyse IA — Agent 1 n8n</h6>
-                  <span *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0"
+                  <span *ngIf="selectedCandidate.effectiveScore != null && selectedCandidate.effectiveScore > 0"
                         class="ms-auto badge rounded-pill px-3 py-2 fs-6"
-                        [style.background-color]="selectedCandidate.aiScore >= 80 ? '#dcfce7' : selectedCandidate.aiScore >= 60 ? '#fef9c3' : '#fee2e2'"
-                        [style.color]="selectedCandidate.aiScore >= 80 ? '#15803d' : selectedCandidate.aiScore >= 60 ? '#a16207' : '#dc2626'">
-                    Score : {{ selectedCandidate.aiScore }}/100
+                        [style.background-color]="selectedCandidate.effectiveScore >= 80 ? '#dcfce7' : selectedCandidate.effectiveScore >= 60 ? '#fef9c3' : '#fee2e2'"
+                        [style.color]="selectedCandidate.effectiveScore >= 80 ? '#15803d' : selectedCandidate.effectiveScore >= 60 ? '#a16207' : '#dc2626'">
+                    Score : {{ selectedCandidate.effectiveScore }}/100
+                    <span *ngIf="selectedCandidate.manualScore != null"> (corrigé RH)</span>
                   </span>
-                  <span *ngIf="!selectedCandidate.aiScore || selectedCandidate.aiScore === 0"
+                  <span *ngIf="!selectedCandidate.effectiveScore || selectedCandidate.effectiveScore === 0"
                         class="ms-auto text-muted small">En attente d'analyse…</span>
                 </div>
-                <div *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0">
+                <div *ngIf="selectedCandidate.effectiveScore != null && selectedCandidate.effectiveScore > 0">
                   <div class="progress mb-2" style="height: 8px;">
                     <div class="progress-bar"
                          role="progressbar"
-                         [style.width.%]="selectedCandidate.aiScore"
-                         [style.background-color]="selectedCandidate.aiScore >= 80 ? '#22c55e' : selectedCandidate.aiScore >= 60 ? '#f59e0b' : '#ef4444'">
+                         [style.width.%]="selectedCandidate.effectiveScore"
+                         [style.background-color]="selectedCandidate.effectiveScore >= 80 ? '#22c55e' : selectedCandidate.effectiveScore >= 60 ? '#f59e0b' : '#ef4444'">
                     </div>
                   </div>
                   <div class="row mt-2">
                     <div class="col-md-6">
-                      <p class="small mb-1"><i class="fas fa-check-circle text-success me-1"></i> Compétences techniques analysées</p>
-                      <p class="small mb-1"><i class="fas fa-check-circle text-success me-1"></i> Email de confirmation envoyé</p>
+                      <p class="small mb-1" *ngIf="selectedCandidate.aiScoreTechnical != null">
+                        <i class="fas fa-check-circle text-success me-1"></i> Technique : {{ selectedCandidate.aiScoreTechnical }}/100
+                      </p>
+                      <p class="small mb-1" *ngIf="selectedCandidate.aiScoreCommunication != null">
+                        <i class="fas fa-check-circle text-success me-1"></i> Communication : {{ selectedCandidate.aiScoreCommunication }}/100
+                      </p>
+                      <p class="small mb-1" *ngIf="selectedCandidate.aiScoreSeniorityMatch != null">
+                        <i class="fas fa-check-circle text-success me-1"></i> Adéquation séniorité : {{ selectedCandidate.aiScoreSeniorityMatch }}/100
+                      </p>
                     </div>
                     <div class="col-md-6">
                       <p class="small mb-0 text-muted">
                         <i class="fas fa-info-circle me-1"></i>
-                        Score calculé automatiquement par l'Agent 1 lors de la réception du CV.
+                        Score IA calculé automatiquement ({{ selectedCandidate.aiScoreSource || 'Agent 1' }}).
+                      </p>
+                      <p class="small mb-0 text-muted" *ngIf="selectedCandidate.manualScore != null">
+                        <i class="fas fa-user-edit me-1"></i>
+                        Corrigé par {{ selectedCandidate.manualScoreBy }} le {{ formatDate(selectedCandidate.manualScoreDate!) }} :
+                        « {{ selectedCandidate.manualScoreReason }} »
                       </p>
                     </div>
                   </div>
+                </div>
+
+                <div class="mt-3" *ngIf="isHrOrAdmin()">
+                  <button type="button" class="btn btn-sm btn-outline-secondary" (click)="toggleScoreOverrideForm()">
+                    <i class="fas fa-edit me-1"></i>
+                    {{ showScoreOverrideForm ? 'Annuler' : 'Corriger le score' }}
+                  </button>
+
+                  <form *ngIf="showScoreOverrideForm" [formGroup]="scoreOverrideForm" (ngSubmit)="submitScoreOverride()" class="mt-2 p-2 border rounded bg-white">
+                    <div class="row g-2">
+                      <div class="col-md-3">
+                        <label class="form-label small mb-1">Score corrigé (0-100) *</label>
+                        <input type="number" class="form-control form-control-sm" min="0" max="100" formControlName="manualScore">
+                      </div>
+                      <div class="col-md-9">
+                        <label class="form-label small mb-1">Justification *</label>
+                        <input type="text" class="form-control form-control-sm" formControlName="reason"
+                               placeholder="Ex: CV sous-évalué par l'IA, expérience pertinente non détectée">
+                      </div>
+                    </div>
+                    <div class="mt-2">
+                      <button type="submit" class="btn btn-sm btn-success" [disabled]="scoreOverrideForm.invalid || savingScoreOverride">
+                        <span *ngIf="savingScoreOverride" class="spinner-border spinner-border-sm me-1"></span>
+                        Valider la correction
+                      </button>
+                    </div>
+                  </form>
                 </div>
               </div>
             </div>

@@ -209,8 +209,10 @@
                     {{ getApplyButtonMessage() }}
                   </a>
                   
-                  <!-- Message informatif quand l'utilisateur ne peut pas postuler -->
-                  <button *ngIf="job.status === 'ACTIVE' && !canApplyToJob()" 
+                  <!-- Message informatif quand un visiteur non connecté ne peut pas postuler.
+                       Masqué pour le personnel interne (RH/Manager/Admin) : "Postuler" n'a pas
+                       de sens pour eux, pas besoin d'un bouton désactivé qui l'explique. -->
+                  <button *ngIf="job.status === 'ACTIVE' && !canApplyToJob() && !isStaffUser()"
                           class="btn btn-outline-secondary btn-sm"
                           disabled
                           [title]="getApplyButtonMessage()">

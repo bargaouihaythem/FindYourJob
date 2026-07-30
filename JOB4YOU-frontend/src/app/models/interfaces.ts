@@ -8,6 +8,7 @@ export interface User {
   displayName?: string;
   departmentId?: number;
   departmentName?: string;
+  jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
 }
 
 export interface Department {
@@ -102,6 +103,8 @@ export interface JobOffer {
   salaryRange: string; // Added for backend compatibility
   contractType: string;
   experienceLevel: string; // Added for backend compatibility
+  jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
+  seniorityLevel?: 'JUNIOR' | 'MID' | 'SENIOR';
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED';
   deadline: string; // Added for backend compatibility
   managerEmail?: string;
@@ -122,10 +125,31 @@ export interface JobOfferRequest {
   salaryRange: string; // Added for backend compatibility
   contractType: string;
   experienceLevel: string; // Added for backend compatibility
+  jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
+  seniorityLevel?: 'JUNIOR' | 'MID' | 'SENIOR';
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED'; // Added for backend compatibility
   deadline: string; // Added for backend compatibility
   managerEmail?: string;
   departmentId?: number;
+}
+
+/** Pondération du score IA (technique/communication/séniorité) pour une
+ * combinaison famille de métier × niveau de séniorité, paramétrable par le RH. */
+export interface ScoringWeightProfile {
+  id: number;
+  jobFamily: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
+  seniorityLevel: 'JUNIOR' | 'MID' | 'SENIOR';
+  weightTechnical: number;
+  weightCommunication: number;
+  weightSeniority: number;
+  updatedBy?: string;
+  updatedAt?: Date;
+}
+
+export interface ScoringWeightProfileRequest {
+  weightTechnical: number;
+  weightCommunication: number;
+  weightSeniority: number;
 }
 
 export interface Candidate {
@@ -153,6 +177,15 @@ export interface Candidate {
   applicationDate: Date;
   status: 'APPLIED' | 'CV_REVIEWED' | 'PHONE_SCREENING' | 'TECHNICAL_TEST' | 'INTERVIEW' | 'FINAL_INTERVIEW' | 'ACCEPTED' | 'REJECTED' | 'AUTO_REJECTED' | 'MANAGER_REJECTED' | 'INTERVIEW_SCHEDULED' | 'HIRED' | 'WITHDRAWN';
   aiScore?: number;
+  aiScoreTechnical?: number;
+  aiScoreCommunication?: number;
+  aiScoreSeniorityMatch?: number;
+  aiScoreSource?: string;
+  manualScore?: number;
+  manualScoreReason?: string;
+  manualScoreBy?: string;
+  manualScoreDate?: Date;
+  effectiveScore?: number;
   jobOfferId: number;
   jobOfferTitle: string;
   jobOffers?: JobOffer[];

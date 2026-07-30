@@ -16,6 +16,7 @@
             <th>Email</th>
             <th>Rôles</th>
             <th>Département</th>
+            <th>Famille de métier (managers)</th>
           </tr>
         </thead>
         <tbody>
@@ -32,6 +33,19 @@
                 <option value="">-- Aucun --</option>
                 <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
               </select>
+            </td>
+            <td>
+              <select *ngIf="isManager(user)" class="form-select form-select-sm" style="max-width: 220px;"
+                      [value]="user.jobFamily || ''"
+                      (change)="onJobFamilyChange(user, $event)"
+                      title="Les dossiers validés RH pour cette famille de métier seront envoyés automatiquement à ce manager">
+                <option value="">-- Aucune --</option>
+                <option value="CS">CS (Consultant / Customer Success)</option>
+                <option value="PRODOPS">ProdOps</option>
+                <option value="RSD">RSD</option>
+                <option value="OTHER">Autre</option>
+              </select>
+              <span *ngIf="!isManager(user)" class="text-muted small">—</span>
             </td>
           </tr>
         </tbody>

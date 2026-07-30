@@ -54,6 +54,15 @@ export class CandidateService {
     });
   }
 
+  /**
+   * Correction manuelle du score IA par le RH/Admin, avec justification obligatoire.
+   */
+  overrideAiScore(id: number, manualScore: number, reason: string): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    const params = new HttpParams().set('manualScore', manualScore).set('reason', reason);
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/ai-score/override`, null, { params, headers });
+  }
+
   uploadCV(candidateId: number, file: File): Observable<any> {
     const formData = new FormData();
     formData.append('cv', file);

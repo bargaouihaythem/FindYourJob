@@ -335,6 +335,30 @@
                 Le niveau d'expérience est obligatoire
               </div>
             </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label for="jobFamily" class="form-label">Famille de métier</label>
+              <select class="form-select" id="jobFamily" formControlName="jobFamily">
+                <option value="CS">CS (Consultant / Customer Success)</option>
+                <option value="PRODOPS">ProdOps</option>
+                <option value="RSD">RSD</option>
+                <option value="OTHER">Autre</option>
+              </select>
+              <div class="form-text">Pilote la pondération du score IA (voir Paramétrage du scoring)</div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label for="seniorityLevel" class="form-label">Niveau de séniorité</label>
+              <select class="form-select" id="seniorityLevel" formControlName="seniorityLevel">
+                <option value="JUNIOR">Junior</option>
+                <option value="MID">Confirmé</option>
+                <option value="SENIOR">Senior</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
             <div class="col-md-6 mb-3">
               <label for="deadline" class="form-label">Date limite *</label>
               <input type="datetime-local" class="form-control" id="deadline" formControlName="deadline">
@@ -343,13 +367,13 @@
               </div>
             </div>
             <div class="col-md-6 mb-3">
-              <label for="managerEmail" class="form-label">Email du manager responsable</label>
+              <label for="managerEmail" class="form-label">Email du manager (secours)</label>
               <input type="email" class="form-control" id="managerEmail" formControlName="managerEmail"
                      placeholder="manager@exemple.com">
               <div *ngIf="jobOfferForm.get('managerEmail')?.invalid && jobOfferForm.get('managerEmail')?.touched" class="text-danger small">
                 Adresse email invalide
               </div>
-              <small class="text-muted">L'Agent 2 enverra les candidatures validées à cet email</small>
+              <small class="text-muted">Utilisé uniquement si aucun manager n'est assigné à la famille de métier de cette offre (voir Administration &gt; Utilisateurs)</small>
             </div>
             <div class="col-md-6 mb-3">
               <label for="departmentId" class="form-label">Département</label>

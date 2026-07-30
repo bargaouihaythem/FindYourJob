@@ -36,11 +36,15 @@ class AiScoringServiceTest {
 
     @BeforeEach
     void setUp() {
-        aiScoringService = new AiScoringService(cohereClient);
-        // Les poids sont normalement injectés par Spring via @Value ; on reproduit les valeurs par défaut
-        ReflectionTestUtils.setField(aiScoringService, "weightTechnical", 0.5);
-        ReflectionTestUtils.setField(aiScoringService, "weightCommunication", 0.2);
-        ReflectionTestUtils.setField(aiScoringService, "weightSeniority", 0.3);
+        ScoringWeightProfileService scoringWeightProfileService = new ScoringWeightProfileService();
+        // Les poids par défaut sont normalement injectés par Spring via @Value ; on reproduit les
+        // valeurs par défaut. Les offres de test ci-dessous n'ont pas de jobFamily/seniorityLevel,
+        // donc resolveWeights() retombe toujours sur ce filet de sécurité (pas besoin de repository).
+        ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightTechnical", 0.5);
+        ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightCommunication", 0.2);
+        ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightSeniority", 0.3);
+
+        aiScoringService = new AiScoringService(cohereClient, scoringWeightProfileService);
     }
 
     private Candidate candidateWithCoverLetter(String coverLetter, String requiredSkills) {

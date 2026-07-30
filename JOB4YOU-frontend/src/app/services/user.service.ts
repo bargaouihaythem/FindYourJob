@@ -19,4 +19,9 @@ export class UserService {
     const params = new HttpParams().set('departmentId', departmentId);
     return this.http.patch<User>(`${this.apiUrl}/${userId}/department`, {}, { params });
   }
+
+  assignJobFamily(userId: number, jobFamily: string): Observable<User> {
+    const params = new HttpParams().set('jobFamily', jobFamily);
+    return this.http.patch<User>(`${this.apiUrl}/${userId}/job-family`, {}, { params });
+  }
 }

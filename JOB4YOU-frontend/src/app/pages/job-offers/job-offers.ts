@@ -221,34 +221,38 @@ export class JobOffersComponent implements OnInit {
   }
 
   /**
+   * true si l'utilisateur connecté fait partie du personnel interne
+   * (RH/Manager/Admin/équipe) — pour qui "Postuler" n'a pas de sens.
+   */
+  isStaffUser(): boolean {
+    if (!this.authService.isAuthenticated()) {
+      return false;
+    }
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser || !currentUser.roles) {
+      return false;
+    }
+    return currentUser.roles.includes('ROLE_ADMIN') ||
+           currentUser.roles.includes('ROLE_HR') ||
+           currentUser.roles.includes('ROLE_MANAGER') ||
+           currentUser.roles.includes('ROLE_TEAM_LEAD') ||
+           currentUser.roles.includes('ROLE_SENIOR_DEV') ||
+           currentUser.roles.includes('ROLE_TEAM') ||
+           currentUser.roles.includes('ADMIN') ||
+           currentUser.roles.includes('HR') ||
+           currentUser.roles.includes('MANAGER') ||
+           currentUser.roles.includes('TEAM_LEAD') ||
+           currentUser.roles.includes('SENIOR_DEV') ||
+           currentUser.roles.includes('TEAM');
+  }
+
+  /**
    * Retourne le message à afficher quand l'utilisateur ne peut pas postuler
+   * (uniquement pertinent pour un visiteur non connecté — le personnel interne
+   * ne voit pas ce bouton du tout, cf. isStaffUser() dans le template)
    */
   getApplyButtonMessage(): string {
-    if (!this.authService.isAuthenticated()) {
-      return 'Connectez-vous pour postuler';
-    }
-    
-    const currentUser = this.authService.getCurrentUser();
-    if (currentUser && currentUser.roles) {
-      const hasAdminRole = currentUser.roles.includes('ROLE_ADMIN') ||
-                          currentUser.roles.includes('ROLE_HR') ||
-                          currentUser.roles.includes('ROLE_MANAGER') ||
-                          currentUser.roles.includes('ROLE_TEAM_LEAD') ||
-                          currentUser.roles.includes('ROLE_SENIOR_DEV') ||
-                          currentUser.roles.includes('ROLE_TEAM') ||
-                          currentUser.roles.includes('ADMIN') ||
-                          currentUser.roles.includes('HR') ||
-                          currentUser.roles.includes('MANAGER') ||
-                          currentUser.roles.includes('TEAM_LEAD') ||
-                          currentUser.roles.includes('SENIOR_DEV') ||
-                          currentUser.roles.includes('TEAM');
-      
-      if (hasAdminRole) {
-        return 'Les administrateurs ne peuvent pas postuler';
-      }
-    }
-    
-    return 'Postuler';
+    return 'Connectez-vous pour postuler';
   }
 }
 

@@ -68,4 +68,24 @@ export class UsersAdminComponent implements OnInit {
       }
     });
   }
+
+  isManager(user: User): boolean {
+    return user.roles.includes('ROLE_MANAGER');
+  }
+
+  onJobFamilyChange(user: User, event: Event): void {
+    const jobFamily = (event.target as HTMLSelectElement).value;
+    if (!jobFamily) return;
+
+    this.userService.assignJobFamily(user.id, jobFamily).subscribe({
+      next: (updated: User) => {
+        user.jobFamily = updated.jobFamily;
+        this.toastrNotification.showSuccess(`Famille de métier assignée à ${user.username}`);
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de l\'assignation de la famille de métier:', error);
+        this.toastrNotification.showError('Erreur lors de l\'assignation de la famille de métier');
+      }
+    });
+  }
 }

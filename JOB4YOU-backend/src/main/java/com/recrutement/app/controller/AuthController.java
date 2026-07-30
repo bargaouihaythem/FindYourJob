@@ -102,55 +102,13 @@ public class AuthController {
         user.setFirstName(signUpRequest.getFirstName());
         user.setLastName(signUpRequest.getLastName());
 
-        Set<String> strRoles = signUpRequest.getRole();
-        Set<Role> roles = new HashSet<>();
-
-        if (strRoles == null) {
-            Role userRole = roleRepository.findByName(Role.ERole.ROLE_USER)
-                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-            roles.add(userRole);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "admin":
-                        Role adminRole = roleRepository.findByName(Role.ERole.ROLE_ADMIN)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(adminRole);
-                        break;
-                    case "hr":
-                        Role hrRole = roleRepository.findByName(Role.ERole.ROLE_HR)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(hrRole);
-                        break;
-                    case "manager":
-                        Role managerRole = roleRepository.findByName(Role.ERole.ROLE_MANAGER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(managerRole);
-                        break;
-                    case "team_lead":
-                        Role teamLeadRole = roleRepository.findByName(Role.ERole.ROLE_TEAM_LEAD)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(teamLeadRole);
-                        break;
-                    case "senior_dev":
-                        Role seniorDevRole = roleRepository.findByName(Role.ERole.ROLE_SENIOR_DEV)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(seniorDevRole);
-                        break;
-                    case "team":
-                        Role teamRole = roleRepository.findByName(Role.ERole.ROLE_TEAM)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(teamRole);
-                        break;
-                    default:
-                        Role userRole = roleRepository.findByName(Role.ERole.ROLE_USER)
-                                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
-                        roles.add(userRole);
-                }
-            });
-        }
-
-        user.setRoles(roles);
+        // Inscription publique : toujours ROLE_USER (candidat), quoi que le client envoie.
+        // L'attribution de rôles internes (HR/MANAGER/ADMIN/...) se fait exclusivement
+        // via PATCH /api/users/{id}/roles (Admin uniquement, cf. UserController) — jamais
+        // depuis cet endpoint public, pour éviter qu'un visiteur s'auto-déclare admin.
+        Role userRole = roleRepository.findByName(Role.ERole.ROLE_USER)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+        user.setRoles(new HashSet<>(Set.of(userRole)));
         userRepository.save(user);
 
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));

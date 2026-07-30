@@ -23,6 +23,10 @@ public class JobOfferRequest {
 
     private String experienceLevel;
 
+    private JobOffer.JobFamily jobFamily;
+
+    private JobOffer.SeniorityLevel seniorityLevel;
+
     private String contractType;
 
     private String location;

@@ -1,5 +1,7 @@
 package com.recrutement.app.repository;
 
+import com.recrutement.app.entity.JobOffer;
+import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +24,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
     List<User> findByRoleName(@Param("roleName") String roleName);
+
+    @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName AND u.jobFamily = :jobFamily")
+    List<User> findManagersByJobFamily(@Param("jobFamily") JobOffer.JobFamily jobFamily, @Param("roleName") Role.ERole roleName);
 
     @Query("SELECT u FROM User u WHERE u.firstName LIKE %:name% OR u.lastName LIKE %:name%")
     List<User> findByFirstNameOrLastNameContaining(@Param("name") String name);

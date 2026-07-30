@@ -210,6 +210,8 @@ public class JobOfferService {
         jobOffer.setDescription(request.getDescription());
         jobOffer.setRequiredSkills(request.getRequiredSkills());
         jobOffer.setExperienceLevel(request.getExperienceLevel());
+        jobOffer.setJobFamily(request.getJobFamily());
+        jobOffer.setSeniorityLevel(request.getSeniorityLevel());
         jobOffer.setContractType(request.getContractType());
         jobOffer.setLocation(request.getLocation());
         jobOffer.setSalaryRange(request.getSalaryRange());

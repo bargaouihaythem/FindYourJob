@@ -48,6 +48,11 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   showDetailsModal = false;
   selectedCandidate: Candidate | undefined = undefined;
   candidateForm: FormGroup;
+
+  // Correction manuelle du score IA (RH/Admin)
+  showScoreOverrideForm = false;
+  scoreOverrideForm: FormGroup;
+  savingScoreOverride = false;
   
   // File upload
   selectedFile: File | null = null;
@@ -58,8 +63,10 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   // Email dropdown management
   openEmailDropdownId: number | null = null;
 
-  // Masquer les candidats rejetés par défaut
-  showRejected = false;
+  // Visibilité de la liste : par défaut seuls les dossiers actifs (non clôturés) sont affichés.
+  // 'rejected' → uniquement REJECTED/AUTO_REJECTED/MANAGER_REJECTED/WITHDRAWN
+  // 'hired'    → uniquement HIRED (un candidat embauché n'est pas un candidat rejeté !)
+  visibilityFilter: 'active' | 'rejected' | 'hired' = 'active';
 
   // Auto-refresh
   private pollSubscription: Subscription | null = null;
@@ -99,6 +106,11 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       status: ['APPLIED'],
       jobOfferId: ['']
     });
+
+    this.scoreOverrideForm = this.fb.group({
+      manualScore: [null, [Validators.required, Validators.min(0), Validators.max(100)]],
+      reason: ['', [Validators.required, Validators.minLength(5)]]
+    });
   }
 
   ngOnInit(): void {
@@ -115,6 +127,45 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   isHrOrAdmin(): boolean {
     return this.authService.isHR() || this.authService.isAdmin();
+  }
+
+  toggleScoreOverrideForm(): void {
+    this.showScoreOverrideForm = !this.showScoreOverrideForm;
+    if (this.showScoreOverrideForm && this.selectedCandidate) {
+      const currentScore = this.selectedCandidate.effectiveScore ?? this.selectedCandidate.aiScore ?? null;
+      this.scoreOverrideForm.reset({ manualScore: currentScore, reason: '' });
+    }
+  }
+
+  submitScoreOverride(): void {
+    if (this.scoreOverrideForm.invalid || !this.selectedCandidate) {
+      this.scoreOverrideForm.markAllAsTouched();
+      return;
+    }
+
+    const { manualScore, reason } = this.scoreOverrideForm.value;
+    const candidateId = this.selectedCandidate.id;
+    this.savingScoreOverride = true;
+
+    this.candidateService.overrideAiScore(candidateId, manualScore, reason).subscribe({
+      next: (updated: Candidate) => {
+        this.selectedCandidate = { ...this.selectedCandidate, ...updated };
+        const index = this.candidates.findIndex(c => c.id === candidateId);
+        if (index !== -1) {
+          this.candidates[index] = { ...this.candidates[index], ...updated };
+          this.applyFilters();
+        }
+        this.savingScoreOverride = false;
+        this.showScoreOverrideForm = false;
+        this.toastrNotification.showSuccess('Le score a été corrigé avec succès.', 'Score corrigé');
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la correction du score IA:', error);
+        this.savingScoreOverride = false;
+        const message = error?.error?.message || "Erreur lors de la correction du score.";
+        this.toastrNotification.showError(message, 'Erreur');
+      }
+    });
   }
 
   exportCandidatePdf(candidate: Candidate): void {
@@ -217,13 +268,18 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       const matchesStatus = !status || candidate.status === status;
       const matchesJobOffer = !jobOffer || candidate.jobOfferId?.toString() === jobOffer;
 
-      // Masquer REJECTED/AUTO_REJECTED/MANAGER_REJECTED/HIRED/WITHDRAWN par défaut
-      // showRejected=true → afficher UNIQUEMENT les dossiers fermés
-      // showRejected=false → afficher UNIQUEMENT les dossiers actifs
-      const isFinal = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
-        || candidate.status === 'MANAGER_REJECTED' || candidate.status === 'WITHDRAWN'
-        || candidate.status === 'HIRED';
-      const matchesVisibility = this.showRejected ? isFinal : !isFinal;
+      const isRejectedFamily = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
+        || candidate.status === 'MANAGER_REJECTED' || candidate.status === 'WITHDRAWN';
+      const isHired = candidate.status === 'HIRED';
+
+      let matchesVisibility: boolean;
+      if (this.visibilityFilter === 'rejected') {
+        matchesVisibility = isRejectedFamily;
+      } else if (this.visibilityFilter === 'hired') {
+        matchesVisibility = isHired;
+      } else {
+        matchesVisibility = !isRejectedFamily && !isHired;
+      }
 
       return matchesSearch && matchesStatus && matchesJobOffer && matchesVisibility;
     });
@@ -233,16 +289,24 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   toggleShowRejected(): void {
-    this.showRejected = !this.showRejected;
+    this.visibilityFilter = this.visibilityFilter === 'rejected' ? 'active' : 'rejected';
+    this.applyFilters();
+  }
+
+  toggleShowHired(): void {
+    this.visibilityFilter = this.visibilityFilter === 'hired' ? 'active' : 'hired';
     this.applyFilters();
   }
 
   getRejectedCount(): number {
     return this.candidates.filter(c =>
       c.status === 'REJECTED' || c.status === 'AUTO_REJECTED' ||
-      c.status === 'MANAGER_REJECTED' || c.status === 'WITHDRAWN' ||
-      c.status === 'HIRED'
+      c.status === 'MANAGER_REJECTED' || c.status === 'WITHDRAWN'
     ).length;
+  }
+
+  getHiredCount(): number {
+    return this.candidates.filter(c => c.status === 'HIRED').length;
   }
 
   /** Statuts finaux — plus aucune modification possible */
@@ -338,11 +402,13 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   viewCandidateDetails(candidate: Candidate): void {
     this.selectedCandidate = candidate;
     this.showDetailsModal = true;
+    this.showScoreOverrideForm = false;
   }
 
   closeDetailsModal(): void {
     this.showDetailsModal = false;
     this.selectedCandidate = undefined;
+    this.showScoreOverrideForm = false;
   }
 
   @HostListener('document:click', ['$event'])

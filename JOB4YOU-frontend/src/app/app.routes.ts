@@ -7,6 +7,7 @@ import { JobDetailComponent } from './pages/job-detail/job-detail';
 import { ForgotPasswordComponent } from './pages/forgot-password/forgot-password';
 import { ResetPasswordComponent } from './pages/reset-password/reset-password';
 import { RoleGuard } from './guards/role.guard';
+import { CandidateOrAnonymousGuard } from './guards/candidate-or-anonymous.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -16,7 +17,8 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'job-offers', component: JobOffersComponent },
   { path: 'job-offers/:id', component: JobDetailComponent },
-  { path: 'job-matching', loadComponent: () => import('./pages/job-matching/job-matching.component').then(m => m.JobMatchingComponent) },
+  // Réservé aux visiteurs anonymes et aux candidats (ROLE_USER) — sans intérêt pour le personnel RH/Manager/Admin
+  { path: 'job-matching', loadComponent: () => import('./pages/job-matching/job-matching.component').then(m => m.JobMatchingComponent), canActivate: [CandidateOrAnonymousGuard] },
   
   // Candidate routes
   { path: 'candidate/my-applications', loadComponent: () => import('./pages/candidate/my-applications/my-applications.component').then(m => m.MyApplicationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_USER'] } },
@@ -29,6 +31,7 @@ export const routes: Routes = [
   { path: 'admin/dashboard', loadComponent: () => import('./pages/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
   { path: 'admin/candidates', loadComponent: () => import('./pages/admin/candidates/candidates.component').then(m => m.CandidatesComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
   { path: 'admin/job-offers', loadComponent: () => import('./pages/admin/job-offers/job-offers-admin.component').then(m => m.JobOffersAdminComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
+  { path: 'admin/scoring-settings', loadComponent: () => import('./pages/admin/scoring-settings/scoring-settings.component').then(m => m.ScoringSettingsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
   { path: 'admin/interviews', loadComponent: () => import('./pages/admin/interviews/interviews.component').then(m => m.InterviewsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/feedbacks', loadComponent: () => import('./pages/admin/feedbacks/feedbacks-admin.component').then(m => m.FeedbacksAdminComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/notifications', loadComponent: () => import('./pages/admin/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },

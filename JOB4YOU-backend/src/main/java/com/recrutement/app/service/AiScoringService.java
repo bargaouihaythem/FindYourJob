@@ -4,7 +4,6 @@ import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.JobOffer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -32,18 +31,11 @@ public class AiScoringService {
     private static final Logger log = LoggerFactory.getLogger(AiScoringService.class);
 
     private final CohereClient cohereClient;
+    private final ScoringWeightProfileService scoringWeightProfileService;
 
-    @Value("${ai.score.weight.technical:0.5}")
-    private double weightTechnical;
-
-    @Value("${ai.score.weight.communication:0.2}")
-    private double weightCommunication;
-
-    @Value("${ai.score.weight.seniority:0.3}")
-    private double weightSeniority;
-
-    public AiScoringService(CohereClient cohereClient) {
+    public AiScoringService(CohereClient cohereClient, ScoringWeightProfileService scoringWeightProfileService) {
         this.cohereClient = cohereClient;
+        this.scoringWeightProfileService = scoringWeightProfileService;
     }
 
     public static class AiScoreResult {
@@ -81,10 +73,14 @@ public class AiScoringService {
             source = "SIMULATED";
         }
 
+        ScoringWeightProfileService.ScoringWeights weights = scoringWeightProfileService.resolveWeights(
+                jobOffer != null ? jobOffer.getJobFamily() : null,
+                jobOffer != null ? jobOffer.getSeniorityLevel() : null);
+
         int finalScore = (int) Math.round(
-                technical * weightTechnical
-                        + communication * weightCommunication
-                        + seniorityMatch * weightSeniority
+                technical * weights.technical
+                        + communication * weights.communication
+                        + seniorityMatch * weights.seniority
         );
         finalScore = Math.max(0, Math.min(100, finalScore));
 
