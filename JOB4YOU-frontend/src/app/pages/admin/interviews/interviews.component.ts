@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { InterviewService } from '../../../services/interview.service';
 import { InterviewerService, Interviewer } from '../../../services/interviewer.service';
 import { Interview } from '../../../models/interfaces';
@@ -18,7 +20,8 @@ import { NotificationService } from '../../../services/notification.service';
   selector: 'app-interviews',
   standalone: true,
   imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule],
-  templateUrl: './interviews.component.html'
+  templateUrl: './interviews.component.html',
+  styleUrl: './interviews.component.scss'
 })
 export class InterviewsComponent implements OnInit {
   interviews: Interview[] = [];
@@ -109,7 +112,7 @@ export class InterviewsComponent implements OnInit {
       interviewDate: ['', Validators.required],
       duration: [60, [Validators.required, Validators.min(15)]],
       location: ['', Validators.required],
-      type: ['VIDEO', Validators.required],
+      type: ['TECHNICAL', Validators.required],
       notes: ['']
     });
 
@@ -328,8 +331,8 @@ export class InterviewsComponent implements OnInit {
       });
     } else {
       this.interviewForm.reset();
-      this.interviewForm.patchValue({ 
-        type: 'VIDEO',
+      this.interviewForm.patchValue({
+        type: 'TECHNICAL',
         duration: 60
       });
     }
@@ -380,7 +383,7 @@ export class InterviewsComponent implements OnInit {
       
       const interviewToSend = {
         interviewDate: formattedDate,
-        type: this.mapTypeToBackend(interviewData.type),
+        type: interviewData.type, // Déjà une valeur d'enum backend (cf. options du <select>)
         status: null, // Laisser le backend définir le statut par défaut
         notes: interviewData.notes || null,
         durationMinutes: interviewData.duration ? Number(interviewData.duration) : null,
@@ -429,18 +432,6 @@ export class InterviewsComponent implements OnInit {
           }
         });
       }
-    }
-  }
-
-  /**
-   * Mappe le type d'entretien du frontend vers l'enum backend
-   */
-  private mapTypeToBackend(type: string): string {
-    switch (type) {
-      case 'VIDEO': return 'TECHNICAL';
-      case 'PHONE': return 'PHONE_SCREENING';
-      case 'IN_PERSON': return 'HR';
-      default: return 'TECHNICAL';
     }
   }
 
@@ -497,12 +488,14 @@ export class InterviewsComponent implements OnInit {
    */
   submitFeedback(): void {
     if (this.feedbackForm.valid && this.selectedInterview) {
+      // Doit correspondre à FeedbackRequest.java : "content" (pas "feedback") et
+      // "type" sont requis côté backend, sans quoi la requête est rejetée (400).
       const feedbackData = {
         interviewId: this.selectedInterview.id,
-        feedback: this.feedbackForm.value.feedback,
-        rating: this.feedbackForm.value.rating,
         candidateId: this.selectedInterview.candidateId,
-        interviewerId: this.selectedInterview.interviewerId
+        content: this.feedbackForm.value.feedback,
+        rating: this.feedbackForm.value.rating,
+        type: 'INTERVIEW'
       };
 
       this.feedbackService.createFeedback(feedbackData).subscribe({
@@ -552,29 +545,6 @@ export class InterviewsComponent implements OnInit {
         }
       }
     });
-  }
-
-  /**
-   * Sauvegarde le feedback de l'entretien
-   */
-  saveFeedback(): void {
-    if (this.feedbackForm.valid && this.selectedInterview) {
-      const feedbackData = {
-        interviewId: this.selectedInterview.id,
-        rating: this.feedbackForm.get('rating')?.value,
-        feedback: this.feedbackForm.get('feedback')?.value,
-        recommendation: this.feedbackForm.get('recommendation')?.value
-      };
-
-      // Simuler l'envoi du feedback
-      // TODO: Remplacer par un vrai appel API
-      console.log('Envoi du feedback:', feedbackData);
-      
-      this.toastrNotification.showSuccess('Feedback enregistré avec succès');
-      this.closeFeedbackModal();
-    } else {
-      this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
-    }
   }
 
   /**
@@ -636,12 +606,33 @@ export class InterviewsComponent implements OnInit {
     }
 
     this.showConfirmationModal = true;
-    this.confirmationMessage = `Êtes-vous sûr de vouloir changer le statut de ${this.selectedInterviews.size} entretien(s) vers "${status}" ?`;
+    this.confirmationMessage = `Êtes-vous sûr de vouloir changer le statut de ${this.selectedInterviews.size} entretien(s) vers "${this.getStatusText(status)}" ?`;
     this.confirmationAction = () => {
-      console.log(`Mise à jour du statut vers ${status} pour:`, Array.from(this.selectedInterviews));
-      this.toastrNotification.showSuccess(`Statut mis à jour pour ${this.selectedInterviews.size} entretien(s)`);
-      this.selectedInterviews.clear();
-      this.closeConfirmationModal();
+      const ids = Array.from(this.selectedInterviews);
+      const requests = ids.map(id =>
+        this.interviewService.updateInterviewStatus(id, status).pipe(
+          catchError(error => {
+            console.error(`Erreur lors de la mise à jour du statut de l'entretien #${id}:`, error);
+            return of(null);
+          })
+        )
+      );
+
+      forkJoin(requests).subscribe(results => {
+        const successCount = results.filter(r => r !== null).length;
+        const failCount = results.length - successCount;
+
+        if (successCount > 0) {
+          this.toastrNotification.showSuccess(`Statut mis à jour pour ${successCount} entretien(s)`);
+        }
+        if (failCount > 0) {
+          this.toastrNotification.showError(`Échec de la mise à jour pour ${failCount} entretien(s)`);
+        }
+
+        this.selectedInterviews.clear();
+        this.closeConfirmationModal();
+        this.loadInterviews();
+      });
     };
   }
 
@@ -657,10 +648,31 @@ export class InterviewsComponent implements OnInit {
     this.showConfirmationModal = true;
     this.confirmationMessage = `Êtes-vous sûr de vouloir supprimer ${this.selectedInterviews.size} entretien(s) ? Cette action est irréversible.`;
     this.confirmationAction = () => {
-      console.log('Suppression des entretiens:', Array.from(this.selectedInterviews));
-      this.toastrNotification.showSuccess(`${this.selectedInterviews.size} entretien(s) supprimé(s)`);
-      this.selectedInterviews.clear();
-      this.closeConfirmationModal();
+      const ids = Array.from(this.selectedInterviews);
+      const requests = ids.map(id =>
+        this.interviewService.deleteInterview(id).pipe(
+          catchError(error => {
+            console.error(`Erreur lors de la suppression de l'entretien #${id}:`, error);
+            return of(null);
+          })
+        )
+      );
+
+      forkJoin(requests).subscribe(results => {
+        const successCount = results.filter(r => r !== null).length;
+        const failCount = results.length - successCount;
+
+        if (successCount > 0) {
+          this.toastrNotification.showSuccess(`${successCount} entretien(s) supprimé(s)`);
+        }
+        if (failCount > 0) {
+          this.toastrNotification.showError(`Échec de la suppression pour ${failCount} entretien(s)`);
+        }
+
+        this.selectedInterviews.clear();
+        this.closeConfirmationModal();
+        this.loadInterviews();
+      });
     };
   }
 
@@ -767,10 +779,12 @@ export class InterviewsComponent implements OnInit {
    */
   getTypeIcon(type: string): string {
     const icons: { [key: string]: string } = {
-      'PHONE': 'fas fa-phone',
-      'VIDEO': 'fas fa-video',
-      'IN_PERSON': 'fas fa-user',
-      'TECHNICAL': 'fas fa-code'
+      'PHONE_SCREENING': 'fas fa-phone',
+      'TECHNICAL': 'fas fa-laptop-code',
+      'HR': 'fas fa-user-tie',
+      'MANAGER': 'fas fa-user-shield',
+      'FINAL': 'fas fa-flag-checkered',
+      'GROUP': 'fas fa-users'
     };
     return icons[type] || 'fas fa-question';
   }
@@ -780,10 +794,12 @@ export class InterviewsComponent implements OnInit {
    */
   getTypeText(type: string): string {
     const types: { [key: string]: string } = {
-      'PHONE': 'Téléphonique',
-      'VIDEO': 'Visioconférence',
-      'IN_PERSON': 'En personne',
-      'TECHNICAL': 'Technique'
+      'PHONE_SCREENING': 'Entretien téléphonique',
+      'TECHNICAL': 'Entretien technique',
+      'HR': 'Entretien RH',
+      'MANAGER': 'Entretien manager',
+      'FINAL': 'Entretien final',
+      'GROUP': 'Entretien de groupe'
     };
     return types[type] || type;
   }
@@ -1021,40 +1037,80 @@ export class InterviewsComponent implements OnInit {
   }
 
   /**
-   * Confirme un entretien avec notification
+   * Démarre un entretien (SCHEDULED → IN_PROGRESS) puis ouvre la modale de
+   * notification pour prévenir le candidat/l'interviewer.
    */
   confirmInterviewWithNotification(interview: any): void {
-    this.selectedInterview = interview;
-    this.openNotificationModal(interview);
+    this.interviewService.updateInterviewStatus(interview.id, 'IN_PROGRESS').subscribe({
+      next: (updated) => {
+        interview.status = updated.status;
+        this.toastrNotification.showSuccess('Entretien marqué comme en cours');
+        this.selectedInterview = interview;
+        this.openNotificationModal(interview);
+      },
+      error: (error: any) => {
+        console.error('Erreur lors du démarrage de l\'entretien:', error);
+        this.toastrNotification.showError('Erreur lors du démarrage de l\'entretien');
+      }
+    });
   }
 
   /**
-   * Termine un entretien avec feedback
+   * Termine un entretien (IN_PROGRESS → COMPLETED) puis ouvre la modale de feedback.
    */
   completeInterviewWithFeedback(interview: any): void {
-    this.selectedInterview = interview;
-    this.showFeedbackModal = true;
+    this.interviewService.updateInterviewStatus(interview.id, 'COMPLETED').subscribe({
+      next: (updated) => {
+        interview.status = updated.status;
+        this.selectedInterview = interview;
+        this.showFeedbackModal = true;
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la finalisation de l\'entretien:', error);
+        this.toastrNotification.showError('Erreur lors de la finalisation de l\'entretien');
+      }
+    });
   }
 
   /**
-   * Reprogramme un entretien
+   * Reprogramme un entretien : marque le statut RESCHEDULED côté backend
+   * (déclenche l'email de reprogrammation au candidat), puis ouvre le
+   * formulaire de modification pour que l'admin fixe la nouvelle date.
    */
   rescheduleInterview(interview: any): void {
-    console.log('Reprogrammation de l\'entretien:', interview);
-    this.toastrNotification.showInfo('Fonctionnalité de reprogrammation en cours de développement');
+    this.interviewService.updateInterviewStatus(interview.id, 'RESCHEDULED').subscribe({
+      next: (updated) => {
+        interview.status = updated.status;
+        this.toastrNotification.showSuccess('Entretien marqué comme reprogrammé, le candidat a été notifié. Renseignez la nouvelle date.');
+        this.openInterviewModal(interview);
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la reprogrammation de l\'entretien:', error);
+        this.toastrNotification.showError('Erreur lors de la reprogrammation de l\'entretien');
+      }
+    });
   }
 
   /**
-   * Annule un entretien
+   * Annule un entretien : persiste le changement de statut côté backend
+   * (déclenche l'email d'annulation au candidat et annule ses rappels).
    */
   cancelInterview(interview: any): void {
     this.showConfirmationModal = true;
     this.confirmationMessage = `Êtes-vous sûr de vouloir annuler l'entretien avec ${interview.candidateName} ?`;
     this.confirmationAction = () => {
-      console.log('Annulation de l\'entretien:', interview);
-      interview.status = 'CANCELLED';
-      this.toastrNotification.showSuccess('Entretien annulé');
-      this.closeConfirmationModal();
+      this.interviewService.updateInterviewStatus(interview.id, 'CANCELLED').subscribe({
+        next: (updated) => {
+          interview.status = updated.status;
+          this.toastrNotification.showSuccess('Entretien annulé, le candidat a été notifié par e-mail');
+          this.closeConfirmationModal();
+        },
+        error: (error: any) => {
+          console.error('Erreur lors de l\'annulation de l\'entretien:', error);
+          this.toastrNotification.showError('Erreur lors de l\'annulation de l\'entretien');
+          this.closeConfirmationModal();
+        }
+      });
     };
   }
 
@@ -1109,20 +1165,48 @@ export class InterviewsComponent implements OnInit {
   sendNotification(): void {
     if (this.notificationForm.valid && this.selectedInterview) {
       const formData = this.notificationForm.value;
-      
-      // Préparer les données pour l'email personnalisé
-      const emailData = {
-        interviewId: this.selectedInterview.id,
-        candidateEmail: this.selectedInterview.candidateEmail || 'test@example.com',
-        type: formData.type,
-        subject: formData.subject,
-        message: formData.message,
-        copyToHR: formData.copyToHR
-      };
 
-      console.log('Envoi de notification:', emailData);
-      this.toastrNotification.showSuccess('Notification envoyée avec succès');
-      this.closeNotificationModal();
+      const recipients: string[] = [];
+      if (formData.sendToCandidate && this.selectedInterview.candidateEmail) {
+        recipients.push(this.selectedInterview.candidateEmail);
+      }
+      if (formData.sendToInterviewer && this.selectedInterview.interviewerEmail) {
+        recipients.push(this.selectedInterview.interviewerEmail);
+      }
+
+      if (recipients.length === 0) {
+        this.toastrNotification.showWarning('Aucune adresse e-mail disponible pour les destinataires sélectionnés');
+        return;
+      }
+
+      const requests = recipients.map(to =>
+        this.notificationService.sendCustomEmail({
+          to,
+          subject: formData.subject,
+          content: formData.message,
+          isHtml: false
+        }).pipe(
+          catchError(error => {
+            console.error(`Erreur lors de l'envoi de la notification à ${to}:`, error);
+            return of(null);
+          })
+        )
+      );
+
+      forkJoin(requests).subscribe(results => {
+        const successCount = results.filter(r => r !== null).length;
+        if (successCount > 0) {
+          this.toastrNotification.showSuccess(`Notification envoyée à ${successCount} destinataire(s)`);
+        }
+        if (successCount < results.length) {
+          this.toastrNotification.showError(`Échec de l'envoi pour ${results.length - successCount} destinataire(s)`);
+        }
+        this.closeNotificationModal();
+      });
+
+      if (formData.copyToHR) {
+        this.toastrNotification.showInfo('La copie automatique aux RH n\'est pas encore disponible (aucune adresse RH configurée)');
+      }
     } else {
       this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
     }
@@ -1196,6 +1280,7 @@ export class InterviewsComponent implements OnInit {
       case 'IN_PROGRESS': return '#3b82f6';
       case 'COMPLETED': return '#22c55e';
       case 'CANCELLED': return '#ef4444';
+      case 'RESCHEDULED': return '#0ea5e9';
       default: return '#9ca3af';
     }
   }

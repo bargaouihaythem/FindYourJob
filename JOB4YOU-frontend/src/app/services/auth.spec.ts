@@ -135,17 +135,6 @@ describe('AuthService', () => {
       localStorage.setItem('token', 'tok123');
       expect(service.getToken()).toBe('tok123');
     });
-
-    it('retourne le token depuis sessionStorage si absent du localStorage', () => {
-      sessionStorage.setItem('token', 'session_tok');
-      expect(service.getToken()).toBe('session_tok');
-    });
-
-    it('localStorage a priorité sur sessionStorage', () => {
-      localStorage.setItem('token', 'local_tok');
-      sessionStorage.setItem('token', 'session_tok');
-      expect(service.getToken()).toBe('local_tok');
-    });
   });
 
   // ── logout ───────────────────────────────────
@@ -158,16 +147,6 @@ describe('AuthService', () => {
 
       expect(service.getToken()).toBeNull();
       expect(service.getCurrentUser()).toBeNull();
-    });
-
-    it('conserve les infos "se souvenir de moi" après logout', () => {
-      localStorage.setItem('rememberedUsername', 'alice');
-      localStorage.setItem('rememberMe', 'true');
-
-      service.logout();
-
-      expect(localStorage.getItem('rememberedUsername')).toBe('alice');
-      expect(localStorage.getItem('rememberMe')).toBe('true');
     });
   });
 

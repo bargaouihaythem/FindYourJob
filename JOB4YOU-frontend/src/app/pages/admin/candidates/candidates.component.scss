@@ -325,23 +325,48 @@
     }
   }
 
-  // Fix pour les dropdowns dans les tableaux
+  // Fix pour les dropdowns dans les tableaux : on ne rend visible que le
+  // débordement VERTICAL (pour que les menus d'actions ne soient pas coupés),
+  // en gardant le débordement horizontal contenu dans un scroll propre.
+  // Un "overflow: visible" sur les deux axes fait déborder le tableau hors
+  // de la page (scrollbar de page incohérente avec le reste du layout).
   .table-responsive {
-    overflow: visible; // Permet aux dropdowns de dépasser du conteneur
+    overflow-x: auto;
+    overflow-y: visible;
   }
 
   .table-dropdown-container {
-    overflow: visible !important; // Force l'overflow visible
+    overflow-x: auto !important;
+    overflow-y: visible !important;
   }
 
   .table-with-dropdowns {
-    overflow: visible;
+    overflow-x: auto;
+    overflow-y: visible;
   }
 
   .table {
     td, th {
       position: relative; // Contexte de positionnement pour les dropdowns
       overflow: visible; // Évite que le contenu soit coupé
+    }
+
+    // Colonne Actions "collante" : sur un écran étroit ou un zoom élevé, le
+    // tableau dépasse la largeur visible et la colonne Actions sort du cadre
+    // sans que ce soit évident qu'il faut scroller. On la fixe à droite pour
+    // qu'elle reste toujours accessible, quel que soit le zoom/écran.
+    th.sticky-actions,
+    td.sticky-actions {
+      position: sticky;
+      right: 0;
+      z-index: 2;
+      background-color: #fff;
+      box-shadow: -2px 0 4px rgba(0, 0, 0, 0.08);
+    }
+
+    thead th.sticky-actions {
+      z-index: 3;
+      background-color: #f8f9fc;
     }
   }
 

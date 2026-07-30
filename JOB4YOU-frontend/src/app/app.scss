@@ -8,3 +8,19 @@
   flex: 1;
 }
 
+// Filigrane Sopra HR affiché en arrière-plan sur toutes les pages.
+// z-index négatif : reste derrière tout le contenu normal (header, page,
+// footer, menus déroulants...) sans créer de contexte d'empilement sur
+// ces éléments, ce qui casserait le rendu des dropdowns Bootstrap.
+.app-watermark {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/images/logo-sopra-hr.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: min(45vw, 480px);
+  opacity: 0.05;
+}
+

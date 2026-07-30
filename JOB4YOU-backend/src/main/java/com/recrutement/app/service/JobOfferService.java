@@ -2,9 +2,11 @@ package com.recrutement.app.service;
 
 import com.recrutement.app.dto.JobOfferRequest;
 import com.recrutement.app.dto.JobOfferResponse;
+import com.recrutement.app.entity.Department;
 import com.recrutement.app.entity.JobOffer;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.exception.ResourceNotFoundException;
+import com.recrutement.app.repository.DepartmentRepository;
 import com.recrutement.app.repository.JobOfferRepository;
 import com.recrutement.app.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,9 @@ public class JobOfferService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
 
     /**
      * Crée une nouvelle offre d'emploi
@@ -210,7 +215,15 @@ public class JobOfferService {
         jobOffer.setSalaryRange(request.getSalaryRange());
         jobOffer.setDeadline(request.getDeadline());
         jobOffer.setManagerEmail(request.getManagerEmail());
-        
+
+        if (request.getDepartmentId() != null) {
+            Department department = departmentRepository.findById(request.getDepartmentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Département non trouvé avec l'ID: " + request.getDepartmentId()));
+            jobOffer.setDepartment(department);
+        } else {
+            jobOffer.setDepartment(null);
+        }
+
         if (request.getStatus() != null) {
             jobOffer.setStatus(request.getStatus());
         } else if (jobOffer.getStatus() == null) {

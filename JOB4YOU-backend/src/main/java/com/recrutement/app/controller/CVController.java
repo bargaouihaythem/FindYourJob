@@ -108,6 +108,18 @@ public class CVController {
         return ResponseEntity.ok(viewUrl);
     }
 
+    @PostMapping("/{id}/extract-text")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Relancer l'extraction du texte d'un CV (PDF/DOCX)")
+    public ResponseEntity<?> extractText(@PathVariable Long id) {
+        try {
+            CVResponse response = cvService.extractText(id);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur lors de l'extraction du texte: " + e.getMessage()));
+        }
+    }
+
     @PostMapping("/test/create-sample")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Créer un CV de test avec stockage local")

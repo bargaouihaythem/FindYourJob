@@ -5,7 +5,8 @@ import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { InterviewService } from '../../../services/interview.service';
 import { FeedbackService } from '../../../services/feedback.service';
-import { Candidate, JobOffer, Interview, Feedback } from '../../../models/interfaces';
+import { ReminderService } from '../../../services/reminder.service';
+import { Candidate, JobOffer, Interview, Feedback, Reminder } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 interface DashboardStats {
@@ -60,6 +61,7 @@ export class DashboardComponent implements OnInit {
   recentActivities: RecentActivity[] = [];
   upcomingInterviews: any[] = [];
   pendingFeedbacks: any[] = [];
+  todayReminders: Reminder[] = [];
   loading = true;
   error: string | null = null;
 
@@ -68,11 +70,20 @@ export class DashboardComponent implements OnInit {
     private jobOfferService: JobOfferService,
     private interviewService: InterviewService,
     private feedbackService: FeedbackService,
+    private reminderService: ReminderService,
     private toastrNotification: ToastrNotificationService
   ) {}
 
   ngOnInit(): void {
     this.loadDashboardData();
+    this.loadTodayReminders();
+  }
+
+  loadTodayReminders(): void {
+    this.reminderService.getTodayReminders().subscribe({
+      next: (reminders: Reminder[]) => this.todayReminders = reminders,
+      error: (error: any) => console.error('Erreur lors du chargement des rappels du jour:', error)
+    });
   }
 
   loadDashboardData(): void {

@@ -203,7 +203,7 @@
               <td>
                 <span class="text-muted">{{ formatDate(feedback.createdAt) }}</span>
                 <div class="small text-muted">
-                  Par {{ feedback.createdBy }}
+                  Par {{ feedback.authorName || 'Inconnu' }}
                 </div>
               </td>              <td class="text-center">
                 <div class="btn-group" role="group">
@@ -355,7 +355,7 @@
                 <div class="col-md-6">
                   <div class="mb-2">
                     <strong>Créé par :</strong><br>
-                    <span class="text-muted">{{ selectedFeedback.createdBy || 'Inconnu' }}</span>
+                    <span class="text-muted">{{ selectedFeedback.authorName || 'Inconnu' }}</span>
                   </div>
                 </div>
                 <div class="col-md-6">
@@ -522,7 +522,7 @@
               </div>
               <div class="col-md-6">
                 <strong>Entretien:</strong> {{ getInterviewInfo(selectedFeedback.interviewId) }}<br>
-                <strong>Créé par:</strong> {{ selectedFeedback.createdBy }}
+                <strong>Créé par:</strong> {{ selectedFeedback.authorName || 'Inconnu' }}
               </div>
             </div>
             <div class="mt-2">

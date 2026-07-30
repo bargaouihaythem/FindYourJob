@@ -74,4 +74,9 @@ export class CandidateService {
     const headers = this.authService.getAuthHeaders();
     return this.http.get<Candidate[]>(`${this.apiUrl}/validated`, { headers });
   }
+
+  exportCandidatePdf(id: number): Observable<Blob> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get(`${this.apiUrl}/${id}/export/pdf`, { headers, responseType: 'blob' });
+  }
 }

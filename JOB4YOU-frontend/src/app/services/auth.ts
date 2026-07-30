@@ -13,6 +13,12 @@ export class AuthService {
   public currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private http: HttpClient) {
+    // Nettoyage ponctuel des anciennes clés de l'ex-fonctionnalité "Se souvenir de moi"
+    localStorage.removeItem('rememberedUsername');
+    localStorage.removeItem('rememberMe');
+    localStorage.removeItem('tokenType');
+    sessionStorage.removeItem('token');
+
     // Vérifier si un token existe au démarrage
     this.checkStoredToken();
   }
@@ -40,71 +46,22 @@ export class AuthService {
   }
 
   /**
-   * Sauvegarde les informations de connexion si "Se souvenir de moi" est activé
+   * Sauvegarde le token de connexion (localStorage : persiste jusqu'à déconnexion explicite).
    */
-  private saveLoginCredentials(username: string, rememberMe: boolean): void {
-    if (rememberMe) {
-      localStorage.setItem('rememberedUsername', username);
-      localStorage.setItem('rememberMe', 'true');
-    } else {
-      localStorage.removeItem('rememberedUsername');
-      localStorage.removeItem('rememberMe');
-    }
+  private saveToken(token: string): void {
+    localStorage.setItem('token', token);
   }
 
-  /**
-   * Récupère le nom d'utilisateur sauvegardé
-   */
-  getRememberedUsername(): string | null {
-    return localStorage.getItem('rememberedUsername');
-  }
-
-  /**
-   * Vérifie si "Se souvenir de moi" était activé
-   */
-  isRememberMeEnabled(): boolean {
-    return localStorage.getItem('rememberMe') === 'true';
-  }
-
-  /**
-   * Sauvegarde le token avec la durée appropriée selon "Se souvenir de moi"
-   */
-  private saveToken(token: string, rememberMe: boolean): void {
-    if (rememberMe) {
-      // Utiliser localStorage pour une persistance plus longue
-      localStorage.setItem('token', token);
-      localStorage.setItem('tokenType', 'persistent');
-    } else {
-      // Utiliser sessionStorage pour la session courante uniquement
-      sessionStorage.setItem('token', token);
-      localStorage.setItem('tokenType', 'session');
-      // Supprimer le token persistent s'il existe
-      localStorage.removeItem('token');
-    }
-  }
-
-  /**
-   * Récupère le token depuis le storage approprié
-   */
   getToken(): string | null {
-    // Vérifier d'abord localStorage, puis sessionStorage
-    let token = localStorage.getItem('token');
-    if (!token) {
-      token = sessionStorage.getItem('token');
-    }
-    return token;
+    return localStorage.getItem('token');
   }
 
-  login(credentials: LoginRequest, rememberMe: boolean = false): Observable<JwtResponse> {
+  login(credentials: LoginRequest): Observable<JwtResponse> {
     return this.http.post<JwtResponse>(`${this.apiUrl}/signin`, credentials)
       .pipe(
         tap(response => {
-          // Stocker le token avec la méthode appropriée
-          this.saveToken(response.token, rememberMe);
-          
-          // Sauvegarder les informations de connexion si demandé
-          this.saveLoginCredentials(credentials.username, rememberMe);
-          
+          this.saveToken(response.token);
+
           // Créer l'objet utilisateur
           const user: User = {
             id: response.id,
@@ -136,14 +93,7 @@ export class AuthService {
   }
 
   logout(): void {
-    // Nettoyer tous les tokens
     localStorage.removeItem('token');
-    sessionStorage.removeItem('token');
-    localStorage.removeItem('tokenType');
-    
-    // Ne pas supprimer les informations "Se souvenir de moi" lors de la déconnexion
-    // Elles doivent persister pour la prochaine connexion
-    
     this.currentUserSubject.next(null);
   }
 
@@ -196,14 +146,6 @@ export class AuthService {
       'Authorization': token ? `Bearer ${token}` : '',
       'Content-Type': 'application/json'
     });
-  }
-
-  /**
-   * Efface les informations de connexion mémorisées
-   */
-  clearRememberedCredentials(): void {
-    localStorage.removeItem('rememberedUsername');
-    localStorage.removeItem('rememberMe');
   }
 }
 

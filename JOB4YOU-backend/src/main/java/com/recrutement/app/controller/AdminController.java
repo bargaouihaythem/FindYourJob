@@ -155,59 +155,5 @@ public class AdminController {
 
         return ResponseEntity.ok(new MessageResponse(
             "CV de test supprimés: " + deletedCount));
-    }    @GetMapping("/public/cv-diagnostic")
-    @Operation(summary = "Diagnostic public des CV (sans authentification)")
-    public ResponseEntity<String> publicCVDiagnostic() {
-        List<CV> allCVs = cvRepository.findAll();
-        StringBuilder result = new StringBuilder();
-        result.append("=== DIAGNOSTIC CV PUBLIC ===\n");
-        
-        int problemCount = 0;
-        for (CV cv : allCVs) {
-            if (cv.getStoredFilename() != null && cv.getFileUrl() != null) {
-                String expectedUrl = "http://localhost:8080/api/files/" + cv.getStoredFilename();
-                boolean hasUrlMismatch = !cv.getFileUrl().equals(expectedUrl);
-                
-                if (hasUrlMismatch) {
-                    result.append("❌ PROBLEME - CV ID: ").append(cv.getId()).append("\n");
-                    result.append("   URL actuelle: ").append(cv.getFileUrl()).append("\n");
-                    result.append("   URL attendue: ").append(expectedUrl).append("\n");
-                    result.append("   Fichier stocké: ").append(cv.getStoredFilename()).append("\n");
-                    problemCount++;
-                } else {
-                    result.append("✅ OK - CV ID: ").append(cv.getId()).append(" - ").append(cv.getStoredFilename()).append("\n");
-                }
-            }
-            result.append("---\n");
-        }
-        
-        result.append("\nRÉSUMÉ: ").append(problemCount).append(" problème(s) détecté(s) sur ").append(allCVs.size()).append(" CV(s)\n");
-        
-        return ResponseEntity.ok(result.toString());
-    }
-
-    @PostMapping("/public/fix-cv-urls")
-    @Operation(summary = "Correction publique des URLs de CV (sans authentification)")
-    public ResponseEntity<MessageResponse> publicFixCVUrls() {
-        List<CV> allCVs = cvRepository.findAll();
-        int fixedCount = 0;
-
-        for (CV cv : allCVs) {
-            if (cv.getStoredFilename() != null && cv.getFileUrl() != null) {
-                String expectedUrl = "http://localhost:8080/api/files/" + cv.getStoredFilename();
-                
-                if (!cv.getFileUrl().equals(expectedUrl)) {
-                    System.out.println("[PUBLIC-FIX] CV ID " + cv.getId() + 
-                                     " - URL corrigée: " + expectedUrl);
-                    
-                    cv.setFileUrl(expectedUrl);
-                    cvRepository.save(cv);
-                    fixedCount++;
-                }
-            }
-        }
-
-        return ResponseEntity.ok(new MessageResponse(
-            "✅ Correction publique terminée: " + fixedCount + " CV(s) corrigé(s) sur " + allCVs.size() + " total."));
     }
 }

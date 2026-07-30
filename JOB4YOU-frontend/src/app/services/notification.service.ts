@@ -100,11 +100,15 @@ export interface EmailHistory {
   type: 'APPLICATION_CONFIRMATION' | 'INTERVIEW_INVITATION' | 'FEEDBACK_NOTIFICATION' | 'CUSTOM';
 }
 
+/**
+ * Doit correspondre exactement à DetailedNotificationRequest.java côté backend :
+ * un mismatch de champs ici fait que subject/message arrivent vides au serveur
+ * et que l'e-mail envoyé au candidat est vide (voir bug corrigé le 2026-07-30).
+ */
 export interface FeedbackNotificationRequest {
-  candidateId: number;
-  feedbackId: number;
-  decision: string;
-  comments: string;
-  nextSteps?: string;
+  subject: string;
+  message: string;
+  interviewDetails?: string;
+  feedbackSummary?: string;
 }
 

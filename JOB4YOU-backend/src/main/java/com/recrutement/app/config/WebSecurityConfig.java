@@ -89,15 +89,14 @@ public class WebSecurityConfig {
                 ).permitAll()
                 // Autoriser tes endpoints publics
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/job-offers/public/**").permitAll()
                 // .requestMatchers("/api/candidates/apply").permitAll() // Commenté : candidature nécessite un compte
                 .requestMatchers("/api/files/**").permitAll() // Allow access to uploaded files
-                .requestMatchers("/api/init/**").permitAll() // Allow role initialization
                 .requestMatchers("/api/candidates/*/ai-score").permitAll() // n8n Agent 1 saves AI score
                 .requestMatchers("/api/candidates/*/ai-score/recompute").permitAll() // n8n Agent 1 recalcule le score via Cohere
                 .requestMatchers("/api/candidates/*/status").permitAll() // n8n Agent 1 auto CV_REVIEWED
                 .requestMatchers("/api/notifications/n8n/**").permitAll() // n8n Agent 2 reads daily candidates
+                .requestMatchers("/api/matching/**").permitAll() // Matching inverse CV -> offres, accessible sans compte
                 .requestMatchers("/error").permitAll()     // <-- Ajout pour éviter 401 sur /error
                 
                 // Endpoints pour tous les utilisateurs authentifiés

@@ -23,6 +23,7 @@ public class CVResponse {
     private LocalDateTime lastAccessed;
     private Long candidateId;
     private String candidateName;
+    private boolean textExtracted;
 
     // Constructeur pour mapper depuis l'entité CV
     public CVResponse(CV cv) {
@@ -36,8 +37,9 @@ public class CVResponse {
         this.uploadDate = cv.getUploadDate();
         this.lastAccessed = cv.getLastAccessed();
         this.candidateId = cv.getCandidate() != null ? cv.getCandidate().getId() : null;
-        this.candidateName = cv.getCandidate() != null ? 
+        this.candidateName = cv.getCandidate() != null ?
             cv.getCandidate().getFirstName() + " " + cv.getCandidate().getLastName() : null;
+        this.textExtracted = cv.getExtractedText() != null && !cv.getExtractedText().isBlank();
     }
 }
 

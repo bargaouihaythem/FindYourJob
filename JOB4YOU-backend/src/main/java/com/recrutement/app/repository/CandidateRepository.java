@@ -64,5 +64,20 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
      */
     @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer WHERE c.status IN :statuses")
     List<Candidate> findByStatusIn(@Param("statuses") List<Candidate.CandidateStatus> statuses);
+
+    /**
+     * Vue Manager scopée : dossiers validés (statuts fournis) dont l'offre est
+     * rattachée au manager connecté, soit directement (managerEmail), soit via
+     * son département (department.id). Utilisé pour éviter qu'un manager voie
+     * les candidatures d'un autre département.
+     */
+    @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer jo " +
+           "WHERE c.status IN :statuses " +
+           "AND (jo.managerEmail = :managerEmail " +
+           "     OR (:departmentId IS NOT NULL AND jo.department.id = :departmentId))")
+    List<Candidate> findByStatusInAndJobOfferManagerEmailOrDepartment(
+            @Param("statuses") List<Candidate.CandidateStatus> statuses,
+            @Param("managerEmail") String managerEmail,
+            @Param("departmentId") Long departmentId);
 }
 

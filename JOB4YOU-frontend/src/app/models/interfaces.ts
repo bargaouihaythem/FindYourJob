@@ -5,6 +5,57 @@ export interface User {
   firstName: string;
   lastName: string;
   roles: string[];
+  displayName?: string;
+  departmentId?: number;
+  departmentName?: string;
+}
+
+export interface Department {
+  id: number;
+  name: string;
+  code: string;
+}
+
+export interface InternalNote {
+  id: number;
+  content: string;
+  candidateId: number;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+  pinned: boolean;
+}
+
+export interface JobMatch {
+  jobOfferId: number;
+  title: string;
+  location: string;
+  contractType: string;
+  requiredSkills: string;
+  matchScore: number;
+  source: 'COHERE' | 'SIMULATED';
+}
+
+export interface Reminder {
+  id: number;
+  title: string;
+  reminderDate: string;
+  relatedType: string;
+  relatedId: number;
+  sent: boolean;
+  sentAt?: string;
+  recipientEmail: string;
+}
+
+export interface AuditLog {
+  id: number;
+  entityType: string;
+  entityId: number;
+  action: string;
+  oldValue?: string;
+  newValue?: string;
+  performedBy?: string;
+  performedAt: string;
 }
 
 export interface LoginRequest {
@@ -54,6 +105,8 @@ export interface JobOffer {
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED';
   deadline: string; // Added for backend compatibility
   managerEmail?: string;
+  departmentId?: number;
+  departmentName?: string;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -72,6 +125,7 @@ export interface JobOfferRequest {
   status: 'ACTIVE' | 'CLOSED' | 'DRAFT' | 'EXPIRED'; // Added for backend compatibility
   deadline: string; // Added for backend compatibility
   managerEmail?: string;
+  departmentId?: number;
 }
 
 export interface Candidate {
@@ -121,6 +175,7 @@ export interface Interview {
   candidateEmail?: string;
   interviewerId?: number;
   interviewerName?: string;
+  interviewerEmail?: string;
   interviewDate: Date;
   durationMinutes?: number;
   location?: string;
@@ -142,10 +197,11 @@ export interface Feedback {
   interviewId?: number;
   rating: number;
   content: string; // Correction ici
-  type: 'INTERVIEW' | 'CV_REVIEW' | 'TECHNICAL_TEST' | 'FINAL_DECISION' | 'GENERAL'; // Ajouté
-  status?: 'PENDING' | 'APPROVED' | 'REJECTED';
+  type: 'INTERVIEW' | 'CV_REVIEW' | 'PHONE_SCREENING' | 'TECHNICAL_TEST' | 'FINAL_DECISION' | 'GENERAL'; // Ajouté
+  status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SENT' | 'ARCHIVED';
   createdAt: Date;
-  createdBy: string;
+  authorId?: number;
+  authorName?: string;
 }
 
 export interface NotificationTemplate {

@@ -46,7 +46,10 @@ export class InterviewService {
   }
 
   updateInterviewStatus(id: number, status: string): Observable<Interview> {
-    return this.http.patch<Interview>(`${this.apiUrl}/${id}/status`, null, { params: new HttpParams().set('status', status) });
+    return this.http.patch<Interview>(`${this.apiUrl}/${id}/status`, null, {
+      params: new HttpParams().set('status', status),
+      headers: this.authService.getAuthHeaders()
+    });
   }
 
   getInterviewsByCandidate(candidateId: number): Observable<Interview[]> {

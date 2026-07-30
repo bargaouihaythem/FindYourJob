@@ -58,6 +58,19 @@ public class CohereClient {
         public int seniority;
     }
 
+    /** Offre soumise à Cohere pour le matching CV → offres (identifiant + résumé). */
+    public static class OfferSummary {
+        public final Long id;
+        public final String title;
+        public final String requiredSkills;
+
+        public OfferSummary(Long id, String title, String requiredSkills) {
+            this.id = id;
+            this.title = title;
+            this.requiredSkills = requiredSkills;
+        }
+    }
+
     /**
      * Demande à Cohere d'évaluer un candidat par rapport à une offre et de
      * retourner un score par critère (0-100).
@@ -109,6 +122,97 @@ public class CohereClient {
         } catch (Exception e) {
             log.warn("[Cohere] Appel échoué ({}) — fallback simulé activé", e.getMessage());
             throw new IllegalStateException("Appel Cohere échoué : " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Demande à Cohere de classer un ensemble d'offres par pertinence pour un CV
+     * donné (matching inverse). Un seul appel pour toutes les offres du lot
+     * (plutôt qu'un appel par offre) pour rester rapide et économe en quota.
+     *
+     * @return map offreId -> score de compatibilité (0-100). Les offres non
+     *         mentionnées dans la réponse ne sont pas incluses.
+     * @throws IllegalStateException si le token n'est pas configuré ou si l'appel échoue
+     */
+    public Map<Long, Integer> rankJobOffers(String cvText, List<OfferSummary> offers) {
+        if (!isConfigured()) {
+            throw new IllegalStateException("Token Cohere non configuré (cohere.api.token)");
+        }
+        if (offers.isEmpty()) {
+            return Map.of();
+        }
+
+        StringBuilder offersBlock = new StringBuilder();
+        for (OfferSummary offer : offers) {
+            offersBlock.append("- id=").append(offer.id)
+                    .append(" | poste: ").append(offer.title)
+                    .append(" | compétences requises: ")
+                    .append(offer.requiredSkills != null && !offer.requiredSkills.isBlank() ? offer.requiredSkills : "non précisées")
+                    .append('\n');
+        }
+
+        String prompt = "Tu es un assistant de recrutement expert. Voici le profil extrait d'un CV, suivi d'une liste "
+                + "d'offres d'emploi actives. Pour CHAQUE offre listée, évalue à quel point le profil correspond au poste "
+                + "(compétences, expérience, cohérence globale), sur une échelle de 0 à 100.\n\n"
+                + "Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, au format exact : "
+                + "[{\"id\": <id offre>, \"score\": <entier 0-100>}, ...] — un objet par offre listée, dans le même ordre.\n\n"
+                + "Profil du candidat (texte extrait du CV) :\n" + cvText + "\n\n"
+                + "Offres à évaluer :\n" + offersBlock;
+
+        Map<String, Object> body = Map.of(
+                "model", model,
+                "temperature", 0,
+                "messages", List.of(Map.of("role", "user", "content", prompt))
+        );
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(apiToken);
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restTemplate.postForObject(apiUrl, entity, Map.class);
+            if (response == null) {
+                throw new IllegalStateException("Réponse Cohere vide");
+            }
+            String text = extractText(response);
+            return parseRanking(text);
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("[Cohere] Appel de ranking échoué ({}) — fallback mots-clés activé", e.getMessage());
+            throw new IllegalStateException("Appel Cohere échoué : " + e.getMessage(), e);
+        }
+    }
+
+    private Map<Long, Integer> parseRanking(String text) {
+        int start = text.indexOf('[');
+        int end = text.lastIndexOf(']');
+        if (start < 0 || end < 0 || end <= start) {
+            throw new IllegalStateException("Pas de tableau JSON trouvé dans la réponse Cohere : " + text);
+        }
+        String json = text.substring(start, end + 1);
+
+        try {
+            JsonNode array = MAPPER.readTree(json);
+            Map<Long, Integer> result = new java.util.LinkedHashMap<>();
+            for (JsonNode item : array) {
+                JsonNode idNode = item.get("id");
+                JsonNode scoreNode = item.get("score");
+                if (idNode != null && scoreNode != null && idNode.canConvertToLong() && scoreNode.canConvertToInt()) {
+                    result.put(idNode.asLong(), clamp(scoreNode.asInt()));
+                }
+            }
+            if (result.isEmpty()) {
+                throw new IllegalStateException("Tableau JSON Cohere vide ou mal formé : " + json);
+            }
+            return result;
+        } catch (IllegalStateException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalStateException("JSON Cohere invalide : " + json, e);
         }
     }
 

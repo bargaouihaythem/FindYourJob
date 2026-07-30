@@ -26,6 +26,7 @@ public class InterviewResponse {
     private String candidateEmail;
     private Long interviewerId;
     private String interviewerName;
+    private String interviewerEmail;
     private String jobOfferTitle;
     private Integer feedbacksCount;
 
@@ -46,6 +47,7 @@ public class InterviewResponse {
         this.candidateEmail = interview.getCandidate() != null ? interview.getCandidate().getEmail() : null;
         this.interviewerId = interview.getInterviewer() != null ? interview.getInterviewer().getId() : null;
         this.interviewerName = interview.getInterviewer() != null ? interview.getInterviewer().getUsername() : null;
+        this.interviewerEmail = interview.getInterviewer() != null ? interview.getInterviewer().getEmail() : null;
         this.jobOfferTitle = interview.getCandidate() != null && interview.getCandidate().getJobOffer() != null ? 
             interview.getCandidate().getJobOffer().getTitle() : null;
         this.feedbacksCount = interview.getFeedbacks() != null ? interview.getFeedbacks().size() : 0;

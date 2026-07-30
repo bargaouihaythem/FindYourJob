@@ -104,10 +104,18 @@ public class AiScoringService {
         return result;
     }
 
+    /**
+     * Construit le texte du candidat pour le scoring IA : le texte extrait du
+     * CV (PDF/DOCX) est prioritaire car bien plus riche que la lettre de
+     * motivation ; celle-ci sert de complément, puis de repli si le CV n'a
+     * pas pu être extrait (scan image, format non supporté, etc.).
+     */
     private String buildCandidateText(Candidate candidate) {
         StringBuilder sb = new StringBuilder();
+        String cvText = candidate.getCv() != null ? candidate.getCv().getExtractedText() : null;
+        if (cvText != null && !cvText.isBlank()) sb.append(cvText).append(". ");
         if (candidate.getCoverLetter() != null) sb.append(candidate.getCoverLetter()).append(". ");
-        if (sb.length() == 0) sb.append("Candidat sans lettre de motivation fournie.");
+        if (sb.length() == 0) sb.append("Candidat sans CV exploitable ni lettre de motivation fournie.");
         return sb.toString();
     }
 

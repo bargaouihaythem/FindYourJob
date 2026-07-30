@@ -1,0 +1,232 @@
+// Overrides Bootstrap 5 pour le mode sombre.
+// Activé en ajoutant la classe .dark-mode sur <body> (voir ThemeService).
+
+body.dark-mode {
+  background-color: #0f172a;
+  color: #e2e8f0;
+
+  // ── Cartes ──
+  .card {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+  .card-header, .card-footer {
+    background-color: #1a2436;
+    border-color: #334155;
+  }
+
+  // ── Tableaux ──
+  .table {
+    color: #e2e8f0;
+    --bs-table-bg: transparent;
+    --bs-table-striped-bg: #24324a;
+    --bs-table-hover-bg: #2a3a56;
+    border-color: #334155;
+  }
+  .table-light, thead.table-light {
+    --bs-table-bg: #24324a;
+    color: #e2e8f0;
+  }
+  // Colonne Actions collante (tableaux candidats/entretiens) : fond clair
+  // codé en dur dans le composant, invisible/moche sur fond sombre.
+  td.sticky-actions {
+    background-color: #1e293b !important;
+  }
+  thead th.sticky-actions {
+    background-color: #24324a !important;
+  }
+
+  // ── Navbar / fond général ──
+  .navbar {
+    background-color: #111827 !important;
+  }
+  .footer, footer {
+    background-color: #111827;
+    color: #94a3b8;
+  }
+
+  // ── Formulaires ──
+  .form-control, .form-select {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #e2e8f0;
+
+    &:focus {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 0.25rem rgba(59, 130, 246, 0.25);
+    }
+  }
+  .form-control::placeholder {
+    color: #64748b;
+  }
+  .form-label {
+    color: #cbd5e1;
+  }
+  .input-group-text {
+    background-color: #24324a;
+    border-color: #334155;
+    color: #cbd5e1;
+  }
+
+  // ── Boutons outline ──
+  .btn-outline-secondary {
+    color: #cbd5e1;
+    border-color: #475569;
+  }
+  .btn-outline-primary {
+    color: #60a5fa;
+    border-color: #3b82f6;
+  }
+
+  // ── Modales ──
+  .modal-content {
+    background-color: #1e293b;
+    color: #e2e8f0;
+  }
+  .modal-header, .modal-footer {
+    border-color: #334155;
+  }
+
+  // ── Dropdowns ──
+  .dropdown-menu {
+    background-color: #1e293b;
+    border-color: #334155;
+  }
+  .dropdown-item {
+    color: #e2e8f0;
+
+    &:hover, &:focus {
+      background-color: #334155;
+      color: #fff;
+    }
+  }
+  .dropdown-divider {
+    border-color: #334155;
+  }
+
+  // ── Textes utilitaires ──
+  .text-muted {
+    color: #94a3b8 !important;
+  }
+  hr {
+    border-color: #334155;
+  }
+
+  // ── Kanban board (Prompt 3) ──
+  .kanban-column {
+    background: #1a2436;
+  }
+  .kanban-column-header {
+    border-color: #334155;
+  }
+  .kanban-card {
+    background: #24324a;
+    color: #e2e8f0;
+  }
+
+  // ── Notes internes (Prompt 6) ──
+  .internal-notes {
+    background: #2a2410;
+    border-color: #78350f;
+  }
+  .note-card {
+    background: #1e293b;
+    border-color: #334155;
+  }
+
+  // ── Alertes : garder la lisibilité native Bootstrap ──
+  .alert {
+    color: inherit;
+  }
+
+  // ── Pages d'authentification (login, register, mot de passe oublié/réinitialisation) ──
+  // Ces pages définissent leur propre fond dégradé clair codé en dur (pas du Bootstrap
+  // générique) : sans ce bloc, elles restent bleu clair même en mode sombre.
+  .login-page, .register-page, .forgot-password-page, .reset-password-page {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+  }
+  .login-card, .register-card, .forgot-password-card, .reset-password-card {
+    background: rgba(30, 41, 59, 0.95) !important;
+    color: #e2e8f0;
+  }
+  .card-title {
+    color: #e2e8f0 !important;
+  }
+  .logo-card {
+    background: #1e293b !important;
+  }
+
+  // ── Pages admin (candidates, dashboard, feedbacks, interviews, job-offers,
+  // notifications, my-applications) : ces composants codent en dur des fonds
+  // gris clair (#f8f9fa / #f8f9fc / #e3e6f0 / #eaecf4) issus du template SB Admin 2,
+  // sans lien avec ThemeService. On les neutralise ici avec !important pour
+  // garantir la victoire sur les styles scoped Angular des composants.
+  .table th {
+    background-color: #24324a !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+  }
+  .table td {
+    color: #e2e8f0;
+    border-color: #334155 !important;
+  }
+  .table tbody tr:hover,
+  .table-hover tbody tr:hover {
+    background-color: #2a3a56 !important;
+  }
+  .input-group-text {
+    background-color: #24324a !important;
+  }
+  .pagination .page-item.disabled .page-link {
+    background-color: #1a2436 !important;
+    border-color: #334155 !important;
+    color: #64748b !important;
+  }
+  .nav-tabs {
+    border-bottom-color: #334155 !important;
+
+    .nav-link {
+      color: #94a3b8;
+
+      &:hover {
+        background-color: #24324a !important;
+        color: #e2e8f0;
+      }
+    }
+  }
+  .modal-header, .modal-footer {
+    background-color: #1a2436 !important;
+    color: #e2e8f0;
+  }
+  .modal-title {
+    color: #e2e8f0 !important;
+  }
+  .card.bg-light, .badge.bg-light {
+    background-color: #24324a !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+  }
+  .dropdown-item:hover:not(.disabled),
+  .dropdown-item.disabled {
+    background-color: #334155 !important;
+    color: #e2e8f0 !important;
+  }
+  .dropdown-item.text-danger:hover {
+    background-color: rgba(220, 53, 69, 0.25) !important;
+  }
+  .alert-info {
+    background-color: rgba(23, 162, 184, 0.15) !important;
+    color: #7dd3fc !important;
+  }
+  .alert-warning {
+    background-color: rgba(255, 193, 7, 0.15) !important;
+    color: #fde68a !important;
+  }
+  .alert-danger {
+    background-color: rgba(220, 53, 69, 0.15) !important;
+    color: #fca5a5 !important;
+  }
+}

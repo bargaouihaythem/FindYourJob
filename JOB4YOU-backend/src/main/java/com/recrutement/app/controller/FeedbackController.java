@@ -205,7 +205,7 @@ public class FeedbackController {
     @Operation(summary = "Envoyer une notification détaillée au candidat")
     public ResponseEntity<MessageResponse> sendDetailedNotification(
             @PathVariable Long id,
-            @RequestBody DetailedNotificationRequest request) {
+            @Valid @RequestBody DetailedNotificationRequest request) {
         feedbackService.sendDetailedNotification(id, request);
         return ResponseEntity.ok(new MessageResponse("Notification détaillée envoyée avec succès"));
     }

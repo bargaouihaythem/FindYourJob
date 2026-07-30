@@ -1,8 +1,11 @@
 package com.recrutement.app.controller;
 
 import com.recrutement.app.dto.UserResponse;
+import com.recrutement.app.entity.Department;
 import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
+import com.recrutement.app.exception.ResourceNotFoundException;
+import com.recrutement.app.repository.DepartmentRepository;
 import com.recrutement.app.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,6 +25,24 @@ public class UserController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private DepartmentRepository departmentRepository;
+
+    @PatchMapping("/{id}/department")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Assigner un département à un utilisateur (Admin uniquement)")
+    public ResponseEntity<?> assignDepartment(@PathVariable Long id, @RequestParam Long departmentId) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + id));
+        Department department = departmentRepository.findById(departmentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Département non trouvé avec l'ID: " + departmentId));
+
+        user.setDepartment(department);
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new UserResponse(user));
+    }
 
     @GetMapping("/interviewers")
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")

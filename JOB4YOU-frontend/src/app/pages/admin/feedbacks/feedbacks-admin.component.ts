@@ -351,12 +351,12 @@ export class FeedbacksAdminComponent implements OnInit {
     }
   }
   sendFeedbackNotification(feedback: Feedback, decision: string, content: string, nextSteps?: string): void {
+    const decisionLabel = decision === 'approve' ? 'approuvé' : 'rejeté';
     const notificationData: FeedbackNotificationRequest = {
-      candidateId: feedback.candidateId,
-      feedbackId: feedback.id,
-      decision: decision,
-      comments: content,
-      nextSteps: nextSteps    };
+      subject: `Votre feedback a été ${decisionLabel}`,
+      message: content && content.trim() ? content : `Votre feedback a été ${decisionLabel}.`,
+      feedbackSummary: nextSteps
+    };
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
         this.toastrNotification.showSuccess('Notification envoyée au candidat');
@@ -391,12 +391,13 @@ export class FeedbacksAdminComponent implements OnInit {
   // Correction de la fonction sendFeedbackNotification pour gérer les appels manuels
   sendManualNotification(feedback: Feedback): void {
     const notificationData: FeedbackNotificationRequest = {
-      candidateId: feedback.candidateId,
-      feedbackId: feedback.id,
-      decision: feedback.status || 'PENDING',
-      comments: 'Notification manuelle envoyée par l\'administrateur',      nextSteps: undefined
+      subject: 'Notification concernant votre feedback',
+      message: feedback.content && feedback.content.trim()
+        ? feedback.content
+        : 'Une mise à jour est disponible concernant votre feedback.',
+      feedbackSummary: `Statut actuel : ${this.getStatusText(feedback.status || 'PENDING')}`
     };
-    
+
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
         this.toastrNotification.showSuccess('Notification envoyée au candidat avec succès !');
@@ -446,6 +447,10 @@ export class FeedbacksAdminComponent implements OnInit {
         return 'badge bg-success';
       case 'REJECTED':
         return 'badge bg-danger';
+      case 'SENT':
+        return 'badge bg-primary';
+      case 'ARCHIVED':
+        return 'badge bg-secondary';
       default:
         return 'badge bg-secondary';
     }
@@ -459,6 +464,10 @@ export class FeedbacksAdminComponent implements OnInit {
         return 'Approuvé';
       case 'REJECTED':
         return 'Rejeté';
+      case 'SENT':
+        return 'Envoyé';
+      case 'ARCHIVED':
+        return 'Archivé';
       default:
         return status;
     }
@@ -503,7 +512,7 @@ export class FeedbacksAdminComponent implements OnInit {
         'Statut': this.getStatusText(feedback.status || 'PENDING'),
         'Entretien': this.getInterviewInfo(feedback.interviewId),
         'Date': this.formatDate(feedback.createdAt),
-        'Créé par': feedback.createdBy || 'Inconnu'
+        'Créé par': feedback.authorName || 'Inconnu'
       }));
       
       if (csvData.length === 0) {
@@ -548,6 +557,7 @@ export class FeedbacksAdminComponent implements OnInit {
     return [
       { value: 'INTERVIEW', label: 'Entretien' },
       { value: 'CV_REVIEW', label: 'Révision CV' },
+      { value: 'PHONE_SCREENING', label: 'Entretien téléphonique' },
       { value: 'TECHNICAL_TEST', label: 'Test technique' },
       { value: 'FINAL_DECISION', label: 'Décision finale' },
       { value: 'GENERAL', label: 'Général' }
@@ -558,6 +568,7 @@ export class FeedbacksAdminComponent implements OnInit {
     const typeMap: { [key: string]: string } = {
       'INTERVIEW': 'Entretien',
       'CV_REVIEW': 'Révision CV',
+      'PHONE_SCREENING': 'Entretien téléphonique',
       'TECHNICAL_TEST': 'Test technique',
       'FINAL_DECISION': 'Décision finale',
       'GENERAL': 'Général'
@@ -568,12 +579,11 @@ export class FeedbacksAdminComponent implements OnInit {
   // Méthodes d'envoi de notifications spécialisées
   sendCreationNotification(feedback: Feedback): void {
     const notificationData: FeedbackNotificationRequest = {
-      candidateId: feedback.candidateId,
-      feedbackId: feedback.id,
-      decision: 'CREATED',
-      comments: 'Un nouveau feedback a été créé pour votre candidature.',
-      nextSteps: 'Votre feedback est en cours de traitement.'    };
-    
+      subject: 'Un nouveau feedback a été créé',
+      message: 'Un nouveau feedback a été créé pour votre candidature.',
+      feedbackSummary: 'Votre feedback est en cours de traitement.'
+    };
+
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
         this.toastrNotification.showSuccess('Notification de création envoyée au candidat');
@@ -587,12 +597,11 @@ export class FeedbacksAdminComponent implements OnInit {
 
   sendUpdateNotification(feedback: Feedback): void {
     const notificationData: FeedbackNotificationRequest = {
-      candidateId: feedback.candidateId,
-      feedbackId: feedback.id,
-      decision: 'UPDATED',
-      comments: 'Votre feedback a été mis à jour.',
-      nextSteps: 'Vous pouvez consulter les dernières modifications.'    };
-    
+      subject: 'Votre feedback a été mis à jour',
+      message: 'Votre feedback a été mis à jour.',
+      feedbackSummary: 'Vous pouvez consulter les dernières modifications.'
+    };
+
     this.notificationService.sendDetailedFeedbackNotification(feedback.id, notificationData).subscribe({
       next: () => {
         this.toastrNotification.showSuccess('Notification de mise à jour envoyée au candidat');

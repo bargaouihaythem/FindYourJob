@@ -150,6 +150,51 @@ public class NotificationService {
     }
 
     /**
+     * Envoie un e-mail d'annulation d'entretien au candidat
+     */
+    public void sendInterviewCancellation(Interview interview) {
+        sendInterviewStatusUpdate(interview, "Annulation de votre entretien",
+            "Nous vous informons que l'entretien suivant, initialement prévu, a été annulé.",
+            "#dc3545");
+    }
+
+    /**
+     * Envoie un e-mail de reprogrammation d'entretien au candidat
+     */
+    public void sendInterviewReschedule(Interview interview) {
+        sendInterviewStatusUpdate(interview, "Reprogrammation de votre entretien",
+            "Votre entretien va être reprogrammé. Vous recevrez une nouvelle invitation avec la date définitive dès qu'elle sera confirmée.",
+            "#fd7e14");
+    }
+
+    private void sendInterviewStatusUpdate(Interview interview, String subject, String introMessage, String accentColor) {
+        Candidate candidate = interview.getCandidate();
+        if (candidate == null) {
+            return;
+        }
+        String candidateName = candidate.getFirstName() + " " + candidate.getLastName();
+        JobOffer jobOffer = candidate.getJobOffer();
+        String jobOfferTitle = (jobOffer != null) ? jobOffer.getTitle() : "Entretien général";
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("candidateName", candidateName);
+        variables.put("jobOfferTitle", jobOfferTitle);
+        variables.put("introMessage", introMessage);
+        variables.put("accentColor", accentColor);
+        variables.put("interviewType", interview.getType().toString());
+        variables.put("interviewDate", interview.getInterviewDate());
+        variables.put("location", interview.getLocation());
+        variables.put("interviewerName", interview.getInterviewer() != null ? interview.getInterviewer().getUsername() : "");
+
+        emailService.sendTemplateEmail(
+            candidate.getEmail(),
+            subject + ((jobOffer != null) ? " - " + jobOffer.getTitle() : ""),
+            "emails/interview-status-update",
+            variables
+        );
+    }
+
+    /**
      * Envoie une notification détaillée au candidat
      */
     public void sendDetailedFeedbackNotification(Long candidateId, String subject, String message, 

@@ -53,6 +53,15 @@ public class InterviewService {
     @Autowired
     private N8nService n8nService;
 
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private ReminderService reminderService;
+
+    @Autowired
+    private AccessControlService accessControlService;
+
     /**
      * Planifie un nouvel entretien
      */
@@ -78,6 +87,12 @@ public class InterviewService {
         updateCandidateStatus(candidate, interviewRequest.getType());
 
         Interview savedInterview = interviewRepository.save(interview);
+
+        auditLogService.log("CANDIDATE", candidate.getId(), "INTERVIEW_SCHEDULED",
+                null, interviewRequest.getType() + " le " + savedInterview.getInterviewDate());
+
+        // Rappels automatiques : candidat J-1, interviewer H-2
+        reminderService.createInterviewReminders(savedInterview);
 
         // Envoyer un e-mail d'invitation via Spring Mail
         notificationService.sendInterviewInvitation(savedInterview);
@@ -207,10 +222,23 @@ public class InterviewService {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
 
+        Interview.InterviewStatus previousStatus = interview.getStatus();
         interview.setStatus(status);
         interview.setUpdatedAt(LocalDateTime.now());
 
         Interview updatedInterview = interviewRepository.save(interview);
+
+        // Notifier le candidat uniquement si le statut change réellement
+        // (évite un email en double si l'admin re-soumet le même statut).
+        if (status != previousStatus) {
+            if (status == Interview.InterviewStatus.CANCELLED) {
+                reminderService.cancelInterviewReminders(id);
+                notificationService.sendInterviewCancellation(updatedInterview);
+            } else if (status == Interview.InterviewStatus.RESCHEDULED) {
+                notificationService.sendInterviewReschedule(updatedInterview);
+            }
+        }
+
         return new InterviewResponse(updatedInterview);
     }
 
@@ -264,6 +292,7 @@ public class InterviewService {
      * Récupère les entretiens d'un candidat par son email
      */
     public List<InterviewResponse> getInterviewsByEmail(String email) {
+        accessControlService.assertOwnEmailOrPrivileged(email);
         System.out.println("[DEBUG] Recherche des entretiens pour l'email: " + email);
         List<Interview> interviews = interviewRepository.findByCandidateEmail(email);
         System.out.println("[DEBUG] Nombre d'entretiens trouvés: " + interviews.size());

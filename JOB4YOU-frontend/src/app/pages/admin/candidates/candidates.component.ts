@@ -8,6 +8,7 @@ import { JobOfferService } from '../../../services/job-offer.service';
 import { CVService } from '../../../services/cv.service';
 import { NotificationService } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
+import { InternalNotesComponent } from '../../../components/internal-notes/internal-notes.component';
 import { Candidate, JobOffer } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 import { AuthService } from '../../../services/auth';
@@ -15,7 +16,7 @@ import { AuthService } from '../../../services/auth';
 @Component({
   selector: 'app-candidates',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, EmailComposerComponent],
+  imports: [CommonModule, RouterModule, FormsModule, ReactiveFormsModule, EmailComposerComponent, InternalNotesComponent],
   templateUrl: './candidates.component.html',
   styleUrl: './candidates.component.scss'
 })
@@ -110,6 +111,30 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollSubscription?.unsubscribe();
+  }
+
+  isHrOrAdmin(): boolean {
+    return this.authService.isHR() || this.authService.isAdmin();
+  }
+
+  exportCandidatePdf(candidate: Candidate): void {
+    this.candidateService.exportCandidatePdf(candidate.id).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `dossier-candidat-${candidate.lastName}-${candidate.id}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        this.toastrNotification.showSuccess('Dossier PDF exporté avec succès');
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de l\'export PDF:', error);
+        this.toastrNotification.showError('Erreur lors de l\'export du dossier PDF');
+      }
+    });
   }
 
   private startPolling(): void {

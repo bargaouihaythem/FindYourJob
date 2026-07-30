@@ -9,23 +9,10 @@ $info-color: #17a2b8;
 $border-radius: 0.375rem;
 $box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 
-// Header
+// Header (style neutre, cohérent avec les autres pages admin comme Feedbacks)
 .interviews-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: $border-radius;
-  margin-bottom: 2rem;
-  box-shadow: $box-shadow;
-
   h1 {
     margin: 0;
-    font-size: 2rem;
-    font-weight: 600;
-  }
-
-  .text-muted {
-    color: rgba(255, 255, 255, 0.8) !important;
   }
 }
 
@@ -56,16 +43,26 @@ $box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
 
 // Table styles
 .table {
+  thead th {
+    // Empêche le texte des en-têtes (ex. "Date & Heure") de passer à la
+    // ligne et de pousser l'icône de tri sur sa propre ligne au-dessus.
+    white-space: nowrap;
+  }
+
   .sortable {
     cursor: pointer;
     user-select: none;
     transition: all 0.2s ease;
-    
+
+    i {
+      vertical-align: middle;
+    }
+
     &:hover {
       background-color: #f8f9fa;
     }
   }
-  
+
   .avatar {
     width: 40px;
     height: 40px;

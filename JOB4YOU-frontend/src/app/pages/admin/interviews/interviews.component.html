@@ -217,6 +217,7 @@
         <span class="small"><span class="badge me-1" style="background:#dbeafe;color:#1d4ed8;border:1px solid #3b82f6;">■</span>En cours</span>
         <span class="small"><span class="badge me-1" style="background:#dcfce7;color:#15803d;border:1px solid #22c55e;">■</span>Terminé</span>
         <span class="small"><span class="badge me-1" style="background:#fee2e2;color:#dc2626;border:1px solid #ef4444;">■</span>Annulé</span>
+        <span class="small"><span class="badge me-1" style="background:#e0f2fe;color:#0369a1;border:1px solid #0ea5e9;">■</span>Reprogrammé</span>
       </div>
     </div>
   </div>
@@ -242,18 +243,18 @@
                 </div>
               </th>
               <th (click)="changeSort('candidateName')" class="sortable">
-                <i [class]="getSortIcon('candidateName')" class="me-2"></i>
+                <i [class]="getSortIcon('candidateName') + ' me-2'"></i>
                 Candidat
               </th>
               <th>Offre d'emploi</th>
               <th (click)="changeSort('interviewDate')" class="sortable">
-                <i [class]="getSortIcon('interviewDate')" class="me-2"></i>
+                <i [class]="getSortIcon('interviewDate') + ' me-2'"></i>
                 Date & Heure
               </th>
               <th>Type</th>
               <th>Interviewer</th>
               <th (click)="changeSort('status')" class="sortable">
-                <i [class]="getSortIcon('status')" class="me-2"></i>
+                <i [class]="getSortIcon('status') + ' me-2'"></i>
                 Statut
               </th>
               <th class="text-center" *ngIf="userCanViewCV">CV</th>
@@ -289,7 +290,7 @@
                 </div>
               </td>
               <td>
-                <i [class]="getTypeIcon(interview.type)" class="me-2"></i>
+                <i [class]="getTypeIcon(interview.type) + ' me-2'"></i>
                 {{ getTypeText(interview.type) }}
               </td>
               <td>
@@ -658,7 +659,7 @@
           <i class="fas fa-times me-2"></i>
           Annuler
         </button>
-        <button type="button" class="btn btn-success" (click)="saveFeedback()" 
+        <button type="button" class="btn btn-success" (click)="submitFeedback()"
                 [disabled]="feedbackForm.invalid">
           <i class="fas fa-paper-plane me-2"></i>
           Envoyer le feedback
@@ -735,7 +736,7 @@
               <div class="col-md-6">
                 <p class="mb-2">
                   <strong>Type :</strong> 
-                  <i [class]="getTypeIcon(selectedInterview.type)" class="me-2"></i>
+                  <i [class]="getTypeIcon(selectedInterview.type) + ' me-2'"></i>
                   {{ getTypeText(selectedInterview.type) }}
                 </p>
                 <p class="mb-2">

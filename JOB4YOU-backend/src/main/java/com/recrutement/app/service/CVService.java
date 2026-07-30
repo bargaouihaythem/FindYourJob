@@ -28,6 +28,9 @@ public class CVService {
     @Autowired
     private LocalFileStorageService localFileStorageService;
 
+    @Autowired
+    private CvTextExtractionService cvTextExtractionService;
+
     /**
      * Télécharge un nouveau CV pour un candidat
      */
@@ -62,6 +65,8 @@ public class CVService {
         cv.setCandidate(candidate);
         cv.setUploadDate(LocalDateTime.now());
         cv.setLastAccessed(LocalDateTime.now());
+        cv.setExtractedText(cvTextExtractionService.extractText(
+                java.nio.file.Paths.get(cv.getFilePath()), cv.getContentType()));
 
         CV savedCV = cvRepository.save(cv);
         return new CVResponse(savedCV);
@@ -208,6 +213,23 @@ public class CVService {
         }
         
         return getCVViewUrl(candidate.getCv().getId());
+    }
+
+    /**
+     * Relance manuellement l'extraction du texte d'un CV (PDF/DOCX) déjà stocké,
+     * utile si l'extraction automatique a échoué au moment de l'upload.
+     */
+    @Transactional
+    public CVResponse extractText(Long id) {
+        CV cv = cvRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + id));
+
+        String text = cvTextExtractionService.extractText(
+                java.nio.file.Paths.get(cv.getFilePath()), cv.getContentType());
+        cv.setExtractedText(text);
+
+        CV saved = cvRepository.save(cv);
+        return new CVResponse(saved);
     }
 
     /**

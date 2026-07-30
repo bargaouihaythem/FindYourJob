@@ -6,6 +6,7 @@ import com.recrutement.app.dto.CandidateResponse;
 import com.recrutement.app.dto.MessageResponse;
 import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.service.CandidateService;
+import com.recrutement.app.service.PdfReportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -33,6 +35,9 @@ public class CandidateController {
 
     @Autowired
     private CandidateService candidateService;
+
+    @Autowired
+    private PdfReportService pdfReportService;
 
     @PostMapping("/apply")
     @Operation(summary = "Soumettre une candidature", description = "Permet à un candidat de postuler à une offre d'emploi avec son CV")
@@ -82,6 +87,20 @@ public class CandidateController {
     public ResponseEntity<CandidateResponse> getCandidateById(@PathVariable Long id) {
         CandidateResponse response = candidateService.getCandidateById(id);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/export/pdf")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Exporter le dossier candidat complet en PDF")
+    public ResponseEntity<byte[]> exportCandidatePdf(@PathVariable Long id) {
+        Candidate candidate = candidateService.getCandidateEntityById(id);
+        byte[] pdf = pdfReportService.generateCandidateReport(candidate);
+
+        String filename = "dossier-candidat-" + candidate.getLastName() + "-" + candidate.getId() + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+                .body(pdf);
     }
 
     @PutMapping("/{id}")
@@ -135,8 +154,8 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or isAnonymous()")
-    @Operation(summary = "Mettre à jour le statut d'un candidat")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or isAnonymous()")
+    @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager, ou n8n en anonyme)")
     public ResponseEntity<CandidateResponse> updateCandidateStatus(
             @PathVariable Long id,
             @Parameter(description = "Nouveau statut")
@@ -216,8 +235,8 @@ public class CandidateController {
     @GetMapping("/validated")
     @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or hasRole('ADMIN')")
     @Operation(summary = "Dossiers validés par RH (vue Manager)", description = "Retourne uniquement les candidats dont le dossier a été validé administrativement par RH")
-    public ResponseEntity<List<CandidateResponse>> getValidatedCandidates() {
-        List<CandidateResponse> response = candidateService.getValidatedCandidatesForManager();
+    public ResponseEntity<List<CandidateResponse>> getValidatedCandidates(Authentication authentication) {
+        List<CandidateResponse> response = candidateService.getValidatedCandidatesForManager(authentication.getName());
         return ResponseEntity.ok(response);
     }
 

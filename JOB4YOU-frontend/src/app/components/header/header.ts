@@ -4,6 +4,7 @@ import { RouterModule, Router } from '@angular/router';
 import { AuthService } from '../../services/auth';
 import { User } from '../../models/interfaces';
 import { ToastrNotificationService } from '../../services/toastr-notification.service';
+import { ThemeService, Theme } from '../../services/theme.service';
 
 @Component({
   selector: 'app-header',
@@ -14,15 +15,24 @@ import { ToastrNotificationService } from '../../services/toastr-notification.se
 })
 export class HeaderComponent {
   currentUser: User | null = null;
+  theme: Theme = 'light';
 
   constructor(
     private authService: AuthService,
     private router: Router,
-    private toastrNotification: ToastrNotificationService
+    private toastrNotification: ToastrNotificationService,
+    private themeService: ThemeService
   ) {
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
     });
+    this.themeService.theme$.subscribe(theme => {
+      this.theme = theme;
+    });
+  }
+
+  toggleTheme(): void {
+    this.themeService.toggleTheme();
   }
 
   isAuthenticated(): boolean {

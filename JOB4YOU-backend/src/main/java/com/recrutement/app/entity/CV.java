@@ -42,6 +42,9 @@ public class CV {
     @Column(name = "last_accessed")
     private LocalDateTime lastAccessed;
 
+    @Column(name = "extracted_text", columnDefinition = "TEXT")
+    private String extractedText;
+
     // Relation avec le candidat (One-to-One)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "candidate_id", nullable = false)

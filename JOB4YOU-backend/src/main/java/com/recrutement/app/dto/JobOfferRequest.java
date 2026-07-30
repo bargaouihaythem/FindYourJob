@@ -35,5 +35,7 @@ public class JobOfferRequest {
     private LocalDateTime deadline;
 
     private String managerEmail;
+
+    private Long departmentId;
 }
 

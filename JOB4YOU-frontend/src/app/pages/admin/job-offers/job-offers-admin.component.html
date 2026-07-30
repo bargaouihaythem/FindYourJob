@@ -351,6 +351,14 @@
               </div>
               <small class="text-muted">L'Agent 2 enverra les candidatures validées à cet email</small>
             </div>
+            <div class="col-md-6 mb-3">
+              <label for="departmentId" class="form-label">Département</label>
+              <select class="form-select" id="departmentId" formControlName="departmentId">
+                <option value="">-- Aucun --</option>
+                <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
+              </select>
+              <small class="text-muted">Les managers de ce département verront aussi cette offre</small>
+            </div>
           </div>
         </form>
       </div>

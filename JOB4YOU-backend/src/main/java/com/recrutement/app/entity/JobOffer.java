@@ -43,6 +43,12 @@ public class JobOffer {
     @Column(name = "manager_email")
     private String managerEmail;
 
+    // Département auquel appartient l'offre (permet aux managers du même
+    // département de voir les candidatures, même sans être le manager exact)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
     @Enumerated(EnumType.STRING)
     private JobStatus status = JobStatus.ACTIVE;
 

@@ -27,6 +27,8 @@ public class JobOfferResponse {
     private String createdByUsername;
     private Long candidatesCount;
     private String managerEmail;
+    private Long departmentId;
+    private String departmentName;
 
     // Constructeur pour mapper depuis l'entité JobOffer
     public JobOfferResponse(JobOffer jobOffer) {
@@ -45,6 +47,8 @@ public class JobOfferResponse {
         this.createdByUsername = jobOffer.getCreatedBy() != null ? jobOffer.getCreatedBy().getUsername() : null;
         this.candidatesCount = (long) (jobOffer.getCandidates() != null ? jobOffer.getCandidates().size() : 0);
         this.managerEmail = jobOffer.getManagerEmail();
+        this.departmentId = jobOffer.getDepartment() != null ? jobOffer.getDepartment().getId() : null;
+        this.departmentName = jobOffer.getDepartment() != null ? jobOffer.getDepartment().getName() : null;
     }
 }
 

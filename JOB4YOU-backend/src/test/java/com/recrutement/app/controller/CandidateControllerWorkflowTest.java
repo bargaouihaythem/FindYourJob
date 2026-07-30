@@ -8,6 +8,7 @@ import com.recrutement.app.security.jwt.AuthEntryPointJwt;
 import com.recrutement.app.security.jwt.JwtUtils;
 import com.recrutement.app.security.services.UserDetailsServiceImpl;
 import com.recrutement.app.service.CandidateService;
+import com.recrutement.app.service.PdfReportService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,7 @@ class CandidateControllerWorkflowTest {
 
     // Mocks nécessaires pour le contexte Spring Security (@WebMvcTest)
     @MockBean CandidateService      candidateService;
+    @MockBean PdfReportService      pdfReportService;
     @MockBean UserDetailsServiceImpl userDetailsService;
     @MockBean AuthEntryPointJwt     authEntryPoint;
     @MockBean JwtUtils              jwtUtils;
@@ -218,7 +220,7 @@ class CandidateControllerWorkflowTest {
         @WithMockUser(roles = "MANAGER")
         @DisplayName("Manager voit les dossiers validés par RH (GET /api/candidates/validated)")
         void manager_seesOnlyValidatedCandidates() throws Exception {
-            when(candidateService.getValidatedCandidatesForManager())
+            when(candidateService.getValidatedCandidatesForManager(anyString()))
                     .thenReturn(List.of(
                             fakeResponse(1L, CandidateStatus.CV_REVIEWED),
                             fakeResponse(2L, CandidateStatus.INTERVIEW)
@@ -233,12 +235,15 @@ class CandidateControllerWorkflowTest {
 
         @Test
         @WithMockUser(roles = "MANAGER")
-        @DisplayName("Manager NE PEUT PAS changer le statut d'un candidat → 403")
-        void manager_cannotUpdateStatus() throws Exception {
+        @DisplayName("Manager PEUT changer le statut d'un candidat (pipeline Kanban) → 200")
+        void manager_canUpdateStatusViaKanban() throws Exception {
+            when(candidateService.updateCandidateStatus(eq(1L), any()))
+                    .thenReturn(fakeResponse(1L, CandidateStatus.INTERVIEW));
+
             mockMvc.perform(patch("/api/candidates/1/status")
                     .with(csrf())
                     .param("status", "INTERVIEW"))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isOk());
         }
 
         @Test
@@ -283,7 +288,7 @@ class CandidateControllerWorkflowTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("Admin peut voir les dossiers validés aussi")
         void admin_canGetValidatedCandidates() throws Exception {
-            when(candidateService.getValidatedCandidatesForManager())
+            when(candidateService.getValidatedCandidatesForManager(anyString()))
                     .thenReturn(List.of(fakeResponse(1L, CandidateStatus.FINAL_INTERVIEW)));
 
             mockMvc.perform(get("/api/candidates/validated"))

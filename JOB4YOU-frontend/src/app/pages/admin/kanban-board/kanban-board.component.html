@@ -1,0 +1,41 @@
+<div class="container-fluid py-4">
+  <h2 class="mb-4"><i class="fas fa-columns me-2"></i>Pipeline de recrutement</h2>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div class="kanban-board" *ngIf="!loading && !error">
+    <div class="kanban-column" *ngFor="let column of columns">
+      <div class="kanban-column-header">
+        <span>{{ column.label }}</span>
+        <span class="badge bg-secondary">{{ column.candidates.length }}</span>
+      </div>
+
+      <div
+        class="kanban-column-body"
+        cdkDropList
+        [id]="column.status"
+        [cdkDropListData]="column.candidates"
+        [cdkDropListConnectedTo]="getConnectedLists()"
+        (cdkDropListDropped)="drop($event, column)">
+
+        <div class="kanban-card" *ngFor="let candidate of column.candidates" cdkDrag>
+          <div class="kanban-card-name">{{ candidate.firstName }} {{ candidate.lastName }}</div>
+          <div class="kanban-card-offer text-muted small">{{ candidate.jobOfferTitle }}</div>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <span class="badge" [ngClass]="getAiScoreBadgeClass(candidate.aiScore)">
+              Score IA : {{ candidate.aiScore ?? '—' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="kanban-empty text-muted small" *ngIf="column.candidates.length === 0">
+          Aucun candidat
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -19,6 +19,8 @@ public class UserResponse {
     private String lastName;
     private List<String> roles;
     private String displayName;
+    private Long departmentId;
+    private String departmentName;
 
     // Constructeur pour mapper depuis l'entité User
     public UserResponse(User user) {
@@ -31,6 +33,8 @@ public class UserResponse {
                 .map(role -> role.getName().name())
                 .collect(Collectors.toList());
         this.displayName = generateDisplayName(user);
+        this.departmentId = user.getDepartment() != null ? user.getDepartment().getId() : null;
+        this.departmentName = user.getDepartment() != null ? user.getDepartment().getName() : null;
     }
 
     private String generateDisplayName(User user) {

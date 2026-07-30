@@ -148,7 +148,7 @@
                 <i [class]="getSortIcon('createdAt')" class="me-2"></i>
                 Date de création
               </th>
-              <th class="text-center">Actions</th>
+              <th class="text-center sticky-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -258,10 +258,10 @@
               <td>
                 <span class="text-muted">{{ formatDate(candidate.applicationDate) }}</span>
               </td>
-              <td class="text-center">
+              <td class="text-center sticky-actions">
                 <div class="btn-group" role="group">
                   <!-- Édition : RH/Admin uniquement -->
-                  <button *ngIf="!isManagerView" class="btn btn-sm btn-outline-primary" 
+                  <button *ngIf="!isManagerView" class="btn btn-sm btn-outline-primary"
                           (click)="openCandidateModal(candidate)"
                           title="Modifier">
                     <i class="fas fa-edit"></i>
@@ -597,6 +597,12 @@
               <span *ngIf="!selectedCandidate.cv || !selectedCandidate.cv.fileUrl" class="text-muted">
                 Aucun CV disponible
               </span>
+              <button *ngIf="isHrOrAdmin()"
+                      class="btn btn-outline-success btn-sm"
+                      (click)="exportCandidatePdf(selectedCandidate)">
+                <i class="fas fa-file-pdf me-2"></i>
+                Exporter le dossier (PDF)
+              </button>
             </div>
           </div>
         </div>
@@ -641,6 +647,13 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Notes internes RH/Admin (jamais visibles par le candidat) -->
+        <div class="row mt-4" *ngIf="isHrOrAdmin()">
+          <div class="col-12">
+            <app-internal-notes [candidateId]="selectedCandidate.id"></app-internal-notes>
           </div>
         </div>
 

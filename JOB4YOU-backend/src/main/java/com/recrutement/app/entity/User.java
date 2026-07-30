@@ -42,6 +42,11 @@ public class User {
     )
     private Set<Role> roles = new HashSet<>();
 
+    // Département de rattachement (utilisé pour les MANAGER : filtre les candidatures visibles)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id")
+    private Department department;
+
     // Constructeur avec les champs essentiels
     public User(String username, String email, String password) {
         this.username = username;

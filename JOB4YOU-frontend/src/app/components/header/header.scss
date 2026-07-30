@@ -1,6 +1,6 @@
 .navbar {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  
+
   .navbar-brand {
     font-weight: bold;
     font-size: 1.5rem;
@@ -75,3 +75,13 @@
   }
 }
 
+
+.theme-toggle-btn {
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}

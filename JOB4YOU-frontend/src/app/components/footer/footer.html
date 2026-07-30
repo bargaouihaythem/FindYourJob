@@ -1,86 +1,48 @@
-<footer class="footer bg-dark text-light py-5">
+<footer class="footer bg-dark text-light py-4">
   <div class="container">
-    <div class="row">
-      <div class="col-lg-4 col-md-6 mb-4">
-        <h5 class="mb-3">
+    <div class="row align-items-start">
+      <div class="col-md-5 mb-3 mb-md-0">
+        <h5 class="mb-2">
           <i class="fas fa-briefcase me-2 text-warning"></i>
           JOB4YOU
         </h5>
-        <p class="text-muted">
-          Votre plateforme de recrutement moderne et efficace. 
+        <p class="text-muted mb-0">
+          Votre plateforme de recrutement moderne et efficace.
           Connectez les talents avec les opportunités.
         </p>
-        <div class="social-links">
-          <a href="#" class="text-light me-3">
-            <i class="fab fa-facebook-f"></i>
-          </a>
-          <a href="#" class="text-light me-3">
-            <i class="fab fa-twitter"></i>
-          </a>
-          <a href="#" class="text-light me-3">
-            <i class="fab fa-linkedin-in"></i>
-          </a>
-          <a href="#" class="text-light">
-            <i class="fab fa-instagram"></i>
-          </a>
-        </div>
       </div>
-      
-      <div class="col-lg-2 col-md-6 mb-4">
-        <h6 class="mb-3">Navigation</h6>
-        <ul class="list-unstyled">
-          <li><a href="#" class="text-muted text-decoration-none">Accueil</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Offres d'emploi</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">À propos</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Contact</a></li>
+
+      <div class="col-md-4 mb-3 mb-md-0">
+        <h6 class="mb-2">Navigation</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a routerLink="/" class="text-muted text-decoration-none">Accueil</a></li>
+          <li><a routerLink="/job-offers" class="text-muted text-decoration-none">Offres d'emploi</a></li>
+          <li><a routerLink="/job-matching" class="text-muted text-decoration-none">Trouver mon job idéal</a></li>
         </ul>
       </div>
-      
-      <div class="col-lg-2 col-md-6 mb-4">
-        <h6 class="mb-3">Candidats</h6>
-        <ul class="list-unstyled">
-          <li><a href="#" class="text-muted text-decoration-none">Rechercher un emploi</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Créer un profil</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Conseils carrière</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">FAQ</a></li>
-        </ul>
-      </div>
-      
-      <div class="col-lg-2 col-md-6 mb-4">
-        <h6 class="mb-3">Employeurs</h6>
-        <ul class="list-unstyled">
-          <li><a href="#" class="text-muted text-decoration-none">Publier une offre</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Gérer les candidatures</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Solutions RH</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Tarifs</a></li>
-        </ul>
-      </div>
-      
-      <div class="col-lg-2 col-md-6 mb-4">
-        <h6 class="mb-3">Support</h6>
-        <ul class="list-unstyled">
-          <li><a href="#" class="text-muted text-decoration-none">Centre d'aide</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Nous contacter</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Politique de confidentialité</a></li>
-          <li><a href="#" class="text-muted text-decoration-none">Conditions d'utilisation</a></li>
+
+      <div class="col-md-3">
+        <h6 class="mb-2">Compte</h6>
+        <ul class="list-unstyled mb-0">
+          <li><a routerLink="/login" class="text-muted text-decoration-none">Connexion</a></li>
+          <li><a routerLink="/register" class="text-muted text-decoration-none">Inscription</a></li>
         </ul>
       </div>
     </div>
-    
-    <hr class="my-4 border-secondary">
-    
+
+    <hr class="my-3 border-secondary">
+
     <div class="row align-items-center">
       <div class="col-md-6">
-        <p class="text-muted mb-0">
+        <p class="text-muted mb-0 small">
           &copy; {{ currentYear }} JOB4YOU. Tous droits réservés.
         </p>
       </div>
       <div class="col-md-6 text-md-end">
-        <p class="text-muted mb-0">
+        <p class="text-muted mb-0 small">
           Développé avec <i class="fas fa-heart text-danger"></i> par l'équipe JOB4YOU
         </p>
       </div>
     </div>
   </div>
 </footer>
-

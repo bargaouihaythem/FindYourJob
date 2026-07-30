@@ -6,21 +6,12 @@
           <div class="card-body p-5">
             <!-- Header -->
             <div class="text-center mb-4">
-              <!-- Logos Sésame et Sopra -->
+              <!-- Logo Sopra HR -->
               <div class="auth-logos mb-3">
                 <div class="logo-card">
-                  <img 
-                    src="images/logo-sesame.png" 
-                    alt="Logo Sésame" 
-                    class="sesame-logo-auth"
-                    loading="lazy"
-                  >
-                </div>
-                <div class="logo-divider"></div>
-                <div class="logo-card">
-                  <img 
-                    src="images/logo-sopra-hr.png" 
-                    alt="Logo Sopra Steria" 
+                  <img
+                    src="images/logo-sopra-hr.png"
+                    alt="Logo Sopra Steria"
                     class="sopra-logo-auth"
                     loading="lazy"
                   >
@@ -189,10 +180,7 @@
                     [class.is-invalid]="isFieldInvalid('acceptTerms')"
                   >
                   <label class="form-check-label" for="acceptTerms">
-                    J'accepte les 
-                    <a href="#" class="text-decoration-none">conditions d'utilisation</a>
-                    et la 
-                    <a href="#" class="text-decoration-none">politique de confidentialité</a>
+                    J'accepte les conditions d'utilisation et la politique de confidentialité
                   </label>
                 </div>
                 <div *ngIf="isFieldInvalid('acceptTerms')" class="invalid-feedback d-block">

@@ -6,13 +6,19 @@ import com.recrutement.app.dto.CandidateResponse;
 import com.recrutement.app.entity.CV;
 import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.JobOffer;
+import com.recrutement.app.entity.Role;
+import com.recrutement.app.entity.User;
 import com.recrutement.app.exception.ResourceNotFoundException;
 import com.recrutement.app.repository.CVRepository;
 import com.recrutement.app.repository.CandidateRepository;
 import com.recrutement.app.repository.JobOfferRepository;
+import com.recrutement.app.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,6 +51,18 @@ public class CandidateService {
 
     @Autowired
     private AiScoringService aiScoringService;
+
+    @Autowired
+    private CvTextExtractionService cvTextExtractionService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private AccessControlService accessControlService;
 
     /**
      * Soumet une candidature avec CV
@@ -93,6 +111,8 @@ public class CandidateService {
         cv.setCandidate(savedCandidate);
         cv.setUploadDate(LocalDateTime.now());
         cv.setLastAccessed(LocalDateTime.now());
+        cv.setExtractedText(cvTextExtractionService.extractText(
+                java.nio.file.Paths.get(cv.getFilePath()), cv.getContentType()));
 
         cvRepository.save(cv);
 
@@ -138,6 +158,14 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
         return new CandidateResponse(candidate);
+    }
+
+    /**
+     * Récupère l'entité candidat brute (usage interne : génération de rapport PDF).
+     */
+    public Candidate getCandidateEntityById(Long id) {
+        return candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
     }
 
     /**
@@ -217,8 +245,12 @@ public class CandidateService {
      * Statuts inclus : CV_REVIEWED, PHONE_SCREENING, TECHNICAL_TEST,
      *                  INTERVIEW, FINAL_INTERVIEW, ACCEPTED
      * Statuts exclus : APPLIED (pas encore examiné par RH), REJECTED, WITHDRAWN
+     *
+     * Scope : un utilisateur avec UNIQUEMENT le rôle MANAGER ne voit que les
+     * candidatures des offres dont il est le manager (managerEmail) ou de son
+     * département. RH/Admin (même s'ils cumulent le rôle MANAGER) voient tout.
      */
-    public List<CandidateResponse> getValidatedCandidatesForManager() {
+    public List<CandidateResponse> getValidatedCandidatesForManager(String username) {
         List<Candidate.CandidateStatus> validatedStatuses = List.of(
                 Candidate.CandidateStatus.CV_REVIEWED,
                 Candidate.CandidateStatus.PHONE_SCREENING,
@@ -227,7 +259,23 @@ public class CandidateService {
                 Candidate.CandidateStatus.FINAL_INTERVIEW,
                 Candidate.CandidateStatus.ACCEPTED
         );
-        return candidateRepository.findByStatusIn(validatedStatuses).stream()
+
+        List<Candidate> candidates;
+        User currentUser = username != null ? userRepository.findByUsername(username).orElse(null) : null;
+        boolean isPrivileged = currentUser != null && currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName() == Role.ERole.ROLE_HR || r.getName() == Role.ERole.ROLE_ADMIN);
+
+        if (currentUser == null || isPrivileged) {
+            // RH/Admin (ou appel système) : vue complète, non filtrée
+            candidates = candidateRepository.findByStatusIn(validatedStatuses);
+        } else {
+            // MANAGER seul : scope à ses offres (email) ou son département
+            Long departmentId = currentUser.getDepartment() != null ? currentUser.getDepartment().getId() : null;
+            candidates = candidateRepository.findByStatusInAndJobOfferManagerEmailOrDepartment(
+                    validatedStatuses, currentUser.getEmail(), departmentId);
+        }
+
+        return candidates.stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -254,16 +302,23 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
+        assertCurrentUserCanActOn(candidate);
+
         // REJECTED générique envoyé par le frontend → MANAGER_REJECTED (décision humaine)
         // AUTO_REJECTED est réservé au flux IA via saveAiScore()
         Candidate.CandidateStatus effectiveStatus = (status == Candidate.CandidateStatus.REJECTED)
                 ? Candidate.CandidateStatus.MANAGER_REJECTED
                 : status;
 
+        Candidate.CandidateStatus previousStatus = candidate.getStatus();
         candidate.setStatus(effectiveStatus);
         candidate.setLastUpdated(LocalDateTime.now());
 
         Candidate updatedCandidate = candidateRepository.save(candidate);
+
+        if (previousStatus != effectiveStatus) {
+            auditLogService.log("CANDIDATE", updatedCandidate.getId(), "STATUS_CHANGE", previousStatus, effectiveStatus);
+        }
 
         // Agent 2 + Agent 3 — Score IA validé → CV_REVIEWED
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
@@ -312,9 +367,57 @@ public class CandidateService {
     }
 
     /**
+     * Vérifie que l'utilisateur authentifié a le droit d'agir sur ce candidat précis.
+     *
+     * - Appel anonyme (n8n) ou système : pas de restriction.
+     * - RH / Admin : accès complet, quel que soit le département.
+     * - Manager (sans rôle RH/Admin) : uniquement les candidats de ses propres
+     *   offres (managerEmail) ou de son département. Empêche un manager
+     *   d'agir sur un candidat hors périmètre via un appel API direct, même
+     *   si l'interface ne le lui montre jamais.
+     */
+    private void assertCurrentUserCanActOn(Candidate candidate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            return;
+        }
+
+        User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            return;
+        }
+
+        boolean isPrivileged = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName() == Role.ERole.ROLE_HR || r.getName() == Role.ERole.ROLE_ADMIN);
+        if (isPrivileged) {
+            return;
+        }
+
+        boolean isManager = currentUser.getRoles().stream()
+                .anyMatch(r -> r.getName() == Role.ERole.ROLE_MANAGER);
+        if (!isManager) {
+            return;
+        }
+
+        JobOffer jobOffer = candidate.getJobOffer();
+        boolean ownsByEmail = jobOffer != null && jobOffer.getManagerEmail() != null
+                && jobOffer.getManagerEmail().equalsIgnoreCase(currentUser.getEmail());
+        boolean ownsByDepartment = jobOffer != null && jobOffer.getDepartment() != null
+                && currentUser.getDepartment() != null
+                && jobOffer.getDepartment().getId().equals(currentUser.getDepartment().getId());
+
+        if (!ownsByEmail && !ownsByDepartment) {
+            throw new AccessDeniedException(
+                    "Vous n'êtes pas autorisé à agir sur ce candidat : il ne fait pas partie de votre périmètre (offre/département)");
+        }
+    }
+
+    /**
      * Récupère les candidats par email
      */
     public List<CandidateResponse> getCandidatesByEmail(String email) {
+        accessControlService.assertOwnEmailOrPrivileged(email);
         return candidateRepository.findByEmail(email).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
@@ -397,12 +500,17 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
+        Integer previousScore = candidate.getManualScore() != null ? candidate.getManualScore() : candidate.getAiScore();
+
         candidate.setManualScore(manualScore);
         candidate.setManualScoreReason(reason);
         candidate.setManualScoreBy(correctedBy);
         candidate.setManualScoreDate(LocalDateTime.now());
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
+
+        auditLogService.log("CANDIDATE", saved.getId(), "SCORE_OVERRIDE",
+                previousScore, manualScore + " (motif : " + reason + ")");
 
         Candidate.CandidateStatus newStatus = manualScore >= AI_SCORE_THRESHOLD
                 ? Candidate.CandidateStatus.CV_REVIEWED

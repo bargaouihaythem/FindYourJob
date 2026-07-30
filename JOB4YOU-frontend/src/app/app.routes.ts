@@ -16,6 +16,7 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'job-offers', component: JobOffersComponent },
   { path: 'job-offers/:id', component: JobDetailComponent },
+  { path: 'job-matching', loadComponent: () => import('./pages/job-matching/job-matching.component').then(m => m.JobMatchingComponent) },
   
   // Candidate routes
   { path: 'candidate/my-applications', loadComponent: () => import('./pages/candidate/my-applications/my-applications.component').then(m => m.MyApplicationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_USER'] } },
@@ -31,10 +32,10 @@ export const routes: Routes = [
   { path: 'admin/interviews', loadComponent: () => import('./pages/admin/interviews/interviews.component').then(m => m.InterviewsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/feedbacks', loadComponent: () => import('./pages/admin/feedbacks/feedbacks-admin.component').then(m => m.FeedbacksAdminComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
   { path: 'admin/notifications', loadComponent: () => import('./pages/admin/notifications/notifications.component').then(m => m.NotificationsComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
-  
-  // Test page for toasters
-  { path: 'test-toasts', loadComponent: () => import('./pages/toastr-test/toastr-test.component').then(m => m.ToastrTestComponent) },
-  
+  { path: 'admin/users', loadComponent: () => import('./pages/admin/users/users-admin.component').then(m => m.UsersAdminComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN'] } },
+  { path: 'admin/kanban', loadComponent: () => import('./pages/admin/kanban-board/kanban-board.component').then(m => m.KanbanBoardComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER'] } },
+  { path: 'admin/audit-log', loadComponent: () => import('./pages/admin/audit-log/audit-log.component').then(m => m.AuditLogComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },
+
   { path: '**', redirectTo: '' }
 ];
 

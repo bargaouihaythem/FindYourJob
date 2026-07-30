@@ -27,64 +27,8 @@ export class LoginComponent {
   ) {
     this.loginForm = this.fb.group({
       username: ['', [Validators.required]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      rememberMe: [false] // Ajouter le contrôle pour "Se souvenir de moi"
+      password: ['', [Validators.required, Validators.minLength(6)]]
     });
-
-    // Pré-remplir le nom d'utilisateur si "Se souvenir de moi" était activé
-    this.loadRememberedCredentials();
-  }
-
-  /**
-   * Charge les informations sauvegardées si "Se souvenir de moi" était activé
-   */
-  private loadRememberedCredentials(): void {
-    if (this.authService.isRememberMeEnabled()) {
-      const rememberedUsername = this.authService.getRememberedUsername();
-      if (rememberedUsername) {
-        this.loginForm.patchValue({
-          username: rememberedUsername,
-          rememberMe: true
-        });
-        
-        // Focus automatiquement sur le champ mot de passe si le username est pré-rempli
-        setTimeout(() => {
-          const passwordField = document.getElementById('password') as HTMLInputElement;
-          if (passwordField) {
-            passwordField.focus();
-          }
-        }, 100);
-      }
-    }
-  }
-
-  /**
-   * Efface les informations mémorisées
-   */
-  clearRememberedData(): void {
-    this.authService.clearRememberedCredentials();
-    this.loginForm.patchValue({
-      username: '',
-      rememberMe: false
-    });
-    this.toastrNotification.showFormInfo('Informations mémorisées effacées', 'Données effacées');
-  }
-
-  /**
-   * Vérifie si des données sont mémorisées
-   */
-  hasRememberedData(): boolean {
-    return this.authService.isRememberMeEnabled() && !!this.authService.getRememberedUsername();
-  }
-
-  /**
-   * Affiche une info-bulle expliquant pourquoi le mot de passe n'est pas mémorisé
-   */
-  showPasswordSecurityInfo(): void {
-    this.toastrNotification.showFormInfo(
-      'Pour votre sécurité, seul le nom d\'utilisateur est mémorisé. Le navigateur peut proposer de sauvegarder votre mot de passe de façon sécurisée.',
-      'Sécurité des mots de passe'
-    );
   }
 
   /**
@@ -104,9 +48,8 @@ export class LoginComponent {
         username: formValue.username,
         password: formValue.password
       };
-      const rememberMe = formValue.rememberMe;
 
-      this.authService.login(credentials, rememberMe).subscribe({
+      this.authService.login(credentials).subscribe({
         next: (response) => {
           this.loading = false;
           this.toastrNotification.showLoginSuccess(response.username);

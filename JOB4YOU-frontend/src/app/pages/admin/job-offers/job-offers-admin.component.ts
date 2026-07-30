@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { JobOfferService } from '../../../services/job-offer.service';
-import { JobOffer, JobOfferRequest } from '../../../models/interfaces';
+import { DepartmentService } from '../../../services/department.service';
+import { JobOffer, JobOfferRequest, Department } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
@@ -40,8 +41,11 @@ export class JobOffersAdminComponent implements OnInit {
   // Dropdown states
   openDropdownId: number | null = null;
 
+  departments: Department[] = [];
+
   constructor(
     private jobOfferService: JobOfferService,
+    private departmentService: DepartmentService,
     private fb: FormBuilder,
     private toastrNotification: ToastrNotificationService
   ) {
@@ -62,13 +66,22 @@ export class JobOffersAdminComponent implements OnInit {
       salaryRange: [''],
       status: ['ACTIVE', [Validators.required]],
       deadline: ['', [Validators.required]],
-      managerEmail: ['', [Validators.email]]
+      managerEmail: ['', [Validators.email]],
+      departmentId: ['']
     });
   }
 
   ngOnInit(): void {
     this.loadJobOffers();
+    this.loadDepartments();
     this.setupSearchSubscription();
+  }
+
+  loadDepartments(): void {
+    this.departmentService.getDepartments().subscribe({
+      next: (departments: Department[]) => this.departments = departments,
+      error: (error: any) => console.error('Erreur lors du chargement des départements:', error)
+    });
   }
 
   loadJobOffers(): void {
@@ -191,7 +204,8 @@ export class JobOffersAdminComponent implements OnInit {
         salaryRange: jobOffer.salaryRange || '',
         status: jobOffer.status || 'ACTIVE',
         deadline: jobOffer.deadline ? jobOffer.deadline.substring(0, 16) : '', // pour input type="datetime-local"
-        managerEmail: jobOffer.managerEmail || ''
+        managerEmail: jobOffer.managerEmail || '',
+        departmentId: jobOffer.departmentId || ''
       });
     } else {
       this.jobOfferForm.reset();
@@ -213,6 +227,7 @@ export class JobOffersAdminComponent implements OnInit {
       if (jobOfferData.deadline && typeof jobOfferData.deadline === 'string') {
         jobOfferData.deadline = new Date(jobOfferData.deadline);
       }
+      jobOfferData.departmentId = jobOfferData.departmentId ? Number(jobOfferData.departmentId) : null;
       if (this.selectedJobOffer) {
         // Mise à jour
         this.jobOfferService.updateJobOffer(this.selectedJobOffer.id, jobOfferData).subscribe({

@@ -23,7 +23,13 @@
             Offres d'emploi
           </a>
         </li>
-        
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/job-matching" routerLinkActive="active">
+            <i class="fas fa-magic me-1"></i>
+            Job idéal
+          </a>
+        </li>
+
         <!-- Menu Candidat -->
         <li class="nav-item dropdown" *ngIf="isAuthenticated() && isCandidate()">
           <a class="nav-link dropdown-toggle" href="#" id="candidateDropdown" role="button" data-bs-toggle="dropdown">
@@ -52,6 +58,10 @@
             <li><a class="dropdown-item" routerLink="/manager/candidates">
               <i class="fas fa-folder-open me-2"></i>
               Dossiers validés (RH)
+            </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/kanban">
+              <i class="fas fa-columns me-2"></i>
+              Pipeline (Kanban)
             </a></li>
             <li><a class="dropdown-item" routerLink="/admin/interviews">
               <i class="fas fa-calendar-alt me-2"></i>
@@ -83,6 +93,10 @@
               <i class="fas fa-briefcase me-2"></i>
               Gestion des offres
             </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/kanban">
+              <i class="fas fa-columns me-2"></i>
+              Pipeline (Kanban)
+            </a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" routerLink="/admin/interviews">
               <i class="fas fa-calendar-alt me-2"></i>
@@ -92,11 +106,28 @@
               <i class="fas fa-comments me-2"></i>
               Feedbacks
             </a></li>
+            <li><a class="dropdown-item" routerLink="/admin/audit-log">
+              <i class="fas fa-history me-2"></i>
+              Historique d'audit
+            </a></li>
+            <li *ngIf="isAdmin()"><hr class="dropdown-divider"></li>
+            <li *ngIf="isAdmin()"><a class="dropdown-item" routerLink="/admin/users">
+              <i class="fas fa-users-cog me-2"></i>
+              Utilisateurs
+            </a></li>
           </ul>
         </li>
       </ul>
       
       <ul class="navbar-nav">
+        <!-- Bascule thème clair / sombre -->
+        <li class="nav-item d-flex align-items-center me-2">
+          <button type="button" class="btn btn-sm btn-outline-light theme-toggle-btn"
+                  (click)="toggleTheme()"
+                  [title]="theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'">
+            <i class="fas" [ngClass]="theme === 'dark' ? 'fa-sun' : 'fa-moon'"></i>
+          </button>
+        </li>
         <!-- Utilisateur connecté -->
         <li class="nav-item dropdown" *ngIf="isAuthenticated() && currentUser">
           <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
@@ -104,15 +135,6 @@
             {{ currentUser.username }}
           </a>
           <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="#">
-              <i class="fas fa-user me-2"></i>
-              Profil
-            </a></li>
-            <li><a class="dropdown-item" href="#">
-              <i class="fas fa-cog me-2"></i>
-              Paramètres
-            </a></li>
-            <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" (click)="logout()" style="cursor: pointer;">
               <i class="fas fa-sign-out-alt me-2"></i>
               Déconnexion

@@ -1,0 +1,58 @@
+<div class="container-fluid py-4">
+  <h2 class="mb-4"><i class="fas fa-history me-2"></i>Historique d'audit</h2>
+
+  <div class="card mb-3">
+    <div class="card-body d-flex gap-2 align-items-end flex-wrap">
+      <div>
+        <label class="form-label mb-1 small">Filtrer par ID candidat</label>
+        <input type="number" class="form-control" [(ngModel)]="candidateIdFilter" placeholder="Ex: 12">
+      </div>
+      <button class="btn btn-primary" (click)="filterByCandidate()">Filtrer</button>
+      <button class="btn btn-outline-secondary" (click)="loadRecent()">Activité récente (tous)</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+
+  <div class="card shadow-sm" *ngIf="!loading && !error">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Date</th>
+            <th>Entité</th>
+            <th>Action</th>
+            <th>Ancienne valeur</th>
+            <th>Nouvelle valeur</th>
+            <th>Effectué par</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of paginatedLogs">
+            <td>{{ log.performedAt | date:'dd/MM/yyyy HH:mm' }}</td>
+            <td>{{ log.entityType }} #{{ log.entityId }}</td>
+            <td><span class="badge" [ngClass]="getActionBadgeClass(log.action)">{{ log.action }}</span></td>
+            <td class="small text-muted">{{ log.oldValue || '—' }}</td>
+            <td class="small">{{ log.newValue || '—' }}</td>
+            <td>{{ log.performedBy || '—' }}</td>
+          </tr>
+          <tr *ngIf="logs.length === 0">
+            <td colspan="6" class="text-center text-muted py-4">Aucune activité trouvée</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-footer d-flex justify-content-between align-items-center" *ngIf="logs.length > pageSize">
+      <span class="small text-muted">Page {{ currentPage }} / {{ totalPages }}</span>
+      <div class="btn-group">
+        <button class="btn btn-sm btn-outline-secondary" [disabled]="currentPage === 1" (click)="changePage(currentPage - 1)">Précédent</button>
+        <button class="btn btn-sm btn-outline-secondary" [disabled]="currentPage === totalPages" (click)="changePage(currentPage + 1)">Suivant</button>
+      </div>
+    </div>
+  </div>
+</div>
