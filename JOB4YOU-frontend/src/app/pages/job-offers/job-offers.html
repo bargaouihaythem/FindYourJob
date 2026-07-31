@@ -201,12 +201,12 @@
                     Détails
                   </a>
                   <!-- Bouton Postuler visible uniquement pour les candidats connectés avec rôle USER -->
-                  <a *ngIf="job.status === 'ACTIVE' && canApplyToJob()" 
+                  <a *ngIf="job.status === 'ACTIVE' && canApplyToJob()"
                      [routerLink]="['/job-offers', job.id]"
                      fragment="application-section"
                      class="btn btn-success btn-sm">
                     <i class="fas fa-paper-plane me-1"></i>
-                    {{ getApplyButtonMessage() }}
+                    Postuler
                   </a>
                   
                   <!-- Message informatif quand un visiteur non connecté ne peut pas postuler.
