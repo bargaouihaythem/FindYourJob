@@ -6,7 +6,9 @@ import { interval, Subscription } from 'rxjs';
 import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { CVService } from '../../../services/cv.service';
-import { NotificationService } from '../../../services/notification.service';
+import { InterviewService } from '../../../services/interview.service';
+import { FeedbackService } from '../../../services/feedback.service';
+import { NotificationService, FeedbackNotificationRequest } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { InternalNotesComponent } from '../../../components/internal-notes/internal-notes.component';
 import { Candidate, JobOffer } from '../../../models/interfaces';
@@ -84,6 +86,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     private candidateService: CandidateService,
     private jobOfferService: JobOfferService,
     private cvService: CVService,
+    private interviewService: InterviewService,
+    private feedbackService: FeedbackService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
     private toastrNotification: ToastrNotificationService,
@@ -441,7 +445,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       });
     } else {
       this.candidateForm.reset();
-      this.candidateForm.patchValue({ status: 'ACTIVE' });
+      this.candidateForm.patchValue({ status: 'APPLIED' });
     }
     
     this.showCandidateModal = true;
@@ -630,6 +634,45 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Décision dédiée du manager (dossier déjà validé par le RH).
+   * Utilise l'endpoint /manager-decision, restreint à ACCEPTED/REJECTED,
+   * distinct du dropdown de statut générique réservé au RH/Admin.
+   */
+  acceptCandidate(candidate: Candidate): void {
+    this.candidateService.managerDecision(candidate.id, 'ACCEPTED').subscribe({
+      next: () => {
+        this.toastrNotification.showSuccess('Candidature acceptée avec succès !', 'Candidat accepté');
+        candidate.status = 'ACCEPTED' as Candidate['status'];
+        this.applyFilters();
+        this.openStatusDropdownId = null;
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de l\'acceptation du candidat:', error);
+        const message = error?.error?.message || 'Erreur lors de l\'acceptation du candidat';
+        this.toastrNotification.showCandidateError(message);
+        this.openStatusDropdownId = null;
+      }
+    });
+  }
+
+  rejectCandidate(candidate: Candidate): void {
+    this.candidateService.managerDecision(candidate.id, 'REJECTED').subscribe({
+      next: () => {
+        this.toastrNotification.showSuccess('Candidature refusée.', 'Candidat refusé');
+        candidate.status = 'MANAGER_REJECTED' as Candidate['status'];
+        this.applyFilters();
+        this.openStatusDropdownId = null;
+      },
+      error: (error: any) => {
+        console.error('Erreur lors du refus du candidat:', error);
+        const message = error?.error?.message || 'Erreur lors du refus du candidat';
+        this.toastrNotification.showCandidateError(message);
+        this.openStatusDropdownId = null;
+      }
+    });
+  }
+
+  /**
    * Mappe le statut du frontend vers l'enum backend
    */
   private mapStatusToBackend(status: string): string {
@@ -782,18 +825,86 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Envoie le vrai email d'invitation (avec date/heure/lieu réels) pour le
+   * prochain entretien planifié du candidat, via l'endpoint dédié
+   * /api/notifications/interview-invitation/{interviewId}.
+   */
   sendInterviewInvitation(candidate: Candidate): void {
-    // Cette méthode nécessiterait un ID d'entretien
-    // Pour l'instant, on ouvre la modal de composition d'email
-    this.openEmailModal(candidate);
-    this.openEmailDropdownId = null;
+    this.interviewService.getInterviewsByCandidate(candidate.id).subscribe({
+      next: (interviews) => {
+        const upcoming = interviews
+          .filter(iv => iv.status === 'SCHEDULED' || iv.status === 'RESCHEDULED')
+          .sort((a, b) => new Date(b.interviewDate).getTime() - new Date(a.interviewDate).getTime())[0];
+
+        if (!upcoming) {
+          this.toastrNotification.showWarning(
+            "Aucun entretien planifié pour ce candidat — créez d'abord un entretien avant d'envoyer une invitation."
+          );
+          this.openEmailDropdownId = null;
+          return;
+        }
+
+        this.notificationService.sendInterviewInvitation(upcoming.id).subscribe({
+          next: () => {
+            this.toastrNotification.showEmailSentSuccess();
+            this.openEmailDropdownId = null;
+          },
+          error: (error: any) => {
+            console.error('Erreur lors de l\'envoi de l\'invitation à l\'entretien:', error);
+            this.toastrNotification.showEmailSentError();
+            this.openEmailDropdownId = null;
+          }
+        });
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la récupération des entretiens du candidat:', error);
+        this.toastrNotification.showError('Impossible de récupérer les entretiens de ce candidat');
+        this.openEmailDropdownId = null;
+      }
+    });
   }
 
+  /**
+   * Envoie au candidat le dernier feedback le concernant, via l'endpoint
+   * dédié /api/feedbacks/{id}/send-detailed-notification.
+   */
   sendFeedbackNotification(candidate: Candidate): void {
-    // Cette méthode nécessiterait un ID de feedback
-    // Pour l'instant, on ouvre la modal de composition d'email
-    this.openEmailModal(candidate);
-    this.openEmailDropdownId = null;
+    this.feedbackService.getFeedbacksByCandidate(candidate.id).subscribe({
+      next: (feedbacks) => {
+        const latest = [...feedbacks]
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+
+        if (!latest) {
+          this.toastrNotification.showWarning('Aucun feedback disponible pour ce candidat.');
+          this.openEmailDropdownId = null;
+          return;
+        }
+
+        const notificationData: FeedbackNotificationRequest = {
+          subject: 'Retour sur votre candidature',
+          message: latest.content,
+          feedbackSummary: `Note : ${latest.rating}/5`
+        };
+
+        this.notificationService.sendDetailedFeedbackNotification(latest.id, notificationData).subscribe({
+          next: () => {
+            this.toastrNotification.showEmailSentSuccess();
+            this.openEmailDropdownId = null;
+          },
+          error: (error: any) => {
+            console.error('Erreur lors de l\'envoi du feedback:', error);
+            this.toastrNotification.showEmailSentError();
+            this.openEmailDropdownId = null;
+          }
+        });
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la récupération des feedbacks du candidat:', error);
+        this.toastrNotification.showError('Impossible de récupérer les feedbacks de ce candidat');
+        this.openEmailDropdownId = null;
+      }
+    });
   }
 
   onFileSelected(event: Event): void {

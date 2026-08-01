@@ -380,8 +380,8 @@
                         </a>
                       </li>
                       <li><hr class="dropdown-divider"></li>
-                      <!-- Supprimer -->
-                      <li *ngIf="canChangeStatus(interview, 'CANCELLED') || canChangeStatus(interview, 'RESCHEDULED') || canChangeStatus(interview, 'IN_PROGRESS') || canChangeStatus(interview, 'COMPLETED')">
+                      <!-- Supprimer : toujours disponible, indépendamment du statut (le backend n'impose aucune restriction) -->
+                      <li>
                         <a class="dropdown-item text-danger" (click)="confirmDeleteInterview(interview)">
                           <i class="fas fa-trash me-2"></i>Supprimer
                         </a>
@@ -435,7 +435,7 @@
 
 <!-- Modal Création/Édition Entretien -->
 <div class="modal fade" [class.show]="showInterviewModal" [style.display]="showInterviewModal ? 'block' : 'none'" 
-     tabindex="-1" role="dialog" aria-labelledby="interviewModalLabel" aria-hidden="true">
+     tabindex="-1" role="dialog" aria-labelledby="interviewModalLabel" [attr.aria-hidden]="!showInterviewModal">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -592,7 +592,7 @@
 
 <!-- Modal Feedback -->
 <div class="modal fade" [class.show]="showFeedbackModal" [style.display]="showFeedbackModal ? 'block' : 'none'" 
-     tabindex="-1" role="dialog" aria-labelledby="feedbackModalLabel" aria-hidden="true">
+     tabindex="-1" role="dialog" aria-labelledby="feedbackModalLabel" [attr.aria-hidden]="!showFeedbackModal">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -671,7 +671,7 @@
 
 <!-- Modal Consultation (Visualisation) -->
 <div class="modal fade" [class.show]="showConsultationModal" [style.display]="showConsultationModal ? 'block' : 'none'" 
-     tabindex="-1" role="dialog" aria-labelledby="consultationModalLabel" aria-hidden="true">
+     tabindex="-1" role="dialog" aria-labelledby="consultationModalLabel" [attr.aria-hidden]="!showConsultationModal">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -807,7 +807,10 @@
             <i class="fas fa-edit me-2"></i>
             Modifier
           </button>
-          <button type="button" class="btn btn-outline-success" (click)="closeConsultationModal(); selectedInterview && openFeedbackModal(selectedInterview)">
+          <button type="button" class="btn btn-outline-success"
+                  [disabled]="selectedInterview?.status !== 'COMPLETED'"
+                  [title]="selectedInterview?.status !== 'COMPLETED' ? 'Le feedback n\'est disponible qu\'une fois l\'entretien terminé' : ''"
+                  (click)="closeConsultationModal(); selectedInterview && openFeedbackModal(selectedInterview)">
             <i class="fas fa-comment me-2"></i>
             Feedback
           </button>
@@ -823,7 +826,7 @@
 
 <!-- Modal Notification -->
 <div class="modal fade" [class.show]="showNotificationModal" [style.display]="showNotificationModal ? 'block' : 'none'" 
-     tabindex="-1" role="dialog" aria-labelledby="notificationModalLabel" aria-hidden="true">
+     tabindex="-1" role="dialog" aria-labelledby="notificationModalLabel" [attr.aria-hidden]="!showNotificationModal">
   <div class="modal-dialog modal-lg" role="document">
     <div class="modal-content">
       <div class="modal-header">
@@ -846,11 +849,13 @@
               <i class="fas fa-tag me-2"></i>
               Type de notification <span class="text-danger">*</span>
             </label>
-            <select class="form-select" formControlName="notificationType">
+            <select class="form-select" formControlName="notificationType" (change)="onNotificationTypeChange()">
+              <option value="" disabled>Sélectionner un type</option>
               <option *ngFor="let type of notificationTypes" [value]="type.value">
                 {{ type.label }}
               </option>
             </select>
+            <div class="form-text">Pré-remplit le sujet et le message ci-dessous (modifiables avant envoi).</div>
           </div>
           
           <div class="mb-3">

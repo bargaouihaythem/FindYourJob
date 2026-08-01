@@ -195,16 +195,29 @@
                     {{ getStatusText(candidate.status) }}
                     <i class="fas fa-lock ms-1" style="font-size:0.7em"></i>
                   </span>
-                  <!-- Statut en cours : dropdown modifiable -->
-                  <button *ngIf="!isStatusLocked(candidate.status)"
-                          class="btn btn-sm dropdown-toggle p-0 border-0" 
+                  <!-- MANAGER (dossier déjà validé par RH, non encore décidé) : boutons dédiés Accepter/Refuser -->
+                  <div *ngIf="!isStatusLocked(candidate.status) && isManagerView" class="d-flex align-items-center gap-2 flex-wrap">
+                    <span [class]="getStatusBadgeClass(candidate.status)">{{ getStatusText(candidate.status) }}</span>
+                    <div class="btn-group btn-group-sm" role="group">
+                      <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)" title="Accepter la candidature">
+                        <i class="fas fa-check me-1"></i>Accepter
+                      </button>
+                      <button class="btn btn-outline-danger" (click)="rejectCandidate(candidate)" title="Refuser la candidature">
+                        <i class="fas fa-times me-1"></i>Refuser
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- RH/ADMIN : statut en cours, dropdown modifiable -->
+                  <button *ngIf="!isStatusLocked(candidate.status) && !isManagerView"
+                          class="btn btn-sm dropdown-toggle p-0 border-0"
                           [class]="getStatusBadgeClass(candidate.status)"
-                          type="button" 
+                          type="button"
                           (click)="toggleStatusDropdown(candidate.id, candidate.status)"
                           [attr.aria-expanded]="isStatusDropdownOpen(candidate.id)">
                     {{ getStatusText(candidate.status) }}
                   </button>
-                  <ul class="dropdown-menu" 
+                  <ul *ngIf="!isManagerView" class="dropdown-menu"
                       [class.show]="isStatusDropdownOpen(candidate.id)"
                       style="position: absolute; top: 100%; left: 0; z-index: 1050; min-width: 180px;">
                     <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'APPLIED'); $event.stopPropagation()">
@@ -226,10 +239,12 @@
                       <i class="fas fa-handshake text-primary me-2"></i>Entretien final
                     </a></li>
                     <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'ACCEPTED'); $event.stopPropagation()">
+                    <li><a class="dropdown-item" (click)="acceptCandidate(candidate); $event.stopPropagation()"
+                           title="Décision finale — le dossier doit déjà être validé par le RH (CV examiné ou plus avancé)">
                       <i class="fas fa-user-check text-success me-2"></i>Accepté
                     </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'REJECTED'); $event.stopPropagation()">
+                    <li><a class="dropdown-item" (click)="rejectCandidate(candidate); $event.stopPropagation()"
+                           title="Décision finale — le dossier doit déjà être validé par le RH (CV examiné ou plus avancé)">
                       <i class="fas fa-user-times text-danger me-2"></i>Rejeté
                     </a></li>
                     <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'WITHDRAWN'); $event.stopPropagation()">

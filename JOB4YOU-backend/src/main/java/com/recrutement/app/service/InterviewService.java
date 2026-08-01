@@ -65,11 +65,25 @@ public class InterviewService {
     /**
      * Planifie un nouvel entretien
      */
+    /** Statuts sur lesquels le dossier est clos négativement : aucun entretien ne doit plus être planifié. */
+    private static final List<Candidate.CandidateStatus> CLOSED_NEGATIVE_STATUSES = List.of(
+            Candidate.CandidateStatus.REJECTED,
+            Candidate.CandidateStatus.AUTO_REJECTED,
+            Candidate.CandidateStatus.MANAGER_REJECTED,
+            Candidate.CandidateStatus.WITHDRAWN
+    );
+
     @Transactional
     public InterviewResponse scheduleInterview(InterviewRequest interviewRequest) {
         // Vérifier si le candidat existe
         Candidate candidate = candidateRepository.findById(interviewRequest.getCandidateId())
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + interviewRequest.getCandidateId()));
+
+        // Un dossier refusé (RH, manager ou IA) ou retiré est clos : aucun entretien ne doit être planifié dessus
+        if (CLOSED_NEGATIVE_STATUSES.contains(candidate.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Impossible de planifier un entretien : ce dossier est clos (statut " + candidate.getStatus() + ")");
+        }
 
         // Vérifier si l'interviewer existe
         User interviewer = userRepository.findById(interviewRequest.getInterviewerId())

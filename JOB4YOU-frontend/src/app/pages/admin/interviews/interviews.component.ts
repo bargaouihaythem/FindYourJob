@@ -605,11 +605,28 @@ export class InterviewsComponent implements OnInit {
       return;
     }
 
+    // Applique la même machine à états que les actions individuelles (canChangeStatus) :
+    // sans ce filtre, un entretien COMPLETED (statut final) pourrait être repassé
+    // en masse à IN_PROGRESS sans qu'aucune règle ne s'y oppose côté frontend ou backend.
+    const ids = Array.from(this.selectedInterviews);
+    const eligibleIds = ids.filter(id => {
+      const interview = this.interviews.find(i => i.id === id);
+      return !!interview && this.canChangeStatus(interview, status);
+    });
+    const ignoredCount = ids.length - eligibleIds.length;
+
+    if (eligibleIds.length === 0) {
+      this.toastrNotification.showWarning(
+        `Aucun des entretiens sélectionnés ne peut passer au statut "${this.getStatusText(status)}" depuis son statut actuel`
+      );
+      return;
+    }
+
     this.showConfirmationModal = true;
-    this.confirmationMessage = `Êtes-vous sûr de vouloir changer le statut de ${this.selectedInterviews.size} entretien(s) vers "${this.getStatusText(status)}" ?`;
+    this.confirmationMessage = `Êtes-vous sûr de vouloir changer le statut de ${eligibleIds.length} entretien(s) vers "${this.getStatusText(status)}" ?`
+      + (ignoredCount > 0 ? ` (${ignoredCount} entretien(s) ignoré(s) car cette transition n'est pas autorisée depuis leur statut actuel)` : '');
     this.confirmationAction = () => {
-      const ids = Array.from(this.selectedInterviews);
-      const requests = ids.map(id =>
+      const requests = eligibleIds.map(id =>
         this.interviewService.updateInterviewStatus(id, status).pipe(
           catchError(error => {
             console.error(`Erreur lors de la mise à jour du statut de l'entretien #${id}:`, error);
@@ -1160,6 +1177,49 @@ export class InterviewsComponent implements OnInit {
   }
 
   /**
+   * Pré-remplit le sujet et le message en fonction du type de notification choisi,
+   * à partir des vraies informations de l'entretien sélectionné (candidat, offre,
+   * date, lieu). L'admin reste libre de modifier le texte avant envoi.
+   */
+  onNotificationTypeChange(): void {
+    if (!this.selectedInterview) return;
+
+    const type = this.notificationForm.get('notificationType')?.value;
+    const candidateName = this.selectedInterview.candidateName || 'Candidat';
+    const jobTitle = this.selectedInterview.jobOfferTitle || 'le poste';
+    const dateStr = this.formatDateTime(this.selectedInterview.interviewDate);
+    const location = this.selectedInterview.location || 'lieu à préciser';
+
+    const templates: { [key: string]: { subject: string; message: string } } = {
+      INTERVIEW_CONFIRMATION: {
+        subject: `Confirmation de votre entretien — ${jobTitle}`,
+        message: `Bonjour ${candidateName},\n\nNous vous confirmons votre entretien pour le poste de ${jobTitle}, prévu le ${dateStr} (${location}).\n\nCordialement,\nL'équipe de recrutement`
+      },
+      INTERVIEW_REMINDER: {
+        subject: `Rappel — Votre entretien approche`,
+        message: `Bonjour ${candidateName},\n\nPetit rappel : votre entretien pour le poste de ${jobTitle} est prévu le ${dateStr} (${location}).\n\nCordialement,\nL'équipe de recrutement`
+      },
+      INTERVIEW_RESCHEDULED: {
+        subject: `Reprogrammation de votre entretien`,
+        message: `Bonjour ${candidateName},\n\nVotre entretien pour le poste de ${jobTitle} a été reprogrammé. Nouvelle date : ${dateStr} (${location}).\n\nCordialement,\nL'équipe de recrutement`
+      },
+      INTERVIEW_CANCELLED: {
+        subject: `Annulation de votre entretien`,
+        message: `Bonjour ${candidateName},\n\nNous vous informons que votre entretien du ${dateStr} pour le poste de ${jobTitle} est annulé. Nous reviendrons vers vous prochainement.\n\nCordialement,\nL'équipe de recrutement`
+      },
+      FEEDBACK_REQUEST: {
+        subject: `Retour sur votre entretien`,
+        message: `Bonjour ${candidateName},\n\nNous vous remercions pour votre entretien du ${dateStr} pour le poste de ${jobTitle}. Nous revenons vers vous prochainement avec un retour.\n\nCordialement,\nL'équipe de recrutement`
+      }
+    };
+
+    const template = templates[type];
+    if (template) {
+      this.notificationForm.patchValue({ subject: template.subject, message: template.message });
+    }
+  }
+
+  /**
    * Envoie la notification par email
    */
   sendNotification(): void {
@@ -1172,6 +1232,19 @@ export class InterviewsComponent implements OnInit {
       }
       if (formData.sendToInterviewer && this.selectedInterview.interviewerEmail) {
         recipients.push(this.selectedInterview.interviewerEmail);
+      }
+      if (formData.copyToHR) {
+        const hrEmails = this.interviewers
+          .filter(i => i.role === 'RH Manager' && !!i.email)
+          .map(i => i.email);
+        if (hrEmails.length === 0) {
+          this.toastrNotification.showWarning('Aucun compte RH avec adresse e-mail trouvé pour la copie.');
+        }
+        hrEmails.forEach(email => {
+          if (!recipients.includes(email)) {
+            recipients.push(email);
+          }
+        });
       }
 
       if (recipients.length === 0) {
@@ -1203,10 +1276,6 @@ export class InterviewsComponent implements OnInit {
         }
         this.closeNotificationModal();
       });
-
-      if (formData.copyToHR) {
-        this.toastrNotification.showInfo('La copie automatique aux RH n\'est pas encore disponible (aucune adresse RH configurée)');
-      }
     } else {
       this.toastrNotification.showError('Veuillez remplir tous les champs obligatoires');
     }

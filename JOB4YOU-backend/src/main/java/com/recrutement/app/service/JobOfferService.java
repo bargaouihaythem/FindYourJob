@@ -177,10 +177,30 @@ public class JobOfferService {
     public void updateJobOfferStatus(Long id, JobOffer.JobStatus status) {
         JobOffer jobOffer = jobOfferRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Job offer not found with id: " + id));
-        
+
         jobOffer.setStatus(status);
         jobOffer.setUpdatedAt(LocalDateTime.now());
         jobOfferRepository.save(jobOffer);
+    }
+
+    /**
+     * Bascule automatiquement en EXPIRED les offres ACTIVE dont la deadline est dépassée.
+     * Sans cette synchronisation, une offre reste visible sur GET /api/job-offers/public
+     * (filtré sur status=ACTIVE) après sa date limite tant qu'un RH ne clique pas
+     * manuellement "Expirée" dans le dropdown de statut.
+     *
+     * @return le nombre d'offres basculées
+     */
+    @Transactional
+    public int expireOverdueJobOffers() {
+        LocalDateTime now = LocalDateTime.now();
+        List<JobOffer> overdue = jobOfferRepository.findExpiredOffers(now, JobOffer.JobStatus.ACTIVE);
+        for (JobOffer jobOffer : overdue) {
+            jobOffer.setStatus(JobOffer.JobStatus.EXPIRED);
+            jobOffer.setUpdatedAt(now);
+        }
+        jobOfferRepository.saveAll(overdue);
+        return overdue.size();
     }
 
     /**

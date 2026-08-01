@@ -55,6 +55,19 @@ export class CandidateService {
   }
 
   /**
+   * Décision du manager sur un dossier déjà validé par le RH (ACCEPTED ou REJECTED).
+   * Le backend vérifie que le dossier est bien au périmètre du manager et déjà
+   * validé (statut >= CV_REVIEWED) avant d'appliquer la décision.
+   */
+  managerDecision(id: number, decision: 'ACCEPTED' | 'REJECTED'): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/manager-decision`, null, {
+      params: new HttpParams().set('decision', decision),
+      headers
+    });
+  }
+
+  /**
    * Correction manuelle du score IA par le RH/Admin, avec justification obligatoire.
    */
   overrideAiScore(id: number, manualScore: number, reason: string): Observable<Candidate> {

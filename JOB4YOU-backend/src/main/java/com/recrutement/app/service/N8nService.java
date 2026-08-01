@@ -126,6 +126,7 @@ public class N8nService {
         payload.put("candidateFirstName", candidate.getFirstName());
         payload.put("candidateLastName", candidate.getLastName());
         payload.put("interviewerName", interview.getInterviewer().getUsername());
+        payload.put("interviewerEmail", interview.getInterviewer().getEmail());
         payload.put("scheduledDate", interview.getInterviewDate().toString());
         payload.put("interviewType", interview.getType().toString());
         payload.put("jobOfferTitle", candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : "Entretien général");

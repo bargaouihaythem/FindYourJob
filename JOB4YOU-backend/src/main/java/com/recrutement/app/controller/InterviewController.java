@@ -36,10 +36,14 @@ public class InterviewController {
     @PostMapping
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Planifier un nouvel entretien")
-    public ResponseEntity<InterviewResponse> scheduleInterview(
+    public ResponseEntity<?> scheduleInterview(
             @Valid @RequestBody InterviewRequest interviewRequest) {
-        InterviewResponse response = interviewService.scheduleInterview(interviewRequest);
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
+        try {
+            InterviewResponse response = interviewService.scheduleInterview(interviewRequest);
+            return new ResponseEntity<>(response, HttpStatus.CREATED);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
     }
 
     @GetMapping

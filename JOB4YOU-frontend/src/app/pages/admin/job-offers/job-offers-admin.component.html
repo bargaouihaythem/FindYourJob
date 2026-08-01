@@ -249,7 +249,7 @@
 
 <!-- Job Offer Modal -->
 <div class="modal fade" [class.show]="showJobOfferModal" [style.display]="showJobOfferModal ? 'block' : 'none'" 
-     tabindex="-1" aria-labelledby="jobOfferModalLabel" aria-hidden="true">
+     tabindex="-1" aria-labelledby="jobOfferModalLabel" [attr.aria-hidden]="!showJobOfferModal">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
@@ -402,7 +402,7 @@
 
 <!-- Delete Modal -->
 <div class="modal fade" [class.show]="showDeleteModal" [style.display]="showDeleteModal ? 'block' : 'none'" 
-     tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+     tabindex="-1" aria-labelledby="deleteModalLabel" [attr.aria-hidden]="!showDeleteModal">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">

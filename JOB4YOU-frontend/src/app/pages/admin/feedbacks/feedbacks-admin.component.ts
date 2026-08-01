@@ -8,6 +8,7 @@ import { InterviewService } from '../../../services/interview.service';
 import { NotificationService, FeedbackNotificationRequest } from '../../../services/notification.service';
 import { Feedback, Interview } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { AuthService } from '../../../services/auth';
 
 @Component({
   selector: 'app-feedbacks-admin',
@@ -57,7 +58,8 @@ export class FeedbacksAdminComponent implements OnInit {
     private interviewService: InterviewService,
     private notificationService: NotificationService,
     private fb: FormBuilder,
-    private toastrNotification: ToastrNotificationService
+    private toastrNotification: ToastrNotificationService,
+    private authService: AuthService
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -88,6 +90,16 @@ export class FeedbacksAdminComponent implements OnInit {
     this.loadInterviews();
     this.loadPendingFeedbacks();
     this.setupSearchSubscription();
+  }
+
+  /**
+   * Édition, validation, notification et suppression d'un feedback sont réservées
+   * à RH/Admin côté backend (FeedbackController : PUT/DELETE/approve/reject/
+   * send-detailed-notification). Un Manager peut consulter et créer un feedback,
+   * mais pas agir sur ceux des autres — masquer ces boutons évite des 403 inutiles.
+   */
+  isHrOrAdmin(): boolean {
+    return this.authService.isHR() || this.authService.isAdmin();
   }
 
   loadFeedbacks(): void {

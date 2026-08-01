@@ -104,6 +104,17 @@ export class KanbanBoardComponent implements OnInit {
     }
 
     const candidate = event.previousContainer.data[event.previousIndex];
+
+    // Un candidat qui a retiré sa candidature (WITHDRAWN) est affiché dans la même
+    // colonne visuelle "Refusé" que REJECTED/AUTO_REJECTED/MANAGER_REJECTED, mais ce
+    // n'est pas un refus : on évite de le requalifier silencieusement en refus manager.
+    if (targetColumn.status === 'REJECTED' && candidate.status === 'WITHDRAWN') {
+      this.toastrNotification.showWarning(
+        `${candidate.firstName} ${candidate.lastName} a retiré sa candidature — ce statut n'est pas modifiable ici`
+      );
+      return;
+    }
+
     transferArrayItem(
       event.previousContainer.data,
       event.container.data,
@@ -111,14 +122,24 @@ export class KanbanBoardComponent implements OnInit {
       event.currentIndex
     );
 
-    this.candidateService.updateCandidateStatus(candidate.id, targetColumn.status).subscribe({
+    // Accepter/Refuser passe par le même endpoint dédié que les boutons manager
+    // (vérifie que le dossier est déjà validé par RH avant d'appliquer la décision) —
+    // le endpoint générique de statut ne fait pas cette vérification et permettrait
+    // de glisser une candidature directement de "Reçue" à "Accepté" sans validation.
+    const isFinalDecision = targetColumn.status === 'ACCEPTED' || targetColumn.status === 'REJECTED';
+    const request$ = isFinalDecision
+      ? this.candidateService.managerDecision(candidate.id, targetColumn.status as 'ACCEPTED' | 'REJECTED')
+      : this.candidateService.updateCandidateStatus(candidate.id, targetColumn.status);
+
+    request$.subscribe({
       next: (updated: Candidate) => {
         candidate.status = updated.status;
         this.toastrNotification.showSuccess(`${candidate.firstName} ${candidate.lastName} → ${targetColumn.label}`);
       },
       error: (error: any) => {
         console.error('Erreur lors du changement de statut:', error);
-        this.toastrNotification.showError('Erreur lors du changement de statut, la carte est remise en place');
+        const message = error?.error?.message || 'Erreur lors du changement de statut, la carte est remise en place';
+        this.toastrNotification.showError(message);
         // Rollback visuel si l'appel échoue
         transferArrayItem(
           event.container.data,
