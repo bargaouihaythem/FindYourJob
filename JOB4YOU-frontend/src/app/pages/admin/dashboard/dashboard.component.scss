@@ -86,13 +86,18 @@
   }
 
   // Activity items
-  .d-flex.align-items-center.mb-3 {
-    padding: 0.75rem;
+  .d-flex.align-items-center.py-2 {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
     border-radius: 10px;
     transition: background-color 0.2s ease;
 
     &:hover {
       background-color: rgba(0, 123, 255, 0.05);
+    }
+
+    &.border-bottom {
+      border-color: rgba(0, 0, 0, 0.05) !important;
     }
 
     .fw-bold {
@@ -102,6 +107,26 @@
 
     .text-muted.small {
       font-size: 0.8rem;
+    }
+  }
+
+  // Pipeline de recrutement
+  .pipeline-bar {
+    background-color: #f1f3f5;
+
+    > div {
+      transition: width 0.4s ease;
+      cursor: default;
+
+      &:first-child {
+        border-top-left-radius: 6px;
+        border-bottom-left-radius: 6px;
+      }
+
+      &:last-child {
+        border-top-right-radius: 6px;
+        border-bottom-right-radius: 6px;
+      }
     }
   }
 

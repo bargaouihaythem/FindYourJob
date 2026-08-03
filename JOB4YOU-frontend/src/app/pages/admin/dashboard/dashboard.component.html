@@ -207,15 +207,47 @@
       </div>
     </div>
 
-    <!-- IA & Recrutement Statistics -->
+    <!-- Pipeline de recrutement -->
     <div class="row mb-4">
+      <div class="col-12">
+        <div class="card shadow-sm">
+          <div class="card-body">
+            <h6 class="text-muted text-uppercase fw-bold mb-3" style="font-size:0.75rem; letter-spacing:0.05em;">
+              <i class="fas fa-filter me-2 text-primary"></i>Pipeline de recrutement ({{ stats.totalCandidates }} candidats)
+            </h6>
+            <div *ngIf="stats.totalCandidates > 0; else noPipeline" class="pipeline-bar d-flex rounded overflow-hidden mb-3" style="height: 10px;">
+              <div class="bg-primary" [style.width.%]="stats.applied / stats.totalCandidates * 100" [title]="stats.applied + ' — Candidature soumise'"></div>
+              <div class="bg-info" [style.width.%]="stats.cvReviewed / stats.totalCandidates * 100" [title]="stats.cvReviewed + ' — CV examiné'"></div>
+              <div class="bg-warning" [style.width.%]="stats.inProcess / stats.totalCandidates * 100" [title]="stats.inProcess + ' — En cours de process'"></div>
+              <div class="bg-success" [style.width.%]="stats.accepted / stats.totalCandidates * 100" [title]="stats.accepted + ' — Accepté / Embauché'"></div>
+              <div class="bg-danger" [style.width.%]="stats.rejectedTotal / stats.totalCandidates * 100" [title]="stats.rejectedTotal + ' — Rejeté'"></div>
+              <div class="bg-secondary" [style.width.%]="stats.withdrawn / stats.totalCandidates * 100" [title]="stats.withdrawn + ' — Candidature retirée'"></div>
+            </div>
+            <ng-template #noPipeline>
+              <div class="text-muted small mb-3">Aucun candidat pour le moment.</div>
+            </ng-template>
+            <div class="d-flex flex-wrap gap-3 small">
+              <span><i class="fas fa-circle text-primary me-1"></i>Soumise ({{ stats.applied }})</span>
+              <span><i class="fas fa-circle text-info me-1"></i>CV examiné ({{ stats.cvReviewed }})</span>
+              <span><i class="fas fa-circle text-warning me-1"></i>En cours ({{ stats.inProcess }})</span>
+              <span><i class="fas fa-circle text-success me-1"></i>Accepté ({{ stats.accepted }})</span>
+              <span><i class="fas fa-circle text-danger me-1"></i>Rejeté ({{ stats.rejectedTotal }})</span>
+              <span><i class="fas fa-circle text-secondary me-1"></i>Retirée ({{ stats.withdrawn }})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IA & Recrutement Statistics -->
+    <div class="row mb-4 row-cols-1 row-cols-md-2 row-cols-xl-5 g-3">
       <div class="col-12 mb-2">
         <h6 class="text-muted text-uppercase fw-bold" style="font-size:0.75rem; letter-spacing:0.05em;">
           <i class="fas fa-robot me-2 text-primary"></i>Statuts IA &amp; Recrutement
         </h6>
       </div>
 
-      <div class="col-xl-3 col-md-6 mb-3">
+      <div class="col mb-3">
         <div class="card shadow-sm h-100 border-start border-danger border-3">
           <div class="card-body py-3">
             <div class="d-flex align-items-center">
@@ -231,7 +263,24 @@
         </div>
       </div>
 
-      <div class="col-xl-3 col-md-6 mb-3">
+      <div class="col mb-3">
+        <div class="card shadow-sm h-100 border-start border-secondary border-3">
+          <div class="card-body py-3">
+            <div class="d-flex align-items-center">
+              <div class="flex-shrink-0">
+                <i class="fas fa-user-tie fa-2x text-secondary opacity-75"></i>
+              </div>
+              <div class="flex-grow-1 ms-3">
+                <div class="small text-muted">Rejetés RH</div>
+                <div class="h5 mb-0 fw-bold text-secondary">{{ hrRejectedCount }}</div>
+                <div class="small text-muted mt-1">Décidé via "Rejeter" (gestion des candidats)</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col mb-3">
         <div class="card shadow-sm h-100 border-start border-warning border-3">
           <div class="card-body py-3">
             <div class="d-flex align-items-center">
@@ -240,14 +289,19 @@
               </div>
               <div class="flex-grow-1 ms-3">
                 <div class="small text-muted">Rejetés (manager)</div>
-                <div class="h5 mb-0 fw-bold text-warning">{{ stats.managerRejected }}</div>
+                <div class="h5 mb-0 fw-bold text-warning">{{ managerCausedRejectedCount }}</div>
+                <div class="small text-muted mt-1" *ngIf="managerRejectedByFamily.length > 0">
+                  <span *ngFor="let f of managerRejectedByFamily; let last = last">
+                    {{ f.family }} ({{ f.count }})<span *ngIf="!last">, </span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="col-xl-3 col-md-6 mb-3">
+      <div class="col mb-3">
         <div class="card shadow-sm h-100 border-start border-info border-3">
           <div class="card-body py-3">
             <div class="d-flex align-items-center">
@@ -263,7 +317,7 @@
         </div>
       </div>
 
-      <div class="col-xl-3 col-md-6 mb-3">
+      <div class="col mb-3">
         <div class="card shadow-sm h-100 border-start border-success border-3">
           <div class="card-body py-3">
             <div class="d-flex align-items-center">
@@ -290,7 +344,7 @@
               <i class="fas fa-clock me-2"></i>
               Activités Récentes
             </h6>
-            <a routerLink="/admin/activities" class="btn btn-sm btn-outline-primary">
+            <a routerLink="/admin/audit-log" class="btn btn-sm btn-outline-primary">
               Voir tout
             </a>
           </div>
@@ -299,22 +353,19 @@
               <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
               <p class="text-muted">Aucune activité récente</p>
             </div>
-            
-            <div *ngFor="let activity of recentActivities" class="d-flex align-items-center mb-3">
+
+            <div *ngFor="let activity of recentActivities; let last = last" class="d-flex align-items-center py-2" [class.border-bottom]="!last">
               <div class="flex-shrink-0">
-                <div class="avatar avatar-sm rounded-circle bg-light">
-                  <i [class]="getActivityIcon(activity.type) + ' ' + getActivityColor(activity.type)"></i>
+                <div class="avatar avatar-sm rounded-circle bg-light d-flex align-items-center justify-content-center">
+                  <i [class]="getActivityIcon(activity.action) + ' ' + getActivityColor(activity.action)"></i>
                 </div>
               </div>
               <div class="flex-grow-1 ms-3">
-                <div class="small text-muted">{{ formatDate(activity.date) }}</div>
-                <div class="fw-bold">{{ activity.title }}</div>
-                <div class="text-muted small">{{ activity.description }}</div>
-              </div>
-              <div class="flex-shrink-0">
-                <span [class]="getStatusBadgeClass(activity.status || '')">
-                  {{ activity.status }}
-                </span>
+                <div class="small text-muted">{{ formatDate(activity.performedAt) }} — {{ activity.performedBy || 'système' }}</div>
+                <div class="fw-bold">{{ getActivityLabel(activity.action) }} <span class="text-muted fw-normal">— {{ activity.entityType }} #{{ activity.entityId }}</span></div>
+                <div class="text-muted small" *ngIf="activity.oldValue || activity.newValue">
+                  {{ activity.oldValue || '—' }} <i class="fas fa-arrow-right mx-1"></i> {{ activity.newValue }}
+                </div>
               </div>
             </div>
           </div>
@@ -433,16 +484,18 @@
                     <td>{{ feedback.authorName }}</td>
                     <td>{{ formatDate(feedback.createdAt) }}</td>
                     <td>
-                      <button class="btn btn-sm btn-outline-primary me-2" 
-                              [routerLink]="['/admin/feedbacks', feedback.id]">
+                      <a class="btn btn-sm btn-outline-primary me-2"
+                         routerLink="/admin/feedbacks" title="Voir dans la gestion des feedbacks">
                         <i class="fas fa-eye"></i>
-                      </button>
-                      <button class="btn btn-sm btn-success me-1" 
-                              title="Approuver">
+                      </a>
+                      <button class="btn btn-sm btn-success me-1"
+                              title="Approuver"
+                              (click)="approveFeedback(feedback)">
                         <i class="fas fa-check"></i>
                       </button>
-                      <button class="btn btn-sm btn-danger" 
-                              title="Rejeter">
+                      <button class="btn btn-sm btn-danger"
+                              title="Rejeter"
+                              (click)="rejectFeedback(feedback)">
                         <i class="fas fa-times"></i>
                       </button>
                     </td>

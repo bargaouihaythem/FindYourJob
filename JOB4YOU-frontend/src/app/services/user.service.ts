@@ -15,6 +15,11 @@ export class UserService {
     return this.http.get<User[]>(this.apiUrl);
   }
 
+  /** Accessible RH/Manager/Admin (contrairement à getAllUsers, réservé Admin). */
+  getInterviewers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.apiUrl}/interviewers`);
+  }
+
   assignDepartment(userId: number, departmentId: number): Observable<User> {
     const params = new HttpParams().set('departmentId', departmentId);
     return this.http.patch<User>(`${this.apiUrl}/${userId}/department`, {}, { params });

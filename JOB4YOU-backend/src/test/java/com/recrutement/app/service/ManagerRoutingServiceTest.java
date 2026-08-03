@@ -47,19 +47,34 @@ class ManagerRoutingServiceTest {
     }
 
     @Nested
-    @DisplayName("resolveManagerEmail()")
-    class ResolveManagerEmailTests {
+    @DisplayName("resolveManagerEmails()")
+    class ResolveManagerEmailsTests {
 
         @Test
-        @DisplayName("retourne l'email du manager assigné à la famille de métier de l'offre")
+        @DisplayName("retourne l'email de l'unique manager assigné à la famille de métier de l'offre")
         void shouldReturnAssignedManagerEmailWhenFound() {
             JobOffer jobOffer = jobOfferWithFamily(JobOffer.JobFamily.CS, "manuel@company.com");
             when(userRepository.findManagersByJobFamily(JobOffer.JobFamily.CS, Role.ERole.ROLE_MANAGER))
                     .thenReturn(List.of(managerWithEmail("manager.cs@company.com")));
 
-            String result = managerRoutingService.resolveManagerEmail(jobOffer);
+            List<String> result = managerRoutingService.resolveManagerEmails(jobOffer);
 
-            assertThat(result).isEqualTo("manager.cs@company.com");
+            assertThat(result).containsExactly("manager.cs@company.com");
+        }
+
+        @Test
+        @DisplayName("retourne TOUS les managers assignés à la famille de métier, pas seulement le premier")
+        void shouldReturnAllAssignedManagersWhenMultipleFound() {
+            JobOffer jobOffer = jobOfferWithFamily(JobOffer.JobFamily.PRODOPS, "manuel@company.com");
+            when(userRepository.findManagersByJobFamily(JobOffer.JobFamily.PRODOPS, Role.ERole.ROLE_MANAGER))
+                    .thenReturn(List.of(
+                            managerWithEmail("manager1.prodops@company.com"),
+                            managerWithEmail("manager2.prodops@company.com")));
+
+            List<String> result = managerRoutingService.resolveManagerEmails(jobOffer);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    "manager1.prodops@company.com", "manager2.prodops@company.com");
         }
 
         @Test
@@ -69,9 +84,9 @@ class ManagerRoutingServiceTest {
             when(userRepository.findManagersByJobFamily(JobOffer.JobFamily.RSD, Role.ERole.ROLE_MANAGER))
                     .thenReturn(List.of());
 
-            String result = managerRoutingService.resolveManagerEmail(jobOffer);
+            List<String> result = managerRoutingService.resolveManagerEmails(jobOffer);
 
-            assertThat(result).isEqualTo("manuel@company.com");
+            assertThat(result).containsExactly("manuel@company.com");
         }
 
         @Test
@@ -79,15 +94,15 @@ class ManagerRoutingServiceTest {
         void shouldFallBackWhenNoJobFamily() {
             JobOffer jobOffer = jobOfferWithFamily(null, "manuel@company.com");
 
-            String result = managerRoutingService.resolveManagerEmail(jobOffer);
+            List<String> result = managerRoutingService.resolveManagerEmails(jobOffer);
 
-            assertThat(result).isEqualTo("manuel@company.com");
+            assertThat(result).containsExactly("manuel@company.com");
         }
 
         @Test
-        @DisplayName("retourne null si l'offre est null")
-        void shouldReturnNullWhenJobOfferIsNull() {
-            assertThat(managerRoutingService.resolveManagerEmail(null)).isNull();
+        @DisplayName("retourne une liste vide si l'offre est null")
+        void shouldReturnEmptyListWhenJobOfferIsNull() {
+            assertThat(managerRoutingService.resolveManagerEmails(null)).isEmpty();
         }
     }
 }

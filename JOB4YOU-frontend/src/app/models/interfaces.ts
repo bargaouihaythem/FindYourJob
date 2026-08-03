@@ -188,6 +188,7 @@ export interface Candidate {
   effectiveScore?: number;
   jobOfferId: number;
   jobOfferTitle: string;
+  jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
   jobOffers?: JobOffer[];
 }
 

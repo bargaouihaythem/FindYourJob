@@ -329,21 +329,27 @@ public class CandidateService {
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             String cvUrl = updatedCandidate.getCv() != null
                 ? updatedCandidate.getCv().getFileUrl() : null;
-            String resolvedManagerEmail = managerRoutingService.resolveManagerEmail(updatedCandidate.getJobOffer());
-            String managerEmail = resolvedManagerEmail != null
-                ? resolvedManagerEmail
-                : "bargaouihaythem1@gmail.com";
-            // Agent 3 : notifie le manager avec le dossier complet
-            n8nService.triggerAgent3HrValidation(
-                updatedCandidate.getId(), updatedCandidate.getEmail(),
-                updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                offreTitre, cvUrl, effectiveStatus.name(), managerEmail, "RH"
-            );
-            // Agent 2 : email automatique "profil sélectionné" au candidat
+            List<String> resolvedManagerEmails = managerRoutingService.resolveManagerEmails(updatedCandidate.getJobOffer());
+            List<String> managerEmails = !resolvedManagerEmails.isEmpty()
+                ? resolvedManagerEmails
+                : List.of("bargaouihaythem1@gmail.com");
+            // Agent 3 : notifie CHAQUE manager de la famille de métier avec le dossier complet
+            // (et non plus uniquement le premier trouvé, cf. ManagerRoutingService) — un appel
+            // par manager car ce déclencheur envoie un e-mail *au manager* destinataire.
+            for (String managerEmail : managerEmails) {
+                n8nService.triggerAgent3HrValidation(
+                    updatedCandidate.getId(), updatedCandidate.getEmail(),
+                    updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
+                    offreTitre, cvUrl, effectiveStatus.name(), managerEmail, "RH"
+                );
+            }
+            // Agent 2 : email automatique "profil sélectionné" au CANDIDAT (un seul envoi,
+            // même si plusieurs managers sont notifiés ci-dessus — sinon le candidat
+            // recevrait un e-mail en double par manager notifié).
             n8nService.triggerAgent2CvSelected(
                 updatedCandidate.getId(), updatedCandidate.getEmail(),
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                offreTitre, managerEmail
+                offreTitre, managerEmails.get(0)
             );
         }
 
