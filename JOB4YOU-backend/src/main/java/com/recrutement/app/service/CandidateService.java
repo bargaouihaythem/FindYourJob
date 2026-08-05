@@ -145,7 +145,7 @@ public class CandidateService {
      */
     public Page<CandidateResponse> getAllCandidates(Pageable pageable) {
         // On ignore la pagination ici pour garantir le fetch du CV
-        List<Candidate> candidates = candidateRepository.findAllWithCV();
+        List<Candidate> candidates = scopeToCurrentManager(candidateRepository.findAllWithCV());
         List<CandidateResponse> responses = candidates.stream().map(CandidateResponse::new).toList();
         // Simuler la pagination manuellement
         int start = (int) pageable.getOffset();
@@ -160,6 +160,7 @@ public class CandidateService {
     public CandidateResponse getCandidateById(Long id) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        assertCurrentUserCanActOn(candidate);
         return new CandidateResponse(candidate);
     }
 
@@ -217,7 +218,7 @@ public class CandidateService {
      * Récupère les candidats par offre d'emploi
      */
     public List<CandidateResponse> getCandidatesByJobOffer(Long jobOfferId) {
-        return candidateRepository.findByJobOfferIdWithDetails(jobOfferId).stream()
+        return scopeToCurrentManager(candidateRepository.findByJobOfferIdWithDetails(jobOfferId)).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -226,15 +227,22 @@ public class CandidateService {
      * Récupère les candidats par offre d'emploi avec pagination
      */
     public Page<CandidateResponse> getCandidatesByJobOffer(Long jobOfferId, Pageable pageable) {
-        return candidateRepository.findByJobOfferId(jobOfferId, pageable)
-                .map(CandidateResponse::new);
+        // Pagination réalisée après filtrage de périmètre : les datasets manager restent
+        // petits dans cette application, le coût du chargement complet est négligeable.
+        List<Candidate> scoped = scopeToCurrentManager(
+                candidateRepository.findByJobOfferId(jobOfferId, Pageable.unpaged()).getContent());
+        List<CandidateResponse> responses = scoped.stream().map(CandidateResponse::new).toList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), responses.size());
+        List<CandidateResponse> pageContent = start >= end ? List.of() : responses.subList(start, end);
+        return new org.springframework.data.domain.PageImpl<>(pageContent, pageable, responses.size());
     }
 
     /**
      * Récupère les candidats par statut
      */
     public List<CandidateResponse> getCandidatesByStatus(Candidate.CandidateStatus status) {
-        return candidateRepository.findByStatus(status).stream()
+        return scopeToCurrentManager(candidateRepository.findByStatus(status)).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -287,7 +295,7 @@ public class CandidateService {
      * Recherche des candidats par nom
      */
     public List<CandidateResponse> searchCandidatesByName(String name) {
-        return candidateRepository.findByFirstNameOrLastNameContaining(name).stream()
+        return scopeToCurrentManager(candidateRepository.findByFirstNameOrLastNameContaining(name)).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -386,43 +394,72 @@ public class CandidateService {
      *   si l'interface ne le lui montre jamais.
      */
     private void assertCurrentUserCanActOn(Candidate candidate) {
+        User nonPrivilegedManager = getCurrentNonPrivilegedManager();
+        if (nonPrivilegedManager == null) {
+            return;
+        }
+        if (!isInManagerScope(candidate.getJobOffer(), nonPrivilegedManager)) {
+            throw new AccessDeniedException(
+                    "Vous n'êtes pas autorisé à agir sur ce candidat : il ne fait pas partie de votre périmètre (offre/département)");
+        }
+    }
+
+    /**
+     * Retourne l'utilisateur courant s'il s'agit d'un manager "pur" (rôle MANAGER sans
+     * RH/Admin), c'est-à-dire un utilisateur dont la visibilité doit être restreinte à son
+     * périmètre (offre/département/famille de métier). Retourne null pour tout autre cas
+     * (anonyme, RH, Admin, ou utilisateur sans rôle manager) — ces appelants voient tout,
+     * comme avant.
+     */
+    private User getCurrentNonPrivilegedManager() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()
                 || "anonymousUser".equals(authentication.getPrincipal())) {
-            return;
+            return null;
         }
 
         User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
         if (currentUser == null) {
-            return;
+            return null;
         }
 
         boolean isPrivileged = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName() == Role.ERole.ROLE_HR || r.getName() == Role.ERole.ROLE_ADMIN);
         if (isPrivileged) {
-            return;
+            return null;
         }
 
         boolean isManager = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName() == Role.ERole.ROLE_MANAGER);
-        if (!isManager) {
-            return;
-        }
+        return isManager ? currentUser : null;
+    }
 
-        JobOffer jobOffer = candidate.getJobOffer();
+    /** Un candidat est dans le périmètre d'un manager si son offre lui est directement rattachée
+     *  (managerEmail), ou partage son département, ou partage sa famille de métier. */
+    private boolean isInManagerScope(JobOffer jobOffer, User manager) {
         boolean ownsByEmail = jobOffer != null && jobOffer.getManagerEmail() != null
-                && jobOffer.getManagerEmail().equalsIgnoreCase(currentUser.getEmail());
+                && jobOffer.getManagerEmail().equalsIgnoreCase(manager.getEmail());
         boolean ownsByDepartment = jobOffer != null && jobOffer.getDepartment() != null
-                && currentUser.getDepartment() != null
-                && jobOffer.getDepartment().getId().equals(currentUser.getDepartment().getId());
+                && manager.getDepartment() != null
+                && jobOffer.getDepartment().getId().equals(manager.getDepartment().getId());
         boolean ownsByJobFamily = jobOffer != null && jobOffer.getJobFamily() != null
-                && currentUser.getJobFamily() != null
-                && jobOffer.getJobFamily() == currentUser.getJobFamily();
+                && manager.getJobFamily() != null
+                && jobOffer.getJobFamily() == manager.getJobFamily();
+        return ownsByEmail || ownsByDepartment || ownsByJobFamily;
+    }
 
-        if (!ownsByEmail && !ownsByDepartment && !ownsByJobFamily) {
-            throw new AccessDeniedException(
-                    "Vous n'êtes pas autorisé à agir sur ce candidat : il ne fait pas partie de votre périmètre (offre/département)");
+    /** Filtre une liste de candidats au périmètre du manager courant si l'appelant est un
+     *  manager non privilégié ; la renvoie inchangée pour RH/Admin/système (comportement
+     *  identique à avant pour ces rôles). Centralise le filtrage de lecture appliqué par
+     *  toutes les méthodes de listing/recherche de candidats accessibles au rôle MANAGER. */
+    private List<Candidate> scopeToCurrentManager(List<Candidate> candidates) {
+        User nonPrivilegedManager = getCurrentNonPrivilegedManager();
+        if (nonPrivilegedManager == null) {
+            return candidates;
         }
+        return candidates.stream()
+                .filter(c -> isInManagerScope(c.getJobOffer(), nonPrivilegedManager))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -537,7 +574,7 @@ public class CandidateService {
      * "ranking" du RH/Manager.
      */
     public List<CandidateResponse> getRankingForJobOffer(Long jobOfferId) {
-        return candidateRepository.findByJobOfferIdWithDetails(jobOfferId).stream()
+        return scopeToCurrentManager(candidateRepository.findByJobOfferIdWithDetails(jobOfferId)).stream()
                 .sorted((a, b) -> {
                     int scoreA = a.getManualScore() != null ? a.getManualScore() : (a.getAiScore() != null ? a.getAiScore() : -1);
                     int scoreB = b.getManualScore() != null ? b.getManualScore() : (b.getAiScore() != null ? b.getAiScore() : -1);

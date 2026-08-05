@@ -622,5 +622,43 @@ class CandidateServiceTest {
             assertThatCode(() -> candidateService.updateCandidateStatus(55L, CandidateStatus.CV_REVIEWED))
                     .doesNotThrowAnyException();
         }
+
+        @Test
+        @DisplayName("getCandidatesByStatus() ne renvoie à un manager que les candidats de son périmètre")
+        void shouldScopeGetCandidatesByStatusToCurrentManager() {
+            Department rd = new Department("R&D", "R&D");
+            rd.setId(1L);
+            Department devops = new Department("4YOU", "4YOU");
+            devops.setId(2L);
+
+            Candidate inScope = candidateWithOffer(60L, "manager.rd@company.com", rd);
+            Candidate outOfScope = candidateWithOffer(61L, "manager.devops@company.com", devops);
+            User manager = makeManagerUser("manager_rd", "manager.rd@company.com", rd);
+
+            authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
+            when(userRepository.findByUsername("manager_rd")).thenReturn(Optional.of(manager));
+            when(candidateRepository.findByStatus(CandidateStatus.CV_REVIEWED))
+                    .thenReturn(List.of(inScope, outOfScope));
+
+            List<CandidateResponse> result = candidateService.getCandidatesByStatus(CandidateStatus.CV_REVIEWED);
+
+            assertThat(result).extracting("id").containsExactly(60L);
+        }
+
+        @Test
+        @DisplayName("getCandidateById() refuse à un manager hors périmètre l'accès à un candidat")
+        void shouldDenyGetCandidateByIdOutsideManagerScope() {
+            Department devops = new Department("4YOU", "4YOU");
+            devops.setId(2L);
+            Candidate candidate = candidateWithOffer(62L, "manager.devops@company.com", devops);
+            User manager = makeManagerUser("manager_rd", "manager.rd@company.com", null);
+
+            authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
+            when(userRepository.findByUsername("manager_rd")).thenReturn(Optional.of(manager));
+            when(candidateRepository.findById(62L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.getCandidateById(62L))
+                    .isInstanceOf(AccessDeniedException.class);
+        }
     }
 }
