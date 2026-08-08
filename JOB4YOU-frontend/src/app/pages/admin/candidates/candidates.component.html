@@ -36,6 +36,14 @@
           <span *ngIf="visibilityFilter === 'rejected'">Masquer rejetés</span>
         </button>
         <button class="btn me-2"
+                [class]="visibilityFilter === 'withdrawn' ? 'btn-secondary' : 'btn-outline-secondary'"
+                (click)="toggleShowWithdrawn()"
+                [title]="visibilityFilter === 'withdrawn' ? 'Revenir aux dossiers actifs' : 'Afficher les candidatures retirées'">
+          <i class="fas fa-user-minus me-2"></i>
+          <span *ngIf="visibilityFilter !== 'withdrawn'">Retirées ({{ getWithdrawnCount() }})</span>
+          <span *ngIf="visibilityFilter === 'withdrawn'">Masquer retirées</span>
+        </button>
+        <button class="btn me-2"
                 [class]="visibilityFilter === 'hired' ? 'btn-success' : 'btn-outline-success'"
                 (click)="toggleShowHired()"
                 [title]="visibilityFilter === 'hired' ? 'Revenir aux dossiers actifs' : 'Afficher les embauchés'">

@@ -66,9 +66,10 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   openEmailDropdownId: number | null = null;
 
   // Visibilité de la liste : par défaut seuls les dossiers actifs (non clôturés) sont affichés.
-  // 'rejected' → uniquement REJECTED/AUTO_REJECTED/MANAGER_REJECTED/WITHDRAWN
-  // 'hired'    → uniquement HIRED (un candidat embauché n'est pas un candidat rejeté !)
-  visibilityFilter: 'active' | 'rejected' | 'hired' = 'active';
+  // 'rejected'  → uniquement REJECTED/AUTO_REJECTED/MANAGER_REJECTED
+  // 'withdrawn' → uniquement WITHDRAWN (candidatures retirées, distinctes des rejets)
+  // 'hired'     → uniquement HIRED (un candidat embauché n'est pas un candidat rejeté !)
+  visibilityFilter: 'active' | 'rejected' | 'withdrawn' | 'hired' = 'active';
 
   // Auto-refresh
   private pollSubscription: Subscription | null = null;
@@ -273,16 +274,19 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       const matchesJobOffer = !jobOffer || candidate.jobOfferId?.toString() === jobOffer;
 
       const isRejectedFamily = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
-        || candidate.status === 'MANAGER_REJECTED' || candidate.status === 'WITHDRAWN';
+        || candidate.status === 'MANAGER_REJECTED';
+      const isWithdrawn = candidate.status === 'WITHDRAWN';
       const isHired = candidate.status === 'HIRED';
 
       let matchesVisibility: boolean;
       if (this.visibilityFilter === 'rejected') {
         matchesVisibility = isRejectedFamily;
+      } else if (this.visibilityFilter === 'withdrawn') {
+        matchesVisibility = isWithdrawn;
       } else if (this.visibilityFilter === 'hired') {
         matchesVisibility = isHired;
       } else {
-        matchesVisibility = !isRejectedFamily && !isHired;
+        matchesVisibility = !isRejectedFamily && !isWithdrawn && !isHired;
       }
 
       return matchesSearch && matchesStatus && matchesJobOffer && matchesVisibility;
@@ -297,6 +301,11 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
+  toggleShowWithdrawn(): void {
+    this.visibilityFilter = this.visibilityFilter === 'withdrawn' ? 'active' : 'withdrawn';
+    this.applyFilters();
+  }
+
   toggleShowHired(): void {
     this.visibilityFilter = this.visibilityFilter === 'hired' ? 'active' : 'hired';
     this.applyFilters();
@@ -305,8 +314,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   getRejectedCount(): number {
     return this.candidates.filter(c =>
       c.status === 'REJECTED' || c.status === 'AUTO_REJECTED' ||
-      c.status === 'MANAGER_REJECTED' || c.status === 'WITHDRAWN'
+      c.status === 'MANAGER_REJECTED'
     ).length;
+  }
+
+  getWithdrawnCount(): number {
+    return this.candidates.filter(c => c.status === 'WITHDRAWN').length;
   }
 
   getHiredCount(): number {
@@ -619,6 +632,11 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         const t = this.statusChangeToast(backendStatus, candidate);
         this.toastrNotification.showSuccess(t.message, t.title);
         candidate.status = newStatus as Candidate['status'];
+        // Réappliquer les filtres pour que la liste se mette à jour immédiatement,
+        // sans rechargement de page : un candidat passé en « Candidature retirée »
+        // (ou tout statut sortant de la vue active) disparaît aussitôt et le total
+        // affiché est décrémenté (ex. 22 → 21).
+        this.applyFilters();
         // Fermer les dropdowns après la mise à jour
         this.openStatusDropdownId = null;
         this.openEmailDropdownId = null;
