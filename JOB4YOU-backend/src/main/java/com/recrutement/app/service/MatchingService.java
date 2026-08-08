@@ -46,12 +46,23 @@ public class MatchingService {
 
         List<JobOffer> activeOffers = jobOfferRepository.findByStatus(JobOffer.JobStatus.ACTIVE);
 
-        // Étape 1 : pré-filtrage par mots-clés sur toutes les offres actives
-        List<JobMatchResponse> keywordRanked = activeOffers.stream()
+        // Déduplication : le jeu de données contient de nombreuses offres identiques
+        // (même intitulé + lieu + type de contrat). On n'en garde qu'une par combinaison
+        // pour ne pas noyer l'utilisateur sous 13 fois la même annonce.
+        List<JobOffer> uniqueOffers = new ArrayList<>(activeOffers.stream()
+                .collect(Collectors.toMap(
+                        o -> (o.getTitle() + "|" + o.getLocation() + "|" + o.getContractType()).toLowerCase(Locale.ROOT),
+                        o -> o,
+                        (a, b) -> a,
+                        java.util.LinkedHashMap::new))
+                .values());
+
+        // Étape 1 : pré-filtrage par mots-clés sur toutes les offres actives (titre + compétences)
+        List<JobMatchResponse> keywordRanked = uniqueOffers.stream()
                 .map(offer -> new JobMatchResponse(
                         offer.getId(), offer.getTitle(), offer.getLocation(),
                         offer.getContractType(), offer.getRequiredSkills(),
-                        computeKeywordScore(textLower, offer.getRequiredSkills()), "SIMULATED"))
+                        computeKeywordScore(textLower, offer.getTitle(), offer.getRequiredSkills()), "SIMULATED"))
                 .sorted(Comparator.comparingInt(JobMatchResponse::getMatchScore).reversed())
                 .collect(Collectors.toList());
 
@@ -87,19 +98,52 @@ public class MatchingService {
         return relevant;
     }
 
-    private int computeKeywordScore(String cvTextLower, String requiredSkills) {
-        if (requiredSkills == null || requiredSkills.isBlank() || cvTextLower.isBlank()) {
+    // Mots trop génériques pour être discriminants dans un intitulé d'offre.
+    private static final java.util.Set<String> TITLE_STOPWORDS = java.util.Set.of(
+            "de", "du", "des", "la", "le", "les", "un", "une", "en", "et", "à", "au",
+            "mois", "ans", "stage", "mission", "temps", "partiel", "freelance", "cdi", "cdd",
+            "junior", "senior", "confirmé", "sur", "site", "hybride");
+
+    /**
+     * Score de correspondance mots-clés entre un CV et une offre, combinant deux signaux :
+     *  - le TITRE de l'offre (signal fort : un CV « DevOps Engineer » doit ressortir sur
+     *    « Ingénieur DevOps », pas sur « Développeur Backend »),
+     *  - les COMPÉTENCES requises trouvées dans le CV.
+     * Le titre est pondéré à 60 % car il porte l'essentiel de l'intention métier.
+     */
+    private int computeKeywordScore(String cvTextLower, String title, String requiredSkills) {
+        if (cvTextLower.isBlank()) {
             return 0;
         }
 
-        List<String> skills = new ArrayList<>();
-        for (String s : requiredSkills.split(",")) {
-            String trimmed = s.trim();
-            if (!trimmed.isEmpty()) skills.add(trimmed.toLowerCase(Locale.ROOT));
+        // --- Signal titre ---
+        double titleScore = 0.0;
+        if (title != null && !title.isBlank()) {
+            List<String> titleTokens = new ArrayList<>();
+            for (String w : title.toLowerCase(Locale.ROOT).split("[^\\p{L}\\p{N}]+")) {
+                // >= 2 pour conserver les acronymes métier significatifs (QA, BI...).
+                if (w.length() >= 2 && !TITLE_STOPWORDS.contains(w)) titleTokens.add(w);
+            }
+            if (!titleTokens.isEmpty()) {
+                long matched = titleTokens.stream().filter(cvTextLower::contains).count();
+                titleScore = (matched * 100.0) / titleTokens.size();
+            }
         }
-        if (skills.isEmpty()) return 0;
 
-        long matched = skills.stream().filter(cvTextLower::contains).count();
-        return (int) Math.round((matched * 100.0) / skills.size());
+        // --- Signal compétences ---
+        double skillsScore = 0.0;
+        if (requiredSkills != null && !requiredSkills.isBlank()) {
+            List<String> skills = new ArrayList<>();
+            for (String s : requiredSkills.split(",")) {
+                String trimmed = s.trim().toLowerCase(Locale.ROOT);
+                if (!trimmed.isEmpty()) skills.add(trimmed);
+            }
+            if (!skills.isEmpty()) {
+                long matched = skills.stream().filter(cvTextLower::contains).count();
+                skillsScore = (matched * 100.0) / skills.size();
+            }
+        }
+
+        return (int) Math.round(0.6 * titleScore + 0.4 * skillsScore);
     }
 }
