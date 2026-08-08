@@ -616,7 +616,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     const updatedData = { ...candidate, status: newStatus };
     this.candidateService.updateCandidateStatus(candidate.id, backendStatus).subscribe({
       next: () => {
-        this.toastrNotification.showSuccess('Statut du candidat mis à jour avec succès !', 'Statut modifié');
+        const t = this.statusChangeToast(backendStatus, candidate);
+        this.toastrNotification.showSuccess(t.message, t.title);
         candidate.status = newStatus as Candidate['status'];
         // Fermer les dropdowns après la mise à jour
         this.openStatusDropdownId = null;
@@ -631,6 +632,108 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         this.openEmailDropdownId = null;
       }
     });
+  }
+
+  /**
+   * Libellé lisible du manager destinataire selon la famille de métier de l'offre.
+   * Reflète le routage automatique RH → manager (ManagerRoutingService côté backend).
+   */
+  private managerLabelForFamily(jobFamily?: string): string {
+    switch (jobFamily) {
+      case 'CS': return 'manager CS';
+      case 'PRODOPS': return 'manager ProdOps / DevOps';
+      case 'RSD': return 'manager R&D';
+      default: return 'manager concerné';
+    }
+  }
+
+  /**
+   * Libellé du manager destinataire : on privilégie le département réel de l'offre
+   * (routage organisationnel fin : CS, DevOps, ProdOps, R&D, QA...), et on retombe
+   * sur la famille de métier pour les offres non rattachées à un département.
+   */
+  private managerLabel(candidate: Candidate): string {
+    if (candidate.departmentName) {
+      return `manager ${candidate.departmentName}`;
+    }
+    return this.managerLabelForFamily(candidate.jobFamily);
+  }
+
+  /**
+   * Transitions de statut autorisées depuis le statut courant, côté RH/Admin.
+   * Reflète la machine à états du chapitre 3 : progression linéaire des étapes
+   * d'évaluation, décision finale (Accepter/Refuser) possible dès la validation RH,
+   * et retrait toujours possible tant que le dossier n'est pas dans un état terminal.
+   * kind : 'status' → updateCandidateStatus ; 'accept'/'reject' → managerDecision.
+   */
+  getAvailableTransitions(status: string): { key: string; label: string; icon: string; kind: 'status' | 'accept' | 'reject' }[] {
+    const step = (key: string, label: string, icon: string) => ({ key, label, icon, kind: 'status' as const });
+    const accept = { key: 'ACCEPT', label: 'Accepté', icon: 'fas fa-user-check text-success', kind: 'accept' as const };
+    const reject = { key: 'REJECT', label: 'Rejeté', icon: 'fas fa-user-times text-danger', kind: 'reject' as const };
+    const withdraw = step('WITHDRAWN', 'Candidature retirée', 'fas fa-user-minus text-secondary');
+    switch (status) {
+      case 'APPLIED':
+        return [step('CV_REVIEWED', 'CV examiné', 'fas fa-eye text-info'), withdraw];
+      case 'CV_REVIEWED':
+        return [step('PHONE_SCREENING', 'Entretien téléphonique', 'fas fa-phone text-warning'), accept, reject, withdraw];
+      case 'PHONE_SCREENING':
+        return [step('TECHNICAL_TEST', 'Test technique', 'fas fa-code text-warning'), accept, reject, withdraw];
+      case 'TECHNICAL_TEST':
+        return [step('INTERVIEW', 'Entretien', 'fas fa-comments text-primary'), accept, reject, withdraw];
+      case 'INTERVIEW':
+        return [step('FINAL_INTERVIEW', 'Entretien final', 'fas fa-handshake text-primary'), accept, reject, withdraw];
+      case 'FINAL_INTERVIEW':
+        return [accept, reject, withdraw];
+      default:
+        return [];
+    }
+  }
+
+  /** Applique la transition choisie dans la liste contextuelle. */
+  onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' }): void {
+    if (t.kind === 'accept') { this.acceptCandidate(candidate); }
+    else if (t.kind === 'reject') { this.rejectCandidate(candidate); }
+    else { this.updateCandidateStatus(candidate, t.key); }
+  }
+
+  /**
+   * Message de toast (vert) spécifique au nouveau statut, pour informer clairement
+   * le RH/Admin de l'effet métier de son action — notamment le routage automatique
+   * du dossier vers le manager compétent lors de la validation du CV.
+   */
+  private statusChangeToast(backendStatus: string, candidate: Candidate): { message: string; title: string } {
+    switch (backendStatus) {
+      case 'CV_REVIEWED':
+        return {
+          title: 'CV validé et routé',
+          message: `CV examiné : le dossier a été transmis au ${this.managerLabel(candidate)} pour validation.`
+        };
+      case 'PHONE_SCREENING':
+        return { title: 'Statut modifié', message: 'Candidat placé en entretien téléphonique.' };
+      case 'TECHNICAL_TEST':
+        return { title: 'Statut modifié', message: 'Candidat placé en test technique.' };
+      case 'INTERVIEW':
+        return { title: 'Statut modifié', message: 'Candidat placé en entretien.' };
+      case 'FINAL_INTERVIEW':
+        return { title: 'Statut modifié', message: 'Candidat placé en entretien final.' };
+      case 'INTERVIEW_SCHEDULED':
+        return { title: 'Entretien planifié', message: 'Entretien planifié pour ce candidat.' };
+      case 'ACCEPTED':
+        return { title: 'Candidat accepté', message: 'Candidature acceptée. Le candidat en est notifié par e-mail.' };
+      case 'MANAGER_REJECTED':
+      case 'REJECTED':
+        return { title: 'Candidat refusé', message: 'Candidature refusée. Le candidat en est notifié par e-mail.' };
+      case 'AUTO_REJECTED':
+        return { title: 'Rejet automatique', message: 'Candidat rejeté (score IA insuffisant).' };
+      case 'HIRED':
+        return { title: 'Candidat embauché', message: 'Candidat embauché. Félicitations !' };
+      case 'WITHDRAWN':
+        return { title: 'Candidature retirée', message: 'La candidature a été marquée comme retirée.' };
+      case 'APPLIED':
+        return { title: 'Statut modifié', message: 'Candidat replacé au statut « Candidature soumise ».' };
+      default:
+        return { title: 'Statut modifié', message: 'Statut du candidat mis à jour avec succès !' };
+    }
   }
 
   /**

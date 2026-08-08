@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "noreply@job4you.com",
+        "fromEmail": "bargaouihaythem1@gmail.com",
         "toEmail": "={{ $json.managerEmail || 'manager1@job4you.com' }}",
         "subject": "📋 Nouveau dossier à examiner — {{ $json.firstName }} {{ $json.lastName }} / {{ $json.jobTitle }}",
         "emailType": "html",
@@ -73,7 +73,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "noreply@job4you.com",
+        "fromEmail": "bargaouihaythem1@gmail.com",
         "toEmail": "={{ $json.email }}",
         "subject": "={{ $json.subject }}",
         "emailType": "html",

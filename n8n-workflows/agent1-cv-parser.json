@@ -35,7 +35,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "noreply@job4you.com",
+        "fromEmail": "bargaouihaythem1@gmail.com",
         "toEmail": "={{ $('Webhook — Nouvelle candidature').item.json.email }}",
         "subject": "✅ Candidature reçue — {{ $('Webhook — Nouvelle candidature').item.json.jobOfferTitle }}",
         "emailType": "html",

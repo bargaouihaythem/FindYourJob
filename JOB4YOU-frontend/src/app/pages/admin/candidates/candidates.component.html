@@ -220,36 +220,15 @@
                   <ul *ngIf="!isManagerView" class="dropdown-menu"
                       [class.show]="isStatusDropdownOpen(candidate.id)"
                       style="position: absolute; top: 100%; left: 0; z-index: 1050; min-width: 180px;">
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'APPLIED'); $event.stopPropagation()">
-                      <i class="fas fa-paper-plane text-primary me-2"></i>Candidature soumise
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'CV_REVIEWED'); $event.stopPropagation()">
-                      <i class="fas fa-eye text-info me-2"></i>CV examiné
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'PHONE_SCREENING'); $event.stopPropagation()">
-                      <i class="fas fa-phone text-warning me-2"></i>Entretien téléphonique
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'TECHNICAL_TEST'); $event.stopPropagation()">
-                      <i class="fas fa-code text-warning me-2"></i>Test technique
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'INTERVIEW'); $event.stopPropagation()">
-                      <i class="fas fa-comments text-primary me-2"></i>Entretien
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'FINAL_INTERVIEW'); $event.stopPropagation()">
-                      <i class="fas fa-handshake text-primary me-2"></i>Entretien final
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" (click)="acceptCandidate(candidate); $event.stopPropagation()"
-                           title="Décision finale — le dossier doit déjà être validé par le RH (CV examiné ou plus avancé)">
-                      <i class="fas fa-user-check text-success me-2"></i>Accepté
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="rejectCandidate(candidate); $event.stopPropagation()"
-                           title="Décision finale — le dossier doit déjà être validé par le RH (CV examiné ou plus avancé)">
-                      <i class="fas fa-user-times text-danger me-2"></i>Rejeté
-                    </a></li>
-                    <li><a class="dropdown-item" (click)="updateCandidateStatus(candidate, 'WITHDRAWN'); $event.stopPropagation()">
-                      <i class="fas fa-user-minus text-secondary me-2"></i>Candidature retirée
-                    </a></li>
+                    <li *ngFor="let t of getAvailableTransitions(candidate.status)">
+                      <a class="dropdown-item" (click)="onTransition(candidate, t); $event.stopPropagation()"
+                         [title]="t.kind !== 'status' ? 'Décision finale — le dossier doit déjà être validé par le RH' : ''">
+                        <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
+                      </a>
+                    </li>
+                    <li *ngIf="getAvailableTransitions(candidate.status).length === 0">
+                      <span class="dropdown-item-text text-muted small">Aucune transition possible</span>
+                    </li>
                   </ul>
                 </div>
               </td>
