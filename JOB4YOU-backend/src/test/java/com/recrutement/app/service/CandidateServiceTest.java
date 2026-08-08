@@ -93,27 +93,27 @@ class CandidateServiceTest {
     class GetValidatedCandidatesForManagerTests {
 
         @Test
-        @DisplayName("retourne uniquement les candidats aux statuts validés par RH")
+        @DisplayName("retourne uniquement les candidats transmis au manager (phase technique+)")
         void shouldReturnOnlyValidatedStatuses() {
-            Candidate cvReviewed  = makeCandidate(1L, CandidateStatus.CV_REVIEWED);
+            Candidate technical  = makeCandidate(1L, CandidateStatus.TECHNICAL_TEST);
             Candidate interview   = makeCandidate(2L, CandidateStatus.INTERVIEW);
             Candidate accepted    = makeCandidate(3L, CandidateStatus.ACCEPTED);
 
             when(candidateRepository.findByStatusIn(anyList()))
-                    .thenReturn(List.of(cvReviewed, interview, accepted));
+                    .thenReturn(List.of(technical, interview, accepted));
 
             List<CandidateResponse> result = candidateService.getValidatedCandidatesForManager(null);
 
             assertThat(result).hasSize(3);
             assertThat(result).extracting("status")
                     .containsExactlyInAnyOrder(
-                            CandidateStatus.CV_REVIEWED,
+                            CandidateStatus.TECHNICAL_TEST,
                             CandidateStatus.INTERVIEW,
                             CandidateStatus.ACCEPTED);
         }
 
         @Test
-        @DisplayName("appelle findByStatusIn avec les 6 statuts attendus (hors APPLIED, REJECTED, WITHDRAWN)")
+        @DisplayName("interroge findByStatusIn à partir de TECHNICAL_TEST (le manager n'intervient qu'après le pré-filtrage RH)")
         void shouldQueryWithCorrectStatuses() {
             when(candidateRepository.findByStatusIn(anyList())).thenReturn(List.of());
 
@@ -121,12 +121,12 @@ class CandidateServiceTest {
 
             verify(candidateRepository).findByStatusIn(argThat(statuses -> {
                 List<CandidateStatus> s = (List<CandidateStatus>) statuses;
-                return s.contains(CandidateStatus.CV_REVIEWED)
-                    && s.contains(CandidateStatus.PHONE_SCREENING)
-                    && s.contains(CandidateStatus.TECHNICAL_TEST)
+                return s.contains(CandidateStatus.TECHNICAL_TEST)
                     && s.contains(CandidateStatus.INTERVIEW)
                     && s.contains(CandidateStatus.FINAL_INTERVIEW)
                     && s.contains(CandidateStatus.ACCEPTED)
+                    && !s.contains(CandidateStatus.CV_REVIEWED)
+                    && !s.contains(CandidateStatus.PHONE_SCREENING)
                     && !s.contains(CandidateStatus.APPLIED)
                     && !s.contains(CandidateStatus.REJECTED)
                     && !s.contains(CandidateStatus.WITHDRAWN);
@@ -174,7 +174,7 @@ class CandidateServiceTest {
     class UpdateCandidateStatusTests {
 
         @Test
-        @DisplayName("persiste le nouveau statut et déclenche Agent 2 quand statut = CV_REVIEWED")
+        @DisplayName("CV_REVIEWED déclenche l'email candidat (Agent 2) mais PAS encore le manager (Agent 3)")
         void shouldTriggerAgent2WhenCvReviewed() {
             Candidate candidate = makeCandidate(10L, CandidateStatus.APPLIED);
             when(candidateRepository.findById(10L)).thenReturn(Optional.of(candidate));
@@ -183,19 +183,35 @@ class CandidateServiceTest {
             candidateService.updateCandidateStatus(10L, CandidateStatus.CV_REVIEWED);
 
             verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.CV_REVIEWED));
-            // cvUrl (6e argument) est null ici : le candidat de test n'a pas de CV attaché
-            verify(n8nService).triggerAgent3HrValidation(eq(10L), anyString(), anyString(), anyString(), anyString(),
+            // Le candidat est informé (Agent 2), mais le manager n'est PAS encore notifié :
+            // sa notification est désormais déplacée au passage en TECHNICAL_TEST.
+            verify(n8nService).triggerAgent2CvSelected(eq(10L), anyString(), anyString(), anyString(), anyString(), any());
+            verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("TECHNICAL_TEST transmet le dossier au manager (Agent 3)")
+        void shouldNotifyManagerWhenTechnicalTest() {
+            Candidate candidate = makeCandidate(15L, CandidateStatus.PHONE_SCREENING);
+            when(candidateRepository.findById(15L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(15L, CandidateStatus.TECHNICAL_TEST);
+
+            verify(n8nService).triggerAgent3HrValidation(eq(15L), anyString(), anyString(), anyString(), anyString(),
                     nullable(String.class), anyString(), any(), any());
         }
 
         @Test
         @DisplayName("ne déclenche PAS Agent 2 pour les autres statuts")
         void shouldNotTriggerAgent2ForOtherStatuses() {
+            // PHONE_SCREENING est une transition valide depuis CV_REVIEWED, mais n'est pas
+            // CV_REVIEWED → l'agent de notification manager ne doit donc pas se déclencher.
             Candidate candidate = makeCandidate(11L, CandidateStatus.CV_REVIEWED);
             when(candidateRepository.findById(11L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            candidateService.updateCandidateStatus(11L, CandidateStatus.INTERVIEW);
+            candidateService.updateCandidateStatus(11L, CandidateStatus.PHONE_SCREENING);
 
             verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
@@ -210,7 +226,7 @@ class CandidateServiceTest {
             when(candidateRepository.findById(12L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            candidateService.updateCandidateStatus(12L, CandidateStatus.PHONE_SCREENING);
+            candidateService.updateCandidateStatus(12L, CandidateStatus.CV_REVIEWED);
 
             verify(candidateRepository).save(argThat(c ->
                     c.getLastUpdated() != null && !c.getLastUpdated().equals(before)
@@ -224,6 +240,29 @@ class CandidateServiceTest {
 
             assertThatThrownBy(() -> candidateService.updateCandidateStatus(99L, CandidateStatus.APPLIED))
                     .isInstanceOf(com.recrutement.app.exception.ResourceNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("rejette une transition de statut incohérente (APPLIED → HIRED)")
+        void shouldRejectIncoherentTransition() {
+            Candidate candidate = makeCandidate(13L, CandidateStatus.APPLIED);
+            when(candidateRepository.findById(13L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(13L, CandidateStatus.HIRED))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Transition de statut non autorisée");
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("autorise la correction manuelle du score : AUTO_REJECTED → CV_REVIEWED")
+        void shouldAllowOverrideUnreject() {
+            Candidate candidate = makeCandidate(14L, CandidateStatus.AUTO_REJECTED);
+            when(candidateRepository.findById(14L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThatCode(() -> candidateService.updateCandidateStatus(14L, CandidateStatus.CV_REVIEWED))
+                    .doesNotThrowAnyException();
         }
     }
 

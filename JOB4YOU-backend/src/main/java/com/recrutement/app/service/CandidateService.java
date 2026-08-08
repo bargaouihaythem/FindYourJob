@@ -248,14 +248,15 @@ public class CandidateService {
     }
 
     /**
-     * Vue Manager : retourne uniquement les dossiers validés administrativement par RH.
+     * Vue Manager : retourne uniquement les dossiers transmis au manager pour évaluation
+     * technique, c'est-à-dire ceux ayant franchi le pré-filtrage téléphonique du RH.
      *
-     * RESPONSABILITÉ RH      : a validé le dossier (statut >= CV_REVIEWED)
-     * RESPONSABILITÉ MANAGER : consulte, analyse, donne feedback technique
+     * RESPONSABILITÉ RH      : réception, examen du CV, entretien téléphonique
+     * RESPONSABILITÉ MANAGER : évaluation technique, feedback, décision finale
      *
-     * Statuts inclus : CV_REVIEWED, PHONE_SCREENING, TECHNICAL_TEST,
-     *                  INTERVIEW, FINAL_INTERVIEW, ACCEPTED
-     * Statuts exclus : APPLIED (pas encore examiné par RH), REJECTED, WITHDRAWN
+     * Statuts inclus : TECHNICAL_TEST, INTERVIEW, FINAL_INTERVIEW, ACCEPTED
+     * Statuts exclus : APPLIED, CV_REVIEWED, PHONE_SCREENING (encore côté RH),
+     *                  ainsi que REJECTED / WITHDRAWN.
      *
      * Scope : un utilisateur avec UNIQUEMENT le rôle MANAGER ne voit que les
      * candidatures des offres dont il est le manager (managerEmail) ou de son
@@ -263,8 +264,6 @@ public class CandidateService {
      */
     public List<CandidateResponse> getValidatedCandidatesForManager(String username) {
         List<Candidate.CandidateStatus> validatedStatuses = List.of(
-                Candidate.CandidateStatus.CV_REVIEWED,
-                Candidate.CandidateStatus.PHONE_SCREENING,
                 Candidate.CandidateStatus.TECHNICAL_TEST,
                 Candidate.CandidateStatus.INTERVIEW,
                 Candidate.CandidateStatus.FINAL_INTERVIEW,
@@ -322,6 +321,7 @@ public class CandidateService {
                 : status;
 
         Candidate.CandidateStatus previousStatus = candidate.getStatus();
+        assertValidTransition(previousStatus, effectiveStatus);
         candidate.setStatus(effectiveStatus);
         candidate.setLastUpdated(LocalDateTime.now());
 
@@ -331,34 +331,28 @@ public class CandidateService {
             auditLogService.log("CANDIDATE", updatedCandidate.getId(), "STATUS_CHANGE", previousStatus, effectiveStatus);
         }
 
-        // Agent 2 + Agent 3 — Score IA validé → CV_REVIEWED
+        // CV validé par le RH → le CANDIDAT est informé que son profil est présélectionné
+        // (Agent 2). La notification du MANAGER est désormais déclenchée plus tard, au
+        // passage en "Test technique" (après le pré-filtrage téléphonique RH), afin que le
+        // manager ne soit sollicité que pour les candidats ayant franchi cette première étape.
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
-            String cvUrl = updatedCandidate.getCv() != null
-                ? updatedCandidate.getCv().getFileUrl() : null;
             List<String> resolvedManagerEmails = managerRoutingService.resolveManagerEmails(updatedCandidate.getJobOffer());
-            List<String> managerEmails = !resolvedManagerEmails.isEmpty()
-                ? resolvedManagerEmails
-                : List.of("bargaouihaythem1@gmail.com");
-            // Agent 3 : notifie CHAQUE manager de la famille de métier avec le dossier complet
-            // (et non plus uniquement le premier trouvé, cf. ManagerRoutingService) — un appel
-            // par manager car ce déclencheur envoie un e-mail *au manager* destinataire.
-            for (String managerEmail : managerEmails) {
-                n8nService.triggerAgent3HrValidation(
-                    updatedCandidate.getId(), updatedCandidate.getEmail(),
-                    updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                    offreTitre, cvUrl, effectiveStatus.name(), managerEmail, "RH"
-                );
-            }
-            // Agent 2 : email automatique "profil sélectionné" au CANDIDAT (un seul envoi,
-            // même si plusieurs managers sont notifiés ci-dessus — sinon le candidat
-            // recevrait un e-mail en double par manager notifié).
+            String refManagerEmail = !resolvedManagerEmails.isEmpty()
+                ? resolvedManagerEmails.get(0) : "bargaouihaythem1@gmail.com";
             n8nService.triggerAgent2CvSelected(
                 updatedCandidate.getId(), updatedCandidate.getEmail(),
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                offreTitre, managerEmails.get(0)
+                offreTitre, refManagerEmail
             );
+        }
+
+        // Passage en évaluation technique → transmission du dossier complet au(x) manager(s)
+        // du département (Agent 3). C'est le moment où le manager prend le relais.
+        if (previousStatus != Candidate.CandidateStatus.TECHNICAL_TEST
+                && effectiveStatus == Candidate.CandidateStatus.TECHNICAL_TEST) {
+            notifyManagersForTechnicalEvaluation(updatedCandidate);
         }
 
         // Agent 3 — Décision finale → email au candidat
@@ -393,6 +387,103 @@ public class CandidateService {
      *   d'agir sur un candidat hors périmètre via un appel API direct, même
      *   si l'interface ne le lui montre jamais.
      */
+    /**
+     * Transmet le dossier complet du candidat au(x) manager(s) de son département pour
+     * l'évaluation technique (Agent 3 : un e-mail par manager destinataire). Déclenché au
+     * passage en TECHNICAL_TEST, que la transition provienne de la fiche candidat ou de la
+     * planification d'un entretien technique — d'où sa visibilité publique.
+     */
+    public void notifyManagersForTechnicalEvaluation(Candidate candidate) {
+        String offreTitre = candidate.getJobOffer() != null
+            ? candidate.getJobOffer().getTitle() : "Candidature générale";
+        String cvUrl = candidate.getCv() != null ? candidate.getCv().getFileUrl() : null;
+        List<String> resolved = managerRoutingService.resolveManagerEmails(candidate.getJobOffer());
+        List<String> managerEmails = !resolved.isEmpty()
+            ? resolved : List.of("bargaouihaythem1@gmail.com");
+        for (String managerEmail : managerEmails) {
+            n8nService.triggerAgent3HrValidation(
+                candidate.getId(), candidate.getEmail(),
+                candidate.getFirstName(), candidate.getLastName(),
+                offreTitre, cvUrl, candidate.getStatus().name(), managerEmail, "RH"
+            );
+        }
+    }
+
+    /**
+     * Vérifie que la transition de statut demandée respecte la machine à états du
+     * cycle de vie d'une candidature (cf. chapitre conception). Empêche les sauts
+     * incohérents (ex. APPLIED → HIRED) et les retours en arrière depuis un état
+     * terminal. Le passage d'un statut vers lui-même est toléré (idempotence :
+     * re-notification manager, ré-exécution d'un agent n8n, etc.). Les transitions
+     * pilotées par l'IA (score → CV_REVIEWED / AUTO_REJECTED) passent par un autre
+     * chemin (saveAiScore) et ne sont pas concernées.
+     */
+    private void assertValidTransition(Candidate.CandidateStatus from, Candidate.CandidateStatus to) {
+        if (from == to) {
+            return;
+        }
+        boolean allowed;
+        switch (from) {
+            case APPLIED:
+                allowed = to == Candidate.CandidateStatus.CV_REVIEWED
+                        || to == Candidate.CandidateStatus.AUTO_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case CV_REVIEWED:
+                allowed = to == Candidate.CandidateStatus.PHONE_SCREENING
+                        || to == Candidate.CandidateStatus.ACCEPTED
+                        || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN
+                        // Correction manuelle du score IA à la baisse (< seuil) par le RH
+                        || to == Candidate.CandidateStatus.AUTO_REJECTED;
+                break;
+            case AUTO_REJECTED:
+                // Seule sortie autorisée depuis un rejet IA : la correction manuelle du
+                // score par le RH/Admin (override), qui repasse le dossier en CV_REVIEWED.
+                allowed = to == Candidate.CandidateStatus.CV_REVIEWED;
+                break;
+            case PHONE_SCREENING:
+                allowed = to == Candidate.CandidateStatus.TECHNICAL_TEST
+                        || to == Candidate.CandidateStatus.ACCEPTED
+                        || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case TECHNICAL_TEST:
+                allowed = to == Candidate.CandidateStatus.INTERVIEW
+                        || to == Candidate.CandidateStatus.ACCEPTED
+                        || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case INTERVIEW:
+                allowed = to == Candidate.CandidateStatus.FINAL_INTERVIEW
+                        || to == Candidate.CandidateStatus.ACCEPTED
+                        || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case FINAL_INTERVIEW:
+                allowed = to == Candidate.CandidateStatus.ACCEPTED
+                        || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case ACCEPTED:
+                allowed = to == Candidate.CandidateStatus.INTERVIEW_SCHEDULED
+                        || to == Candidate.CandidateStatus.HIRED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case INTERVIEW_SCHEDULED:
+                allowed = to == Candidate.CandidateStatus.HIRED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            default:
+                // AUTO_REJECTED, MANAGER_REJECTED, REJECTED (hérité), HIRED, WITHDRAWN : états terminaux
+                allowed = false;
+        }
+        if (!allowed) {
+            throw new IllegalArgumentException(
+                    "Transition de statut non autorisée : " + from + " → " + to);
+        }
+    }
+
     private void assertCurrentUserCanActOn(Candidate candidate) {
         User nonPrivilegedManager = getCurrentNonPrivilegedManager();
         if (nonPrivilegedManager == null) {

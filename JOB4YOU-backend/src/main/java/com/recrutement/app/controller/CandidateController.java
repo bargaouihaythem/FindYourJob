@@ -157,12 +157,17 @@ public class CandidateController {
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or " +
             "(isAnonymous() and (#status.name() == 'CV_REVIEWED' or #status.name() == 'AUTO_REJECTED'))")
     @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager, ou n8n en anonyme limité à CV_REVIEWED/AUTO_REJECTED)")
-    public ResponseEntity<CandidateResponse> updateCandidateStatus(
+    public ResponseEntity<?> updateCandidateStatus(
             @PathVariable Long id,
             @Parameter(description = "Nouveau statut")
             @RequestParam Candidate.CandidateStatus status) {
-        CandidateResponse response = candidateService.updateCandidateStatus(id, status);
-        return ResponseEntity.ok(response);
+        try {
+            CandidateResponse response = candidateService.updateCandidateStatus(id, status);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            // Transition de statut non autorisée (machine à états) → 400 plutôt que 500
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
     }
 
     @PatchMapping("/{id}/ai-score")

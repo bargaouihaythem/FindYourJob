@@ -62,6 +62,9 @@ public class InterviewService {
     @Autowired
     private AccessControlService accessControlService;
 
+    @Autowired
+    private CandidateService candidateService;
+
     /**
      * Planifie un nouvel entretien
      */
@@ -84,6 +87,12 @@ public class InterviewService {
             throw new IllegalArgumentException(
                     "Impossible de planifier un entretien : ce dossier est clos (statut " + candidate.getStatus() + ")");
         }
+        // Le CV doit d'abord avoir été examiné par le RH : on ne planifie pas d'entretien
+        // sur une candidature encore au stade "soumise" (garde-fou de la machine à états).
+        if (candidate.getStatus() == Candidate.CandidateStatus.APPLIED) {
+            throw new IllegalArgumentException(
+                    "Le CV doit d'abord être examiné par le RH (CV_REVIEWED) avant de planifier un entretien");
+        }
 
         // Vérifier si l'interviewer existe
         User interviewer = userRepository.findById(interviewRequest.getInterviewerId())
@@ -98,7 +107,16 @@ public class InterviewService {
         interview.setUpdatedAt(LocalDateTime.now());
 
         // Mettre à jour le statut du candidat si nécessaire
+        Candidate.CandidateStatus statusBefore = candidate.getStatus();
         updateCandidateStatus(candidate, interviewRequest.getType());
+
+        // Si la planification d'un entretien technique fait entrer le candidat en phase
+        // technique pour la première fois, on transmet son dossier au(x) manager(s) —
+        // cohérent avec le déclenchement depuis la fiche candidat (CandidateService).
+        if (statusBefore != Candidate.CandidateStatus.TECHNICAL_TEST
+                && candidate.getStatus() == Candidate.CandidateStatus.TECHNICAL_TEST) {
+            candidateService.notifyManagersForTechnicalEvaluation(candidate);
+        }
 
         Interview savedInterview = interviewRepository.save(interview);
 
