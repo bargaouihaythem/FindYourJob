@@ -27,6 +27,7 @@ public class CandidateResponse {
     private Long jobOfferId;
     private String jobOfferTitle;
     private com.recrutement.app.entity.JobOffer.JobFamily jobFamily;
+    private String departmentName;
     private CVResponse cv;
     private Integer interviewsCount;
     private Integer feedbacksCount;
@@ -59,6 +60,8 @@ public class CandidateResponse {
         this.jobOfferId = candidate.getJobOffer() != null ? candidate.getJobOffer().getId() : null;
         this.jobOfferTitle = candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : null;
         this.jobFamily = candidate.getJobOffer() != null ? candidate.getJobOffer().getJobFamily() : null;
+        this.departmentName = candidate.getJobOffer() != null && candidate.getJobOffer().getDepartment() != null
+                ? candidate.getJobOffer().getDepartment().getName() : null;
         this.cv = candidate.getCv() != null ? new CVResponse(candidate.getCv()) : null;
         this.interviewsCount = candidate.getInterviews() != null ? candidate.getInterviews().size() : 0;
         this.feedbacksCount = candidate.getFeedbacks() != null ? candidate.getFeedbacks().size() : 0;

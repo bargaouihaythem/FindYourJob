@@ -189,6 +189,7 @@ export interface Candidate {
   jobOfferId: number;
   jobOfferTitle: string;
   jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
+  departmentName?: string;
   jobOffers?: JobOffer[];
 }
 

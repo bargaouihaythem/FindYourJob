@@ -35,6 +35,17 @@ public class ManagerRoutingService {
             return Collections.emptyList();
         }
 
+        // 1) Priorité au département de l'offre (routage organisationnel fin :
+        //    CS, R&D, DevOps, ProdOps, QA... — un manager par département).
+        if (jobOffer.getDepartment() != null && jobOffer.getDepartment().getId() != null) {
+            List<User> managers = userRepository.findManagersByDepartment(
+                    jobOffer.getDepartment().getId(), Role.ERole.ROLE_MANAGER);
+            if (!managers.isEmpty()) {
+                return managers.stream().map(User::getEmail).distinct().collect(Collectors.toList());
+            }
+        }
+
+        // 2) À défaut de département, on retombe sur la famille de métier (compat. offres existantes).
         if (jobOffer.getJobFamily() != null) {
             List<User> managers = userRepository.findManagersByJobFamily(
                     jobOffer.getJobFamily(), Role.ERole.ROLE_MANAGER);
@@ -46,6 +57,7 @@ public class ManagerRoutingService {
             }
         }
 
+        // 3) Dernier filet de sécurité : l'e-mail manager saisi manuellement sur l'offre.
         return jobOffer.getManagerEmail() != null
                 ? List.of(jobOffer.getManagerEmail())
                 : Collections.emptyList();

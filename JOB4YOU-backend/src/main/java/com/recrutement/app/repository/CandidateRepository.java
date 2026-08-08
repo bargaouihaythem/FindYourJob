@@ -69,15 +69,21 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
     /**
      * Vue Manager scopée : dossiers validés (statuts fournis) dont l'offre est
      * rattachée au manager connecté, soit directement (managerEmail), soit via
-     * son département (department.id), soit via sa famille de métier assignée
-     * (jobFamily — cf. ManagerRoutingService, routage automatique par famille).
-     * Utilisé pour éviter qu'un manager voie les candidatures hors de son périmètre.
+     * son département (department.id).
+     *
+     * Isolation stricte par département : le DÉPARTEMENT fait autorité. Dès qu'une
+     * offre porte un département, seul le manager de CE département (ou celui saisi
+     * explicitement en managerEmail) la voit — un CV DevOps n'est visible que par le
+     * manager DevOps, un CV QA que par le manager QA, etc. La famille de métier
+     * (jobFamily) ne sert de repli QUE pour les offres SANS département (compat.
+     * offres historiques), et jamais pour élargir la visibilité d'une offre déjà
+     * rattachée à un département. Cohérent avec ManagerRoutingService.resolveManagerEmails.
      */
     @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer jo " +
            "WHERE c.status IN :statuses " +
            "AND (jo.managerEmail = :managerEmail " +
            "     OR (:departmentId IS NOT NULL AND jo.department.id = :departmentId) " +
-           "     OR (:jobFamily IS NOT NULL AND jo.jobFamily = :jobFamily))")
+           "     OR (jo.department IS NULL AND :jobFamily IS NOT NULL AND jo.jobFamily = :jobFamily))")
     List<Candidate> findByStatusInAndJobOfferManagerEmailOrDepartment(
             @Param("statuses") List<Candidate.CandidateStatus> statuses,
             @Param("managerEmail") String managerEmail,
