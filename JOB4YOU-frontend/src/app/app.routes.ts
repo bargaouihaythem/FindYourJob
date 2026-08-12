@@ -26,6 +26,7 @@ export const routes: Routes = [
 
   // Manager routes — lecture seule, dossiers validés par RH uniquement
   { path: 'manager/candidates', loadComponent: () => import('./pages/admin/candidates/candidates.component').then(m => m.CandidatesComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_MANAGER', 'ROLE_ADMIN', 'ROLE_HR'] } },
+  { path: 'manager/calendar', loadComponent: () => import('./pages/manager/my-calendar/manager-calendar.component').then(m => m.ManagerCalendarComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_MANAGER'] } },
   
   // Admin routes
   { path: 'admin/dashboard', loadComponent: () => import('./pages/admin/dashboard/dashboard.component').then(m => m.DashboardComponent), canActivate: [RoleGuard], data: { roles: ['ROLE_ADMIN', 'ROLE_HR'] } },

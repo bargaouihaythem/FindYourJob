@@ -2,7 +2,7 @@
 
 ## Tests automatisés
 
-- Backend Maven : 90 tests, 0 échec, 0 erreur, 0 ignoré.
+- Backend Maven : 96 tests, 0 échec, 0 erreur, 0 ignoré.
 - Frontend Angular : `npm run build` réussi en configuration production.
 - `git diff --check` : réussi.
 
@@ -18,6 +18,8 @@
 | Routage RH → managers R&D, QA, HRAccess, 4YOU, ProdOps, DevOps | réussi |
 | Événements Agent 1/2/3 mock n8n | reçus avec API key |
 | Décision manager acceptée/rejetée et isolation | réussi |
+| Calendrier manager filtré par périmètre | tests métier et HTTP réussis |
+| Endpoint calendrier anonyme / rôle RH | HTTP 401 / HTTP 403 confirmés en test MockMvc |
 
 ## Archive
 

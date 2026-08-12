@@ -67,6 +67,8 @@ Le score IA comprend trois composantes : adéquation technique, qualité de la c
 
 Les espaces internes comprennent la gestion des offres, des candidats, des entretiens, des feedbacks, du tableau de bord, du pipeline Kanban, des notes internes, des utilisateurs, des profils de pondération et du journal d’audit. Un manager ne doit consulter et modifier que les dossiers relevant de son périmètre métier configuré.
 
+Chaque manager dispose également d’une page **Mon calendrier** qui présente, en lecture seule, ses entretiens du mois et ses trois prochains rendez-vous. Les données sont filtrées côté serveur selon le département, la famille de métier ou l’affectation directe du manager ; les rappels email restent planifiés deux heures avant l’entretien lorsqu’il est intervieweur.
+
 ### Notifications et rappels
 
 Les emails de confirmation, de présélection, de convocation, de décision, d’annulation et de reprogrammation sont pris en charge selon le parcours. Des rappels d’entretien peuvent être créés par le backend. n8n est utilisé comme couche d’orchestration complémentaire lorsque les webhooks sont configurés.
@@ -152,6 +154,7 @@ POST  /api/candidates/{id}/ai-score/recompute
 PATCH /api/candidates/{id}/ai-score/override
 GET   /api/candidates/job-offer/{jobOfferId}/ranking
 PATCH /api/candidates/{id}/manager-decision
+GET   /api/interviews/my-calendar?startDate=&endDate=
 GET   /api/external-offers/remotive?search=&limit=
 ```
 
@@ -159,7 +162,7 @@ Les endpoints sensibles doivent être protégés par JWT, par les rôles applica
 
 ## Tests
 
-Le backend contient huit classes de tests et le dépôt actuel contient environ 90 méthodes annotées `@Test`, couvrant notamment le workflow candidat, le seuil IA, les transitions de statut, le routage manager et l’isolation du périmètre de lecture. Le nombre exact doit être recalculé après chaque évolution du dépôt. Des tests d’intégration, de charge et de sécurité complémentaires sont nécessaires avant une mise en production.
+Le backend contient des tests unitaires et de contrôleur couvrant notamment le workflow candidat, le seuil IA, les transitions de statut, le routage manager, l’isolation de périmètre et le calendrier manager. Après cette évolution, la suite Maven exécute **96 tests sans échec ni erreur**. Des tests d’intégration, de charge et de sécurité complémentaires restent nécessaires avant une mise en production.
 
 ## Limites connues et évolutions
 

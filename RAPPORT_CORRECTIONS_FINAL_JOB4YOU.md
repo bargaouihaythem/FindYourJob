@@ -10,7 +10,7 @@ La structure initiale du projet reste adaptée à un projet PFE : Angular pour l
 
 Les risques prioritaires identifiés lors de la revue ont été traités. Les CV ne sont plus accessibles anonymement, les appels n8n exigent une authentification machine, les endpoints de statut et de scoring ne sont plus ouverts sans authentification, les motifs de rejet sont conservés, les transitions passent par la machine à états, et les événements n8n sont maintenant persistés dans une outbox avec déduplication et reprises.
 
-> **Résultat global :** le backend passe la suite Maven complète avec **90 tests, 0 échec, 0 erreur et 0 test ignoré**. Le frontend Angular se compile avec succès en production. Les scénarios live candidat → RH → manager pour les six départements ont également été rejoués avec succès.
+> **Résultat global :** le backend passe la suite Maven complète avec **96 tests, 0 échec, 0 erreur et 0 test ignoré**. Le frontend Angular se compile avec succès en production. Les scénarios live candidat → RH → manager pour les six départements ont également été rejoués avec succès.
 
 ## 2. Corrections de sécurité appliquées
 
@@ -53,11 +53,17 @@ L’endpoint générique de mise à jour d’un candidat ne peut plus modifier d
 
 Les URLs Angular `localhost:8080` ont été remplacées par `environment.apiUrl`. Le build production utilise un environnement same-origin `/api`, un Dockerfile Angular et une configuration Nginx avec fallback SPA et proxy vers le backend. Le Compose inclut maintenant un service frontend séparé, avec persistance PostgreSQL déjà configurée.
 
+### 4.5 Calendrier et rappels manager
+
+Une page **Mon calendrier** a été ajoutée pour le manager. Elle affiche une vue mensuelle en lecture seule, les trois prochains entretiens et des badges visuels lorsque le rendez-vous approche. Elle utilise l’endpoint `GET /api/interviews/my-calendar`, réservé au rôle manager. Le filtrage est appliqué côté backend via le contrôle de périmètre existant : département, famille de métier ou affectation directe du manager.
+
+Les rappels email existaient déjà : le candidat reçoit un rappel à J-1 et l’intervieweur, donc le manager lorsqu’il est désigné, reçoit un rappel deux heures avant l’entretien. La nouvelle vue rend ces rendez-vous et leurs alertes visibles dans l’interface, sans dépendre d’une intégration Google Calendar.
+
 ## 5. Résultats des tests
 
 | Campagne | Résultat |
 |---|---:|
-| Tests Maven backend | **90 tests / 0 échec / 0 erreur / 0 ignoré** |
+| Tests Maven backend | **96 tests / 0 échec / 0 erreur / 0 ignoré** |
 | Compilation backend `mvn -DskipTests package` | **Réussie** |
 | Build Angular production | **Réussi** |
 | Healthcheck Actuator live | **HTTP 200 / UP** |
@@ -68,6 +74,8 @@ Les URLs Angular `localhost:8080` ont été remplacées par `environment.apiUrl`
 | Agent 1/2/3 mock n8n | **Événements reçus avec API key** |
 | Décision manager acceptation | **HTTP 200** |
 | Décision manager rejet / isolation | **Réussi, accès hors périmètre refusé** |
+| Calendrier manager | **Vue Angular compilée ; filtrage métier et sécurité HTTP validés** |
+| Endpoint calendrier anonyme / RH | **HTTP 401 / HTTP 403 en test MockMvc** |
 | Contrôle `git diff --check` | **Réussi** |
 | Publication GitHub et nouveau clone de vérification | **Commit `451c9179c6225e3d2038dd379220665fcaa5a934` confirmé sur `main`** |
 | Configurations privées dans le clone public | **Aucune trouvée** |

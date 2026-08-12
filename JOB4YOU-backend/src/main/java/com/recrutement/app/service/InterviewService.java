@@ -82,6 +82,9 @@ public class InterviewService {
         Candidate candidate = candidateRepository.findById(interviewRequest.getCandidateId())
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + interviewRequest.getCandidateId()));
 
+        // Un manager ne peut planifier un entretien que pour un dossier de son périmètre.
+        accessControlService.assertCanAccessCandidate(candidate);
+
         // Un dossier refusé (RH, manager ou IA) ou retiré est clos : aucun entretien ne doit être planifié dessus
         if (CLOSED_NEGATIVE_STATUSES.contains(candidate.getStatus())) {
             throw new IllegalArgumentException(
@@ -139,9 +142,31 @@ public class InterviewService {
      * Récupère tous les entretiens
      */
     public List<InterviewResponse> getAllInterviews() {
-        return interviewRepository.findAllWithRelations().stream()
+        return toScopedResponses(interviewRepository.findAllWithRelations());
+    }
+
+    /**
+     * Calendrier dédié au manager courant. Les entretiens sont filtrés côté serveur
+     * avec la même règle de département, famille de métier ou manager assigné que
+     * les dossiers candidats ; le frontend ne décide donc jamais du périmètre.
+     */
+    public List<InterviewResponse> getManagerCalendar(LocalDateTime startDate, LocalDateTime endDate) {
+        List<Interview> interviews = startDate != null && endDate != null
+                ? interviewRepository.findByInterviewDateBetween(startDate, endDate)
+                : interviewRepository.findAllWithRelations();
+        return toScopedResponses(interviews);
+    }
+
+    private List<InterviewResponse> toScopedResponses(List<Interview> interviews) {
+        return interviews.stream()
+                .filter(interview -> interview != null && interview.getCandidate() != null)
+                .filter(interview -> accessControlService.canAccessCandidate(interview.getCandidate()))
                 .map(InterviewResponse::new)
                 .collect(Collectors.toList());
+    }
+
+    private void assertCanAccessInterview(Interview interview) {
+        accessControlService.assertCanAccessCandidate(interview.getCandidate());
     }
 
     /**
@@ -150,6 +175,7 @@ public class InterviewService {
     public InterviewResponse getInterviewById(Long id) {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        assertCanAccessInterview(interview);
         return new InterviewResponse(interview);
     }
 
@@ -160,11 +186,13 @@ public class InterviewService {
     public InterviewResponse updateInterview(Long id, InterviewRequest interviewRequest) {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        assertCanAccessInterview(interview);
 
         // Vérifier si le candidat existe
         if (!interview.getCandidate().getId().equals(interviewRequest.getCandidateId())) {
             Candidate candidate = candidateRepository.findById(interviewRequest.getCandidateId())
                     .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + interviewRequest.getCandidateId()));
+            accessControlService.assertCanAccessCandidate(candidate);
             interview.setCandidate(candidate);
         }
 
@@ -189,6 +217,7 @@ public class InterviewService {
     public void deleteInterview(Long id) {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        assertCanAccessInterview(interview);
         interviewRepository.delete(interview);
     }
 
@@ -196,54 +225,45 @@ public class InterviewService {
      * Récupère les entretiens d'un candidat
      */
     public List<InterviewResponse> getInterviewsByCandidate(Long candidateId) {
-        return interviewRepository.findByCandidateId(candidateId).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        Candidate candidate = candidateRepository.findById(candidateId)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + candidateId));
+        accessControlService.assertCanAccessCandidate(candidate);
+        return toScopedResponses(interviewRepository.findByCandidateId(candidateId));
     }
 
     /**
      * Récupère les entretiens d'un interviewer
      */
     public List<InterviewResponse> getInterviewsByInterviewer(Long interviewerId) {
-        return interviewRepository.findByInterviewerId(interviewerId).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        return toScopedResponses(interviewRepository.findByInterviewerId(interviewerId));
     }
 
     /**
      * Récupère les entretiens par statut
      */
     public List<InterviewResponse> getInterviewsByStatus(Interview.InterviewStatus status) {
-        return interviewRepository.findByStatusWithRelations(status).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        return toScopedResponses(interviewRepository.findByStatusWithRelations(status));
     }
 
     /**
      * Récupère les entretiens par type
      */
     public List<InterviewResponse> getInterviewsByType(Interview.InterviewType type) {
-        return interviewRepository.findByType(type).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        return toScopedResponses(interviewRepository.findByType(type));
     }
 
     /**
      * Récupère les entretiens par période
      */
     public List<InterviewResponse> getInterviewsByDateRange(LocalDateTime startDate, LocalDateTime endDate) {
-        return interviewRepository.findByInterviewDateBetween(startDate, endDate).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        return toScopedResponses(interviewRepository.findByInterviewDateBetween(startDate, endDate));
     }
 
     /**
      * Récupère les entretiens d'un interviewer par période
      */
     public List<InterviewResponse> getInterviewsByInterviewerAndDateRange(Long interviewerId, LocalDateTime startDate, LocalDateTime endDate) {
-        return interviewRepository.findByInterviewerIdAndInterviewDateBetween(interviewerId, startDate, endDate).stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        return toScopedResponses(interviewRepository.findByInterviewerIdAndInterviewDateBetween(interviewerId, startDate, endDate));
     }
 
     /**
@@ -253,6 +273,7 @@ public class InterviewService {
     public InterviewResponse updateInterviewStatus(Long id, Interview.InterviewStatus status) {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        assertCanAccessInterview(interview);
 
         Interview.InterviewStatus previousStatus = interview.getStatus();
         interview.setStatus(status);
@@ -329,9 +350,7 @@ public class InterviewService {
         List<Interview> interviews = interviewRepository.findByCandidateEmail(email);
         System.out.println("[DEBUG] Nombre d'entretiens trouvés: " + interviews.size());
         
-        List<InterviewResponse> responses = interviews.stream()
-                .map(InterviewResponse::new)
-                .collect(Collectors.toList());
+        List<InterviewResponse> responses = toScopedResponses(interviews);
         
         System.out.println("[DEBUG] Réponses créées: " + responses.size());
         return responses;

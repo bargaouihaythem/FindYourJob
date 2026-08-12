@@ -54,6 +54,15 @@ public class InterviewController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/my-calendar")
+    @PreAuthorize("hasRole('MANAGER')")
+    @Operation(summary = "Calendrier du manager courant, limité à son périmètre")
+    public ResponseEntity<List<InterviewResponse>> getMyManagerCalendar(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        return ResponseEntity.ok(interviewService.getManagerCalendar(startDate, endDate));
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or hasRole('TEAM_LEAD') or hasRole('SENIOR_DEV') or hasRole('TEAM')")
     @Operation(summary = "Récupérer un entretien par ID")

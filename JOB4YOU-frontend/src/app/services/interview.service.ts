@@ -22,6 +22,13 @@ export class InterviewService {
     });
   }
 
+  getManagerCalendar(startDate: string, endDate: string): Observable<Interview[]> {
+    return this.http.get<Interview[]>(`${this.apiUrl}/my-calendar`, {
+      params: new HttpParams().set('startDate', startDate).set('endDate', endDate),
+      headers: this.authService.getAuthHeaders()
+    });
+  }
+
   getInterviewById(id: number): Observable<Interview> {
     return this.http.get<Interview>(`${this.apiUrl}/${id}`, {
       headers: this.authService.getAuthHeaders()

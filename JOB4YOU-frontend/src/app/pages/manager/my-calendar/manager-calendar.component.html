@@ -1,0 +1,109 @@
+<section class="manager-calendar container-fluid py-4">
+  <div class="page-heading d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+    <div>
+      <p class="eyebrow mb-1">Espace manager</p>
+      <h1 class="h3 mb-1">Mon calendrier d’entretiens</h1>
+      <p class="text-muted mb-0">Seuls les entretiens des dossiers de votre périmètre sont affichés.</p>
+    </div>
+    <a class="btn btn-outline-primary" routerLink="/manager/candidates">
+      <i class="fas fa-folder-open me-2"></i>Voir les dossiers validés
+    </a>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+    <span>{{ error }}</span>
+    <button type="button" class="btn btn-sm btn-outline-danger" (click)="loadCalendar()">Réessayer</button>
+  </div>
+
+  <div *ngIf="loading" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Chargement…</span></div>
+    <p class="text-muted mt-3 mb-0">Chargement de vos entretiens…</p>
+  </div>
+
+  <ng-container *ngIf="!loading && !error">
+    <div class="row g-4 mb-4">
+      <div class="col-lg-8">
+        <div class="card h-100 border-0 shadow-sm">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <div>
+                <h2 class="h5 mb-1">Prochains entretiens</h2>
+                <p class="small text-muted mb-0">Vos trois prochains rendez-vous actifs.</p>
+              </div>
+              <span class="badge bg-light text-dark">{{ upcomingInterviews.length }} à venir</span>
+            </div>
+
+            <div *ngIf="upcomingInterviews.length === 0" class="empty-state">
+              <i class="fas fa-calendar-check fa-2x mb-2"></i>
+              <p class="mb-0">Aucun entretien à venir dans ce mois.</p>
+            </div>
+
+            <div *ngFor="let interview of upcomingInterviews" class="upcoming-item">
+              <div class="date-box">
+                <strong>{{ formatTime(interview.interviewDate) }}</strong>
+                <span>{{ formatDate(interview.interviewDate) }}</span>
+              </div>
+              <div class="flex-grow-1">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <h3 class="h6 mb-0">{{ interview.candidateName || 'Candidat' }}</h3>
+                  <span [class]="getStatusClass(interview.status)">{{ interview.status }}</span>
+                  <span *ngIf="reminderLabel(interview)" class="reminder-badge">
+                    <i class="fas fa-bell me-1"></i>{{ reminderLabel(interview) }}
+                  </span>
+                </div>
+                <p class="small text-muted mb-0 mt-1">
+                  {{ interview.jobOfferTitle || 'Offre non renseignée' }} · {{ getTypeLabel(interview.type) }}
+                  <span *ngIf="interview.location"> · {{ interview.location }}</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="card h-100 border-0 shadow-sm reminder-card">
+          <div class="card-body">
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <span class="icon-circle"><i class="fas fa-bell"></i></span>
+              <h2 class="h5 mb-0">Rappels</h2>
+            </div>
+            <p class="text-muted small">Un email de rappel est déjà planifié deux heures avant chaque entretien dont vous êtes intervieweur.</p>
+            <p class="mb-0 small"><i class="fas fa-shield-alt text-success me-2"></i>Les rendez-vous sont filtrés côté serveur selon votre département, votre famille métier ou votre affectation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-4 px-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+          <div>
+            <p class="eyebrow mb-1">Vue mensuelle</p>
+            <h2 class="h4 text-capitalize mb-0">{{ monthLabel }}</h2>
+          </div>
+          <div class="btn-group" role="group" aria-label="Navigation du calendrier">
+            <button type="button" class="btn btn-outline-secondary" (click)="previousMonth()" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></button>
+            <button type="button" class="btn btn-outline-primary" (click)="goToToday()">Aujourd’hui</button>
+            <button type="button" class="btn btn-outline-secondary" (click)="nextMonth()" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-4 pt-3">
+        <div class="calendar-grid week-days">
+          <div *ngFor="let day of weekDays" class="week-day">{{ day }}</div>
+        </div>
+        <div class="calendar-grid calendar-days">
+          <article *ngFor="let day of calendarDays" class="calendar-day" [class.outside-month]="!day.inCurrentMonth" [class.today]="isToday(day.date)">
+            <span class="day-number">{{ day.date.getDate() }}</span>
+            <div *ngFor="let interview of day.interviews" class="calendar-event" [class.cancelled]="interview.status === 'CANCELLED'">
+              <span>{{ formatTime(interview.interviewDate) }}</span>
+              <strong>{{ interview.candidateName || 'Candidat' }}</strong>
+              <small>{{ getTypeLabel(interview.type) }}</small>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</section>
