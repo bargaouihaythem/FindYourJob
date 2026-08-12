@@ -21,11 +21,11 @@
 
 ## Archive
 
-Archive : `FindYourJob_corrige_final_developed.zip`
-SHA-256 : `80ed83769a13a78f9dc9f12643751722dbba9e48e6aa2c3fcaaf61c3d674c1dc`
+Archive locale : `FindYourJob_corrige_final_developed.zip`
+SHA-256 : `cf2ce1f0b227e43a58aa92bdfdacef0c8e163caafae297b7c998b40d3f88d197`
 
 ## Limites connues
 
 La clé Cohere réelle, les identifiants Gmail et une instance n8n réelle n’étaient pas disponibles pour la validation externe. Cohere a été couvert par les tests et le fallback déterministe ; n8n et SMTP ont été validés localement avec des récepteurs de test. Docker n’était pas installé dans l’environnement courant, donc la construction Compose doit être vérifiée sur une machine Docker.
 
-Aucun commit, push ou publication GitHub n’a été effectué.
+Publication GitHub vérifiée : le commit `451c9179c6225e3d2038dd379220665fcaa5a934` est présent sur la branche `main` de `bargaouihaythem/FindYourJob`. Un nouveau clone public a confirmé les fichiers corrigés et l’absence de `settings-local.xml`, `.env` et `application-local.properties`.
