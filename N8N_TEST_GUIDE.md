@@ -20,56 +20,53 @@ npx n8n start
 
 ---
 
-## Étape 1 — Configurer les webhooks dans n8n
+## Étape 1 — Importer les workflows présents dans le dépôt
 
-### Créer le workflow Agent 1 (CV Parser)
+Les workflows sont déjà exportés dans `n8n-workflows/`. Il ne faut pas recréer des workflows OpenAI ou Google Calendar qui ne correspondent pas à la version actuelle.
 
-1. Ouvrir http://localhost:5678
-2. Cliquer **New workflow** → renommer `Agent 1 — CV Parser`
-3. Ajouter le nœud **Webhook** :
-   - Method : `POST`
-   - Path : `cv-parser`
-   - Copier l'URL affichée : `http://localhost:5678/webhook/cv-parser`
-4. Ajouter nœud **OpenAI** (ou Code) pour simuler le scoring
-5. Ajouter nœud **Send Email** (Gmail) pour l'email candidat
-6. Cliquer **Activate** (toggle en haut à droite)
+### Agent 1 — Candidature et scoring backend
 
-> **Screenshot à prendre ici** → `screenshot_agent1_workflow.png`
+Importer `n8n-workflows/agent1-cv-parser.json`. Le webhook est :
 
-### Créer le workflow Agent 2 (Notificateur RH)
+```text
+POST http://localhost:5678/webhook/agent1-cv-parser
+```
 
-1. **New workflow** → renommer `Agent 2 — RH Notifier`
-2. Ajouter nœud **Schedule Trigger** : toutes les 24h à 18h00
-3. Ajouter nœud **HTTP Request** :
-   - URL : `http://localhost:8080/api/n8n/candidatures-du-jour`
-   - Header : `X-N8N-API-Key: <votre-clé>`
-4. Ajouter nœud **OpenAI** pour le résumé
-5. Ajouter nœud **Send Email** vers le manager
-6. Cliquer **Activate**
+Le workflow appelle le backend pour le recalcul du score. L’extraction du CV et l’appel Cohere sont réalisés côté Spring Boot. n8n envoie ensuite l’email de confirmation si les identifiants SMTP du workflow sont configurés par variables locales.
 
-> **Screenshot à prendre ici** → `screenshot_agent2_workflow.png`
+### Agent 2 — Planification des entretiens
 
-### Créer le workflow Agent 3 (Interview Scheduler)
+Importer `n8n-workflows/agent2-entretien.json`. Le webhook est :
 
-1. **New workflow** → renommer `Agent 3 — Interview Scheduler`
-2. Ajouter nœud **Webhook** :
-   - Method : `POST`
-   - Path : `interview-scheduler`
-   - URL : `http://localhost:5678/webhook/interview-scheduler`
-3. Ajouter nœud **Google Calendar** → Create Event
-4. Ajouter nœud **Send Email** avec lien Meet
-5. Cliquer **Activate**
+```text
+POST http://localhost:5678/webhook/agent2-entretien
+```
 
-> **Screenshot à prendre ici** → `screenshot_agent3_workflow.png`
+Le workflow envoie les emails de convocation au candidat et à l’intervieweur. La planification, les statuts et les rappels sont conservés par le backend. La version actuelle ne crée pas d’événement Google Calendar authentifié.
+
+### Agent 3 — Routage RH vers manager et décision finale
+
+Importer `n8n-workflows/agent3-rh-manager.json`. Le webhook est :
+
+```text
+POST http://localhost:5678/webhook/agent3-rh-manager
+```
+
+Le workflow envoie la notification au manager et le message de décision au candidat selon l’événement transmis par le backend.
+
+Activer les trois workflows après avoir configuré les credentials SMTP dans n8n. Ne pas écrire d’adresse personnelle, de clé API ou de mot de passe directement dans les fichiers JSON exportés.
+
+> **Captures recommandées :** `screenshot_agent1_workflow.png`, `screenshot_agent2_workflow.png` et `screenshot_agent3_workflow.png`
 
 ---
 
 ## Étape 2 — Renseigner les URLs dans application.properties
 
 ```properties
-n8n.webhook.agent1=http://localhost:5678/webhook/cv-parser
-n8n.webhook.agent3=http://localhost:5678/webhook/interview-scheduler
-n8n.api.key=votre-cle-api-n8n
+n8n.webhook.agent1=http://localhost:5678/webhook/agent1-cv-parser
+n8n.webhook.agent2=http://localhost:5678/webhook/agent2-entretien
+n8n.webhook.agent3=http://localhost:5678/webhook/agent3-rh-manager
+n8n.api.key=${N8N_API_KEY}
 ```
 
 Redémarrer le backend après modification.
@@ -83,7 +80,7 @@ Récupérer d'abord un token JWT admin :
 ```bash
 curl -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username":"haythemadmin","password":"admin123"}'
+  -d '{"username":"<admin-local>","password":"<mot-de-passe-local>"}'
 ```
 
 Puis tester les webhooks :
@@ -117,7 +114,7 @@ Réponse attendue si tout est OK :
 ### Scénario A : Nouvelle candidature → email + score IA
 
 1. Ouvrir http://localhost:4200
-2. Se connecter en tant que candidat : `candidat_test` / `candidat123`
+2. Se connecter avec un compte candidat créé localement ; ne jamais publier le mot de passe dans ce guide.
 3. Aller sur **Offres d'emploi** → choisir une offre → **Postuler**
 4. Remplir le formulaire et uploader un CV PDF
 5. Cliquer **Envoyer**
@@ -133,7 +130,7 @@ Réponse attendue si tout est OK :
 > - `screenshot_n8n_agent1_execution.png` — exécution réussie dans n8n
 > - `screenshot_email_candidat.png` — email reçu avec score
 
-### Scénario B : Planification d'entretien → Google Calendar
+### Scénario B : Planification d’entretien → notifications et rappels
 
 1. Se connecter en tant que manager/RH
 2. Aller dans **Entretiens** → **Planifier**
@@ -142,18 +139,18 @@ Réponse attendue si tout est OK :
 
 **Vérifications :**
 - [ ] Entretien créé dans la base (liste mise à jour)
-- [ ] Dans n8n → **Executions** de l'Agent 3 : exécution visible
-- [ ] Email avec lien Google Meet reçu par le candidat ET l'interviewer
-- [ ] Événement créé dans Google Calendar
+- [ ] Dans n8n → **Executions** de l’Agent 2 : exécution visible
+- [ ] Email de convocation reçu par le candidat et l’intervieweur
+- [ ] Pour un entretien vidéo, vérifier qu’un lien de démonstration est affiché ; aucun événement Google Calendar authentifié n’est créé par la version actuelle
 
 > **Screenshots à prendre :**
 > - `screenshot_entretien_formulaire.png`
-> - `screenshot_n8n_agent3_execution.png`
+> - `screenshot_n8n_agent2_execution.png`
 > - `screenshot_email_invitation.png`
 
-### Scénario C : Résumé RH quotidien (Agent 2)
+### Scénario C : Endpoint de synthèse quotidienne (optionnel)
 
-Pour tester sans attendre 18h, modifier le Schedule Trigger en n8n pour s'exécuter **toutes les minutes**, déclencher manuellement, puis remettre à 18h.
+Ce scénario ne s’applique que si un workflow de synthèse quotidienne a été configuré séparément. Dans la version actuelle, vérifier uniquement l’endpoint protégé et son comportement lorsque n8n est indisponible.
 
 **Vérifications :**
 - [ ] Appel visible sur `GET /api/n8n/candidatures-du-jour` dans les logs Spring Boot
@@ -187,9 +184,9 @@ Chapitre 4 — Réalisation
 
 | Screenshot | Légende dans le rapport |
 |---|---|
-| `agent1_workflow.png` | *Figure X — Workflow n8n Agent 1 : parse CV, scoring IA et email de confirmation* |
-| `agent2_workflow.png` | *Figure X — Workflow n8n Agent 2 : agrégation quotidienne et résumé managérial* |
-| `agent3_workflow.png` | *Figure X — Workflow n8n Agent 3 : planification entretien et intégration Google Calendar* |
+| `agent1_workflow.png` | *Figure X — Workflow n8n Agent 1 : déclenchement du scoring backend et email de confirmation* |
+| `agent2_workflow.png` | *Figure X — Workflow n8n Agent 2 : notifications liées aux entretiens* |
+| `agent3_workflow.png` | *Figure X — Workflow n8n Agent 3 : transmission RH-manager et décision finale* |
 | `agent1_execution.png` | *Figure X — Panneau d'exécutions n8n : traitement réussi d'une candidature (HTTP 200)* |
 
 ---
@@ -209,7 +206,7 @@ Chapitre 4 — Réalisation
 [N8nService]  triggerAgent1CvParser() → POST webhook n8n
      │
      ▼
-[n8n Agent 1] parse CV → OpenAI score → email enrichi → Gmail
+[n8n Agent 1] déclenchement du recalcul backend → extraction CV/Cohere côté Spring Boot → email enrichi → Gmail
      │
      ▼
 [Candidat]   Reçoit 2 emails : confirmation immédiate + analyse IA

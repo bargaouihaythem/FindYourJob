@@ -1,206 +1,174 @@
-# JOB4YOU — AI-assisted Recruitment Platform
+# JOB4YOU — Plateforme de recrutement assistée par IA
 
-> Plateforme de recrutement intelligente avec agents IA intégrés (n8n) pour l'analyse automatique de CV, les notifications RH et la planification d'entretiens.
+JOB4YOU est une plateforme web de gestion du recrutement interne. Elle centralise les offres, les candidatures, les CV, les entretiens, les feedbacks, les décisions et les notifications. Le projet est composé d’un frontend Angular, d’un backend Spring Boot, d’une base PostgreSQL et de workflows n8n optionnels pour l’orchestration des notifications et des traitements asynchrones.
 
-## Stack Technique
+## État réel de l’implémentation
 
-| Couche | Technologie | Rôle |
+Le socle fonctionnel est opérationnel dans un environnement de développement ou de démonstration. Le backend réalise l’extraction du texte des CV et le scoring par critères via Cohere lorsque la clé est configurée. En cas d’indisponibilité de Cohere, un mode dégradé est utilisé afin de ne pas bloquer le dépôt d’une candidature.
+
+Les workflows n8n orchestrent les événements et les emails. Ils ne remplacent pas le backend : le calcul du score et les principales règles métier restent exécutés par Spring Boot. L’intégration complète avec Google Calendar et Google Meet n’est pas encore opérationnelle ; le workflow d’entretien prépare les informations et génère actuellement un lien de démonstration pour les entretiens vidéo.
+
+## Stack technique
+
+| Couche | Technologie | Responsabilité |
 |---|---|---|
-| **Frontend** | Angular 20 + Bootstrap 5 | Interface candidat, RH, manager |
-| **Backend** | Spring Boot 3.2 + JWT | Logique métier, sécurité, API REST |
-| **Automation IA** | n8n (self-hosted) | Orchestration des emails, calendrier, décisions |
-| **Scoring IA** | Cohere (Chat API) | Score CV par critères (technique/communication/séniorité), fallback simulé automatique |
-| **Base de données** | PostgreSQL 15 | Persistance |
-| **Email** | Gmail SMTP | Notifications transactionnelles |
+| Frontend | Angular 20, TypeScript, Bootstrap 5, RxJS | Interfaces candidat, RH, manager et administrateur |
+| Backend | Java 17, Spring Boot 3.2, Spring Security | API REST, règles métier, authentification et autorisation |
+| Persistance | PostgreSQL, Spring Data JPA/Hibernate | Stockage des utilisateurs, offres, candidatures, CV, entretiens et audits |
+| Scoring IA | Cohere Chat API, avec fallback dégradé | Évaluation technique, communication et séniorité |
+| Automatisation | n8n self-hosted, optionnel | Orchestration des notifications et des callbacks |
+| Emails | Spring Mail et n8n | Notifications transactionnelles et messages de workflow |
+| Documentation API | springdoc OpenAPI / Swagger | Documentation et vérification des endpoints |
+| Tests | JUnit 5, Mockito, MockMvc, tests Angular | Tests unitaires et tests de contrôleur |
 
-## Architecture Multi-Agents
+## Architecture et responsabilités
 
-```
-  Candidat          RH / Manager         n8n (Automation IA)        Externe
-     │                   │                       │                      │
-     │── POST /apply ────►                       │                      │
-     │                   │── triggerAgent1() ───►│ Agent 1 : score CV   │
-     │                   │   (asynchrone)        │  (Cohere / fallback) │
-     │                   │                       │── email confirmation ► Gmail
-     │                   │                       │── callback score ────► Spring Boot
-     │                   │                       │                      │
-     │                   │── PATCH /status ──────►                      │
-     │                   │   (CV_REVIEWED)       │ Agent 2 : profil     │
-     │                   │                       │  retenu + entretien  │
-     │                   │                       │── email candidat ───► Gmail
-     │                   │                       │                      │
-     │                   │── PATCH /status ──────►                      │
-     │                   │   (validation RH)     │ Agent 3 : RH→Manager │
-     │                   │── manager-decision ───►│  + décision finale   │
-     │                   │                       │── email manager ────► Gmail
-     │                   │                       │── email candidat ───► Gmail
+```text
+Candidat / RH / Manager
+          │
+          ▼
+Frontend Angular ── HTTP/JWT ──► Backend Spring Boot ──► PostgreSQL
+                                      │
+                                      ├── Extraction texte CV
+                                      ├── Scoring Cohere ou fallback
+                                      ├── Règles métier et transitions d’état
+                                      ├── Audit, rappels et emails Spring
+                                      └── Webhooks n8n optionnels
+                                                │
+                                                ▼
+                                      Workflows n8n et emails
 ```
 
-### Agent 1 — CV Parser & Scorer
-- Déclencheur : nouvelle candidature (`POST /api/candidates/apply`)
-- Actions n8n : parse CV, email de confirmation candidat
-- Score IA : recalculé via `AiScoringService` (Cohere Chat API), avec 3 critères pondérés — technique / communication / adéquation séniorité. Bascule automatique en mode simulé si l'API IA est indisponible (aucun blocage du flux de candidature)
+Le backend est la source de vérité pour les données et les règles de recrutement. n8n reçoit des événements via des webhooks, déclenche des notifications et peut rappeler le backend pour certains traitements. Les secrets et URLs de services doivent être fournis par variables d’environnement ou par un fichier local non suivi par Git.
 
-### Agent 2 — Profil retenu & Planification entretien
-- Déclencheur : passage en `CV_REVIEWED` (score IA ≥ seuil ou validation RH)
-- Actions n8n : email "profil retenu" au candidat, notification email lors de la planification d'un entretien (`POST /api/interviews`)
+## Workflows n8n
 
-### Agent 3 — RH → Manager & Décision finale
-- Déclencheur : validation RH (`CV_REVIEWED`) ou décision finale (`ACCEPTED` / `AUTO_REJECTED` / `MANAGER_REJECTED`)
-- Actions n8n : notifie le manager avec le dossier complet, branche conditionnelle (accepté → email manager, rejeté → email de refus au candidat)
+### Agent 1 — Candidature et scoring
 
-## Fonctionnalités
+Le workflow est déclenché par une nouvelle candidature. Il appelle l’endpoint backend de recalcul du score. Le backend extrait le texte du CV, appelle Cohere et applique les pondérations configurées pour les critères technique, communication et séniorité. Le workflow peut ensuite envoyer un email de confirmation enrichi avec le résultat retourné par le backend.
+
+### Agent 2 — Planification des entretiens
+
+Le workflow est déclenché lors de la création d’un entretien. Il envoie les informations de convocation au candidat et à l’intervieweur. La planification, les transitions de statut et les rappels sont gérés par le backend. La création réelle d’événements Google Calendar ou de liens Google Meet authentifiés reste une évolution à intégrer.
+
+### Agent 3 — Routage RH vers manager et décision finale
+
+Le workflow est déclenché lors de la transmission d’un dossier au manager ou lors d’une décision finale. Il envoie la notification au manager concerné et, selon le statut, un message de décision au candidat. Le filtrage du périmètre manager et la validation des transitions sont réalisés côté backend.
+
+## Fonctionnalités disponibles
 
 ### Recrutement
-- Offres d'emploi avec filtres (domaine, contrat, localisation)
-- Candidatures avec upload CV (PDF)
-- Score IA par critères (technique / communication / séniorité) affiché dans le dashboard admin
-- Correction manuelle du score IA par le RH (avec justification, traçabilité)
-- Classement (ranking) des candidats par offre selon le score effectif
-- Suivi de statut candidature en temps réel
 
-### Gestion RH & Manager
-- Tableau de bord avec statistiques + score IA moyen
-- Validation administrative des candidatures (RH)
-- Décision manager (accepter/refuser) sur les dossiers déjà validés par le RH, avec garde-fou (refuse si le dossier n'a pas encore été validé)
-- Planning des entretiens avec vue calendrier mensuelle
-- Système de feedback post-entretien
-- Étude comparative du marché de l'emploi via l'API publique Remotive (alternative légale au scraping LinkedIn, non implémenté car contraire aux conditions d'utilisation de LinkedIn)
+La plateforme permet de publier et filtrer les offres, de déposer une candidature avec un CV, d’extraire le texte d’un CV PDF/DOC/DOCX, de suivre le statut d’un dossier, de classer les candidats par score et de réaliser un matching inverse entre un CV et des offres externes ou internes selon la configuration.
 
-### Notifications
-- Email de confirmation immédiat (Spring Boot)
-- Email enrichi par IA avec score CV (n8n Agent 1)
-- Email "profil retenu" + invitation entretien (n8n Agent 2)
-- Notification manager + décision finale accepté/refusé (n8n Agent 3)
+Le score IA comprend trois composantes : adéquation technique, qualité de la communication et adéquation de la séniorité. Les pondérations sont configurables. Un RH ou un administrateur peut corriger manuellement le score avec une justification obligatoire ; la correction est conservée dans l’audit.
 
-## Installation
+### Gestion RH et manager
+
+Les espaces internes comprennent la gestion des offres, des candidats, des entretiens, des feedbacks, du tableau de bord, du pipeline Kanban, des notes internes, des utilisateurs, des profils de pondération et du journal d’audit. Un manager ne doit consulter et modifier que les dossiers relevant de son périmètre métier configuré.
+
+### Notifications et rappels
+
+Les emails de confirmation, de présélection, de convocation, de décision, d’annulation et de reprogrammation sont pris en charge selon le parcours. Des rappels d’entretien peuvent être créés par le backend. n8n est utilisé comme couche d’orchestration complémentaire lorsque les webhooks sont configurés.
+
+### Offres externes
+
+Le projet contient une intégration de consultation de l’API publique Remotive pour une étude comparative des offres. Aucun scraping LinkedIn n’est utilisé.
+
+## Installation locale
 
 ### Prérequis
-- Java 17+, Maven 3.8+
-- Node.js 18+, npm
-- PostgreSQL 15
-- n8n (optionnel — la plateforme fonctionne sans, avec scoring en mode simulé)
 
-### 1. Base de données
-```sql
-CREATE DATABASE job4you_db;
-```
+Java 17, Maven 3.8 ou supérieur, Node.js 18 ou supérieur, npm, PostgreSQL et, si nécessaire, n8n.
 
-### 2. Backend
+### Base de données et backend
+
 ```bash
+createdb job4you_db
 cd JOB4YOU-backend
 mvn clean install -DskipTests
 mvn spring-boot:run
 ```
 
-### 3. Frontend
+### Frontend
+
 ```bash
 cd JOB4YOU-frontend
 npm install --legacy-peer-deps
 npm start
 ```
 
-### 4. n8n (optionnel)
+### n8n, optionnel
+
 ```bash
 npx n8n start
-# Ouvrir http://localhost:5678
-# Importer les workflows depuis /n8n-workflows/
-# Copier les webhook URLs dans JOB4YOU-backend/src/main/resources/application.properties
 ```
 
-## Configuration
+Importer ensuite les trois workflows présents dans `n8n-workflows/` et renseigner les URLs dans la configuration locale du backend.
 
-### n8n
-Dans `JOB4YOU-backend/src/main/resources/application.properties` :
+## Configuration par variables d’environnement
+
+Ne jamais publier de mot de passe, de clé JWT, de clé Cohere, de clé n8n ou de mot de passe SMTP dans le dépôt. Utiliser les variables suivantes dans l’environnement local :
+
+```text
+SPRING_DATASOURCE_URL
+SPRING_DATASOURCE_USERNAME
+SPRING_DATASOURCE_PASSWORD
+APP_JWT_SECRET
+COHERE_API_KEY
+N8N_API_KEY
+SPRING_MAIL_USERNAME
+SPRING_MAIL_PASSWORD
+```
+
+Les paramètres de pondération peuvent être configurés ainsi :
 
 ```properties
-n8n.webhook.agent1=http://localhost:5678/webhook/agent1-cv-parser
-n8n.webhook.agent2=http://localhost:5678/webhook/agent2-entretien
-n8n.webhook.agent3=http://localhost:5678/webhook/agent3-rh-manager
-n8n.api.key=votre-cle-api-n8n
-```
-
-Tester la connectivité (ADMIN/HR) :
-```bash
-GET  http://localhost:8080/api/n8n/status
-POST http://localhost:8080/api/n8n/test-webhook
-     Body: { "webhookUrl": "http://localhost:5678/webhook/..." }
-GET  http://localhost:8080/api/notifications/n8n/candidatures-du-jour
-     Header: X-N8N-API-Key: <n8n.api.key>
-```
-
-### Score IA (Cohere)
-Le token n'est **jamais** stocké en clair dans `application.properties` — il est lu depuis une variable d'environnement :
-
-```properties
-cohere.api.token=${COHERE_API_KEY:}
-cohere.model=command-r-08-2024
 ai.score.weight.technical=0.5
 ai.score.weight.communication=0.2
 ai.score.weight.seniority=0.3
 ```
 
-```bash
-setx COHERE_API_KEY "votre-cle-cohere"
-```
+Sans clé Cohere ou lorsque le service est indisponible, le backend utilise un mode dégradé documenté dans `AiScoringService`.
 
-Sans clé configurée (ou en cas d'indisponibilité), le service bascule automatiquement sur un mode simulé déterministe (le score technique reste basé sur le matching réel des compétences requises).
-
-## Accès
+## URLs locales par défaut
 
 | Service | URL |
 |---|---|
-| Frontend | http://localhost:4200 |
-| Backend API | http://localhost:8080 |
-| Swagger UI | http://localhost:8080/swagger-ui.html |
-| n8n | http://localhost:5678 |
+| Frontend | `http://localhost:4200` |
+| Backend API | `http://localhost:8080` |
+| Swagger UI | `http://localhost:8080/swagger-ui.html` |
+| n8n | `http://localhost:5678` |
 
-## Comptes de Test
+## Comptes de test
 
-| Rôle | Identifiant | Mot de passe |
-|---|---|---|
-| Admin | `admin` | `Admin2026!` |
-| RH | `rh1` | `Test2026!` |
-| Manager | `manager1` | `Test2026!` |
-| Candidat | `candidat1` | `Test2026!` |
+Les comptes de test ne sont pas publiés dans ce README. Ils doivent être créés localement par l’initialisation de développement ou communiqués séparément dans un environnement privé. Il est interdit de réutiliser un mot de passe de démonstration en production.
 
-## Endpoints Candidats — Score IA & Décisions
+## Endpoints principaux
 
-```bash
-POST  /api/candidates/apply                              # Candidature avec CV
-POST  /api/candidates/{id}/ai-score/recompute             # Recalcule le score IA (Cohere)
-PATCH /api/candidates/{id}/ai-score/override               # Correction manuelle du score (RH/ADMIN)
-GET   /api/candidates/job-offer/{jobOfferId}/ranking       # Classement des candidats d'une offre
-PATCH /api/candidates/{id}/manager-decision                 # Décision manager (ACCEPTED/REJECTED)
-GET   /api/external-offers/remotive?search=&limit=         # Étude comparative offres externes (Remotive)
+```text
+POST  /api/candidates/apply
+POST  /api/candidates/{id}/ai-score/recompute
+PATCH /api/candidates/{id}/ai-score/override
+GET   /api/candidates/job-offer/{jobOfferId}/ranking
+PATCH /api/candidates/{id}/manager-decision
+GET   /api/external-offers/remotive?search=&limit=
 ```
 
-## Structure du Projet
+Les endpoints sensibles doivent être protégés par JWT, par les rôles applicatifs et par le périmètre métier du manager. Les endpoints de callback n8n doivent utiliser une clé de service ou une signature de webhook dans un environnement de production.
 
-```
-FindYourJob/
-├── JOB4YOU-backend/          # Spring Boot 3.2
-│   └── src/main/java/com/recrutement/app/
-│       ├── controller/        # REST endpoints (Candidate, ExternalJobOffers, N8nTest...)
-│       ├── service/           # Logique métier (N8nService, CandidateService, AiScoringService, CohereClient...)
-│       ├── config/            # JWT, RestTemplate, Async, Security
-│       ├── entity/            # JPA entities
-│       └── repository/        # Spring Data JPA
-├── JOB4YOU-frontend/          # Angular 20
-│   └── src/app/
-│       ├── pages/             # Candidat, Admin, HR, Manager
-│       ├── services/          # AuthService, JobOfferService...
-│       └── guards/            # RoleGuard JWT
-├── n8n-workflows/             # Workflows n8n exportés (Agent 1, 2, 3)
-└── ARCHITECTURE_N8N.md        # Diagrammes et responsabilités
-```
+## Tests
+
+Le backend contient huit classes de tests et le dépôt actuel contient environ 90 méthodes annotées `@Test`, couvrant notamment le workflow candidat, le seuil IA, les transitions de statut, le routage manager et l’isolation du périmètre de lecture. Le nombre exact doit être recalculé après chaque évolution du dépôt. Des tests d’intégration, de charge et de sécurité complémentaires sont nécessaires avant une mise en production.
+
+## Limites connues et évolutions
+
+Les points suivants doivent être traités avant un déploiement de production : rotation et stockage sécurisé des secrets, nettoyage de l’historique Git, migrations versionnées de base de données, protection fine des URLs de CV, analyse antivirus des fichiers, configuration CORS restrictive, signature des webhooks, intégration Google Calendar/Meet réelle, stratégie de conservation des données personnelles, tests d’intégration et pipeline CI/CD.
 
 ## Auteur
 
-**Haythem Bargaoui** — Projet de fin d'études (PFE)
+**Haythem Bargaoui** — Projet de fin d’études.
 
 ## Licence
 
-MIT
-
-
+MIT.

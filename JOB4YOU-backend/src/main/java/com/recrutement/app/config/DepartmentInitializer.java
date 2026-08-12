@@ -18,6 +18,8 @@ public class DepartmentInitializer implements CommandLineRunner {
         createIfMissing("4YOU", "4YOU");
         createIfMissing("Quality Assurance", "QA");
         createIfMissing("HRAccess", "HRACCESS");
+        createIfMissing("Product Operations", "PRODOPS");
+        createIfMissing("DevOps", "DEVOPS");
 
         System.out.println("Départements par défaut initialisés avec succès!");
     }

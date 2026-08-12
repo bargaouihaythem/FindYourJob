@@ -4,6 +4,7 @@ import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.Interview;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -59,10 +60,20 @@ public class N8nService {
     @Value("${n8n.webhook.agent3:}")
     private String agent3Webhook;
 
+    @Value("${n8n.api.key:}")
+    private String n8nApiKey;
+
     private final RestTemplate restTemplate;
+
+    @Autowired(required = false)
+    private N8nOutboxService outboxService;
 
     public N8nService(@Qualifier("n8nRestTemplate") RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
+    }
+
+    public boolean isAgent1Configured() {
+        return !isBlank(agent1Webhook);
     }
 
     // ================================================================
@@ -95,7 +106,8 @@ public class N8nService {
         payload.put("cvUrl", candidate.getCv() != null ? candidate.getCv().getFileUrl() : null);
         payload.put("coverLetter", candidate.getCoverLetter() != null ? candidate.getCoverLetter() : "");
 
-        sendWithRetry(agent1Webhook, payload, "Agent 1 (CV Parser)");
+        enqueueOrSend(candidate.getId() + ":NOUVELLE_CANDIDATURE", agent1Webhook,
+                "Agent 1 (CV Parser)", payload);
     }
 
     // ================================================================
@@ -132,7 +144,8 @@ public class N8nService {
         payload.put("jobOfferTitle", candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : "Entretien général");
         payload.put("notes", interview.getNotes());
 
-        sendWithRetry(agent2Webhook, payload, "Agent 2 (Planification entretien)");
+        enqueueOrSend(interview.getId() + ":ENTRETIEN_PLANIFIE", agent2Webhook,
+                "Agent 2 (Planification entretien)", payload);
     }
 
     // ================================================================
@@ -170,7 +183,8 @@ public class N8nService {
         payload.put("updatedBy", updatedBy);
         payload.put("managerEmail", managerEmail);
 
-        sendWithRetry(agent3Webhook, payload, "Agent 3 (RH → Manager)");
+        enqueueOrSend(candidateId + ":DOSSIER_VALIDE_RH:" + status, agent3Webhook,
+                "Agent 3 (RH → Manager)", payload);
     }
 
     /**
@@ -196,7 +210,8 @@ public class N8nService {
         payload.put("aiSummary", aiSummary);
         payload.put("aiRecommendation", aiRecommendation);
         payload.put("dateDecision", java.time.LocalDateTime.now().toString());
-        sendWithRetry(agent3Webhook, payload, "Agent 3 (Décision finale)");
+        enqueueOrSend(candidateId + ":DECISION_FINALE:" + status, agent3Webhook,
+                "Agent 3 (Décision finale)", payload);
     }
 
     // ================================================================
@@ -233,7 +248,18 @@ public class N8nService {
         payload.put("notes", "Votre candidature a été retenue par notre IA. L'équipe RH vous contactera pour fixer la date d'entretien.");
         payload.put("managerEmail", managerEmail);
 
-        sendWithRetry(agent2Webhook, payload, "Agent 2 (CV Sélectionné)");
+        enqueueOrSend(candidateId + ":CV_SELECTIONNE", agent2Webhook,
+                "Agent 2 (CV Sélectionné)", payload);
+    }
+
+    private void enqueueOrSend(String eventKey, String webhookUrl, String agentName,
+                               Map<String, Object> payload) {
+        if (outboxService != null) {
+            outboxService.enqueue(eventKey, webhookUrl, agentName, payload);
+        } else {
+            // Fallback utile pour les tests unitaires ou un profil sans JPA.
+            sendWithRetry(webhookUrl, payload, agentName);
+        }
     }
 
     // ================================================================
@@ -258,6 +284,9 @@ public class N8nService {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (n8nApiKey != null && !n8nApiKey.isBlank()) {
+                headers.set("X-N8N-API-Key", n8nApiKey);
+            }
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(ping, headers);
             ResponseEntity<String> response = restTemplate.postForEntity(webhookUrl, entity, String.class);
 
@@ -286,6 +315,9 @@ public class N8nService {
     private void sendWithRetry(String webhookUrl, Map<String, Object> payload, String agentName) {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (n8nApiKey != null && !n8nApiKey.isBlank()) {
+            headers.set("X-N8N-API-Key", n8nApiKey);
+        }
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {

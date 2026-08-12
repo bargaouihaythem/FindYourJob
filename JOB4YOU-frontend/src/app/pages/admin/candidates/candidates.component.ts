@@ -777,7 +777,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   rejectCandidate(candidate: Candidate): void {
-    this.candidateService.managerDecision(candidate.id, 'REJECTED').subscribe({
+    const reason = window.prompt('Motif obligatoire du rejet :');
+    if (!reason?.trim()) {
+      this.toastrNotification.showCandidateError('Le motif du rejet est obligatoire');
+      return;
+    }
+    this.candidateService.managerDecision(candidate.id, 'REJECTED', reason.trim()).subscribe({
       next: () => {
         this.toastrNotification.showSuccess('Candidature refusée.', 'Candidat refusé');
         candidate.status = 'MANAGER_REJECTED' as Candidate['status'];

@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -8,7 +9,7 @@ import { AuthService } from './auth';
   providedIn: 'root'
 })
 export class CandidateService {
-  private apiUrl = 'http://localhost:8080/api/candidates';
+  private apiUrl = environment.apiUrl + '/candidates';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 
@@ -46,12 +47,11 @@ export class CandidateService {
     const headers = this.authService.getAuthHeaders();
     return this.http.delete(`${this.apiUrl}/${id}`, { headers });
   }
-  updateCandidateStatus(id: number, status: string): Observable<Candidate> {
+  updateCandidateStatus(id: number, status: string, reason?: string): Observable<Candidate> {
     const headers = this.authService.getAuthHeaders();
-    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/status`, null, { 
-      params: new HttpParams().set('status', status),
-      headers 
-    });
+    let params = new HttpParams().set('status', status);
+    if (reason?.trim()) params = params.set('reason', reason.trim());
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/status`, null, { params, headers });
   }
 
   /**
@@ -59,12 +59,18 @@ export class CandidateService {
    * Le backend vérifie que le dossier est bien au périmètre du manager et déjà
    * validé (statut >= CV_REVIEWED) avant d'appliquer la décision.
    */
-  managerDecision(id: number, decision: 'ACCEPTED' | 'REJECTED'): Observable<Candidate> {
+  managerDecision(id: number, decision: 'ACCEPTED' | 'REJECTED', reason?: string): Observable<Candidate> {
     const headers = this.authService.getAuthHeaders();
-    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/manager-decision`, null, {
-      params: new HttpParams().set('decision', decision),
-      headers
-    });
+    let params = new HttpParams().set('decision', decision);
+    if (reason?.trim()) params = params.set('reason', reason.trim());
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/manager-decision`, null, { params, headers });
+  }
+
+  withdrawApplication(id: number, reason?: string): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    let params = new HttpParams();
+    if (reason?.trim()) params = params.set('reason', reason.trim());
+    return this.http.post<Candidate>(`${this.apiUrl}/${id}/withdraw`, null, { params, headers });
   }
 
   /**
@@ -79,7 +85,7 @@ export class CandidateService {
   uploadCV(candidateId: number, file: File): Observable<any> {
     const formData = new FormData();
     formData.append('cv', file);
-    return this.http.post<any>(`http://localhost:8080/api/cvs/upload/${candidateId}`, formData);
+    return this.http.post<any>(`${environment.apiUrl}/cvs/upload/${candidateId}`, formData);
   }
 
   getCandidatesByEmail(email: string): Observable<Candidate[]> {

@@ -115,6 +115,16 @@ export class KanbanBoardComponent implements OnInit {
       return;
     }
 
+    const isFinalDecision = targetColumn.status === 'ACCEPTED' || targetColumn.status === 'REJECTED';
+    let decisionReason: string | undefined;
+    if (targetColumn.status === 'REJECTED') {
+      decisionReason = window.prompt('Motif obligatoire du rejet :')?.trim();
+      if (!decisionReason) {
+        this.toastrNotification.showWarning('Le motif du rejet est obligatoire');
+        return;
+      }
+    }
+
     transferArrayItem(
       event.previousContainer.data,
       event.container.data,
@@ -126,9 +136,8 @@ export class KanbanBoardComponent implements OnInit {
     // (vérifie que le dossier est déjà validé par RH avant d'appliquer la décision) —
     // le endpoint générique de statut ne fait pas cette vérification et permettrait
     // de glisser une candidature directement de "Reçue" à "Accepté" sans validation.
-    const isFinalDecision = targetColumn.status === 'ACCEPTED' || targetColumn.status === 'REJECTED';
     const request$ = isFinalDecision
-      ? this.candidateService.managerDecision(candidate.id, targetColumn.status as 'ACCEPTED' | 'REJECTED')
+      ? this.candidateService.managerDecision(candidate.id, targetColumn.status as 'ACCEPTED' | 'REJECTED', decisionReason)
       : this.candidateService.updateCandidateStatus(candidate.id, targetColumn.status);
 
     request$.subscribe({

@@ -39,7 +39,7 @@ public class CohereClient {
     @Value("${cohere.api.url:https://api.cohere.com/v2/chat}")
     private String apiUrl;
 
-    @Value("${cohere.model:command-r-08-2024}")
+    @Value("${cohere.model:command-a-03-2025}")
     private String model;
 
     private final RestTemplate restTemplate;
@@ -83,7 +83,7 @@ public class CohereClient {
         }
 
         String prompt = "Tu es un assistant de recrutement expert. Évalue objectivement le candidat ci-dessous "
-                + "pour le poste indiqué. Réponds UNIQUEMENT avec un JSON valide, sans texte autour, au format exact : "
+                + "pour le poste indiqué. Génère un objet JSON valide, sans texte autour, au format exact : "
                 + "{\"technique\": <entier 0-100>, \"communication\": <entier 0-100>, \"seniorite\": <entier 0-100>}\n\n"
                 + "technique = adéquation des compétences du candidat avec les compétences requises\n"
                 + "communication = qualité et professionnalisme de la communication écrite du candidat\n"
@@ -99,6 +99,8 @@ public class CohereClient {
         Map<String, Object> body = Map.of(
                 "model", model,
                 "temperature", 0,
+                "max_tokens", 200,
+                "response_format", Map.of("type", "json_object"),
                 "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
@@ -154,14 +156,17 @@ public class CohereClient {
         String prompt = "Tu es un assistant de recrutement expert. Voici le profil extrait d'un CV, suivi d'une liste "
                 + "d'offres d'emploi actives. Pour CHAQUE offre listée, évalue à quel point le profil correspond au poste "
                 + "(compétences, expérience, cohérence globale), sur une échelle de 0 à 100.\n\n"
-                + "Réponds UNIQUEMENT avec un tableau JSON valide, sans texte autour, au format exact : "
-                + "[{\"id\": <id offre>, \"score\": <entier 0-100>}, ...] — un objet par offre listée, dans le même ordre.\n\n"
+                + "Génère un objet JSON valide, sans texte autour, au format exact : "
+                + "{\"scores\": [{\"id\": <id offre>, \"score\": <entier 0-100>}, ...]}. "
+                + "Un objet doit être présent pour chaque offre listée, dans le même ordre.\n\n"
                 + "Profil du candidat (texte extrait du CV) :\n" + cvText + "\n\n"
                 + "Offres à évaluer :\n" + offersBlock;
 
         Map<String, Object> body = Map.of(
                 "model", model,
                 "temperature", 0,
+                "max_tokens", Math.min(4000, Math.max(500, offers.size() * 80)),
+                "response_format", Map.of("type", "json_object"),
                 "messages", List.of(Map.of("role", "user", "content", prompt))
         );
 
@@ -188,15 +193,12 @@ public class CohereClient {
     }
 
     private Map<Long, Integer> parseRanking(String text) {
-        int start = text.indexOf('[');
-        int end = text.lastIndexOf(']');
-        if (start < 0 || end < 0 || end <= start) {
-            throw new IllegalStateException("Pas de tableau JSON trouvé dans la réponse Cohere : " + text);
-        }
-        String json = text.substring(start, end + 1);
-
         try {
-            JsonNode array = MAPPER.readTree(json);
+            JsonNode root = MAPPER.readTree(text);
+            JsonNode array = root.isArray() ? root : root.get("scores");
+            if (array == null || !array.isArray()) {
+                throw new IllegalStateException("Réponse de classement Cohere mal formée");
+            }
             Map<Long, Integer> result = new java.util.LinkedHashMap<>();
             for (JsonNode item : array) {
                 JsonNode idNode = item.get("id");
@@ -206,13 +208,13 @@ public class CohereClient {
                 }
             }
             if (result.isEmpty()) {
-                throw new IllegalStateException("Tableau JSON Cohere vide ou mal formé : " + json);
+                throw new IllegalStateException("Tableau JSON Cohere vide ou mal formé");
             }
             return result;
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("JSON Cohere invalide : " + json, e);
+            throw new IllegalStateException("JSON Cohere invalide", e);
         }
     }
 
@@ -267,7 +269,7 @@ public class CohereClient {
         } catch (IllegalStateException e) {
             throw e;
         } catch (Exception e) {
-            throw new IllegalStateException("JSON Cohere invalide : " + json, e);
+            throw new IllegalStateException("JSON Cohere invalide", e);
         }
     }
 

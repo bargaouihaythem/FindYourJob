@@ -31,6 +31,9 @@ public class CVService {
     @Autowired
     private CvTextExtractionService cvTextExtractionService;
 
+    @Autowired
+    private AccessControlService accessControlService;
+
     /**
      * Télécharge un nouveau CV pour un candidat
      */
@@ -38,6 +41,7 @@ public class CVService {
     public CVResponse uploadCV(Long candidateId, MultipartFile cvFile) {
         Candidate candidate = candidateRepository.findById(candidateId)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + candidateId));
+        accessControlService.assertCanAccessCandidate(candidate);
 
         // Valider le fichier CV
         validateCVFile(cvFile);
@@ -78,6 +82,7 @@ public class CVService {
     public CVResponse getCVByCandidate(Long candidateId) {
         CV cv = cvRepository.findByCandidateId(candidateId)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé pour le candidat avec l'ID: " + candidateId));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
         
         // Mettre à jour la date de dernier accès
         cv.setLastAccessed(LocalDateTime.now());
@@ -92,6 +97,7 @@ public class CVService {
     public CVResponse getCVById(Long id) {
         CV cv = cvRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
         
         // Mettre à jour la date de dernier accès
         cv.setLastAccessed(LocalDateTime.now());
@@ -105,6 +111,7 @@ public class CVService {
      */
     public List<CVResponse> getCVsByJobOffer(Long jobOfferId) {
         return cvRepository.findByJobOfferId(jobOfferId).stream()
+                .filter(cv -> accessControlService.canAccessCandidate(cv.getCandidate()))
                 .map(CVResponse::new)
                 .collect(Collectors.toList());
     }
@@ -116,6 +123,7 @@ public class CVService {
     public void deleteCV(Long id) {
         CV cv = cvRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
 
         // Supprimer le fichier du système de fichiers
         if (cv.getStoredFilename() != null) {
@@ -132,6 +140,7 @@ public class CVService {
     public String getCVDownloadUrl(Long id) {
         CV cv = cvRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
         
         // Mettre à jour la date de dernier accès
         cv.setLastAccessed(LocalDateTime.now());
@@ -183,6 +192,7 @@ public class CVService {
     public String getCVViewUrl(Long cvId) {
         CV cv = cvRepository.findById(cvId)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + cvId));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
         
         // Mettre à jour la date de dernier accès
         cv.setLastAccessed(LocalDateTime.now());
@@ -223,6 +233,7 @@ public class CVService {
     public CVResponse extractText(Long id) {
         CV cv = cvRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("CV non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(cv.getCandidate());
 
         String text = cvTextExtractionService.extractText(
                 java.nio.file.Paths.get(cv.getFilePath()), cv.getContentType());

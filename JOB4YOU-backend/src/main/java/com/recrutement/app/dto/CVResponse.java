@@ -15,7 +15,6 @@ public class CVResponse {
     private Long id;
     private String originalFilename;
     private String storedFilename;
-    private String filePath;
     private String fileUrl;
     private Long fileSize;
     private String contentType;
@@ -30,7 +29,6 @@ public class CVResponse {
         this.id = cv.getId();
         this.originalFilename = cv.getOriginalFilename();
         this.storedFilename = cv.getStoredFilename();
-        this.filePath = cv.getFilePath();
         this.fileUrl = cv.getFileUrl();
         this.fileSize = cv.getFileSize();
         this.contentType = cv.getContentType();

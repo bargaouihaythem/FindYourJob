@@ -11,7 +11,7 @@ public class ResetPasswordRequest {
     private String resetCode;
     
     @NotBlank(message = "Le nouveau mot de passe est requis")
-    @Size(min = 6, message = "Le mot de passe doit contenir au moins 6 caractères")
+    @Size(min = 8, message = "Le mot de passe doit contenir au moins 8 caractères")
     private String newPassword;
 
     public String getResetCode() {

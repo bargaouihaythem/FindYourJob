@@ -19,7 +19,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/cvs")
 @Tag(name = "CVs", description = "API pour la gestion des CVs")

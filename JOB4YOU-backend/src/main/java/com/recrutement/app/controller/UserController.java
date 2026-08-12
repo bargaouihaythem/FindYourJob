@@ -23,7 +23,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/users")
 @Tag(name = "Users", description = "API pour la gestion des utilisateurs")

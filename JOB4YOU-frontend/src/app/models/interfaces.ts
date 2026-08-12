@@ -176,6 +176,9 @@ export interface Candidate {
   education?: string;
   applicationDate: Date;
   status: 'APPLIED' | 'CV_REVIEWED' | 'PHONE_SCREENING' | 'TECHNICAL_TEST' | 'INTERVIEW' | 'FINAL_INTERVIEW' | 'ACCEPTED' | 'REJECTED' | 'AUTO_REJECTED' | 'MANAGER_REJECTED' | 'INTERVIEW_SCHEDULED' | 'HIRED' | 'WITHDRAWN';
+  statusReason?: string;
+  statusChangedBy?: string;
+  statusChangedAt?: Date;
   aiScore?: number;
   aiScoreTechnical?: number;
   aiScoreCommunication?: number;

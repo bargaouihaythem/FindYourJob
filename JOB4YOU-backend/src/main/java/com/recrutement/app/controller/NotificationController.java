@@ -7,6 +7,7 @@ import com.recrutement.app.entity.Interview;
 import com.recrutement.app.repository.CandidateRepository;
 import com.recrutement.app.repository.InterviewRepository;
 import com.recrutement.app.service.NotificationService;
+import com.recrutement.app.service.N8nRequestAuthenticator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/notifications")
 @Tag(name = "Notifications", description = "API pour la gestion des notifications")
@@ -35,8 +36,11 @@ public class NotificationController {
     @Autowired
     private InterviewRepository interviewRepository;
 
-    @Value("${n8n.api.key:}")
-    private String n8nApiKey;
+    private final N8nRequestAuthenticator n8nRequestAuthenticator;
+
+    public NotificationController(N8nRequestAuthenticator n8nRequestAuthenticator) {
+        this.n8nRequestAuthenticator = n8nRequestAuthenticator;
+    }
 
     /**
      * Envoie un email personnalisé
@@ -69,9 +73,10 @@ public class NotificationController {
     public ResponseEntity<?> getCandidaturesDuJour(
             @RequestHeader(value = "X-N8N-API-Key", required = false) String apiKey) {
 
-        // Vérification simple de la clé API n8n (lue depuis application.properties)
-        if (n8nApiKey != null && !n8nApiKey.isBlank() && !n8nApiKey.equals(apiKey)) {
-            return ResponseEntity.status(401).body(Map.of("error", "Clé API invalide"));
+        // Authentification obligatoire et fail-closed : une clé absente ou invalide
+        // ne doit jamais rendre les candidatures du jour publiques.
+        if (!n8nRequestAuthenticator.isValid(apiKey)) {
+            return ResponseEntity.status(401).body(Map.of("error", "Clé API n8n invalide"));
         }
 
         LocalDateTime debutJournee = LocalDateTime.now().toLocalDate().atStartOfDay();

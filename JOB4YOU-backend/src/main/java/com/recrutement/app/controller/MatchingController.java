@@ -19,7 +19,7 @@ import java.util.List;
  * découvre les offres actives les plus adaptées à son profil, sans avoir
  * besoin de postuler au préalable.
  */
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/matching")
 @Tag(name = "Matching", description = "Suggestion d'offres à partir d'un CV")

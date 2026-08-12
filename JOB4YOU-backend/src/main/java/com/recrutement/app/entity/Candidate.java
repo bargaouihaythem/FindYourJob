@@ -50,6 +50,15 @@ public class Candidate {
     @Column(name = "last_updated")
     private LocalDateTime lastUpdated;
 
+    @Column(name = "status_reason", columnDefinition = "TEXT")
+    private String statusReason;
+
+    @Column(name = "status_changed_by")
+    private String statusChangedBy;
+
+    @Column(name = "status_changed_at")
+    private LocalDateTime statusChangedAt;
+
     @Column(name = "ai_score")
     private Integer aiScore;
 

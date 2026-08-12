@@ -1,114 +1,91 @@
-# JOB4YOU - Guide de Démarrage
+# JOB4YOU — Guide de démarrage local
 
 ## Prérequis
-- Java 17 (installé dans `C:\Program Files\Java\jdk-17`)
-- Node.js 20+ (installé)
-- npm 10+ (installé)
 
-## Problème résolu
-✅ **Java 17 configuré** : Le projet nécessite Java 17, pas Java 8
-✅ **Backend compilé** : Maven compile maintenant avec Java 17
-✅ **Frontend buildé** : Angular 20 installé et compilé
-✅ **Base de données** : Configuration H2 en mémoire pour le développement
+Le projet utilise **Java 17**, Maven 3.8 ou supérieur, Node.js 18 ou supérieur, npm et PostgreSQL. n8n est optionnel : il est nécessaire uniquement pour activer les workflows de notifications et de callbacks.
 
-## Démarrage
+## Préparation de la configuration
 
-### 1. Backend (Spring Boot)
+Copier `.env.example` vers un fichier local non suivi par Git ou définir les variables dans l’environnement du système. Ne jamais publier les valeurs réelles de `APP_JWT_SECRET`, `SPRING_DATASOURCE_PASSWORD`, `COHERE_API_KEY`, `N8N_API_KEY` ou `SPRING_MAIL_PASSWORD`.
+
+Créer la base PostgreSQL :
+
+```bash
+createdb job4you_db
+```
+
+Puis définir au minimum :
+
+```text
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/job4you_db
+SPRING_DATASOURCE_USERNAME=postgres
+SPRING_DATASOURCE_PASSWORD=<mot-de-passe-local>
+APP_JWT_SECRET=<secret-long-et-aléatoire>
+```
+
+Pour activer les emails, ajouter `APP_EMAIL_ENABLED=true`, `SPRING_MAIL_USERNAME` et `SPRING_MAIL_PASSWORD`. Pour activer Cohere, définir `COHERE_API_KEY`. Pour activer n8n, définir les trois URLs `N8N_WEBHOOK_AGENT1`, `N8N_WEBHOOK_AGENT2` et `N8N_WEBHOOK_AGENT3`.
+
+## Démarrer le backend
+
 ```bash
 cd JOB4YOU-backend
-
-# Option 1: Avec le script
-start-backend.bat
-
-# Option 2: Manuellement
-set JAVA_HOME=C:\Program Files\Java\jdk-17
-set PATH=%JAVA_HOME%\bin;%PATH%
-set SPRING_PROFILES_ACTIVE=dev
-java -jar target/job4you-backend-1.0.0-SNAPSHOT.jar
+mvn clean install -DskipTests
+mvn spring-boot:run
 ```
 
-Le backend démarre sur http://localhost:8080
+Le backend est disponible par défaut sur `http://localhost:8080`. La documentation Swagger est disponible sur `http://localhost:8080/swagger-ui.html`.
 
-**Points d'accès importants :**
-- API Documentation: http://localhost:8080/swagger-ui.html
-- Console H2: http://localhost:8080/h2-console
-  - JDBC URL: `jdbc:h2:mem:testdb`
-  - Username: `sa`
-  - Password: (vide)
+Le profil de test utilise H2 en mémoire et se trouve dans `src/test/resources/application-test.properties`. H2 est destiné aux tests automatisés ; le démarrage local normal utilise PostgreSQL.
 
-### 2. Frontend (Angular)
+## Démarrer le frontend
 
-**🎯 SOLUTION RECOMMANDÉE (PowerShell) :**
 ```bash
 cd JOB4YOU-frontend
-.\start-frontend.ps1
+npm install --legacy-peer-deps
+npm start
 ```
 
-**Alternatives (Scripts Batch) :**
+Le frontend est disponible sur `http://localhost:4200`.
+
+Sous Windows, les scripts de démarrage présents dans le dossier frontend peuvent être utilisés après vérification de leurs variables locales. Ils ne doivent pas contenir de secrets ou de mots de passe.
+
+## Démarrer n8n, optionnel
+
 ```bash
-# Si PowerShell ne fonctionne pas
-launch-frontend.bat
-
-# Script batch classique  
-start-frontend.bat
-
-# Version simple
-minimal-start.bat
+npx n8n start
 ```
 
-**Scripts disponibles :**
-- **`start-frontend.ps1`** ⭐ **RECOMMANDÉ** - Script PowerShell natif (fonctionne parfaitement)
-- `launch-frontend.bat` - Lance le script PowerShell depuis un batch
-- `start-frontend.bat` - Version batch corrigée
-- `minimal-start.bat` - Version ultra-simple
-- `debug-simple.bat` - Diagnostic
+Importer ensuite les fichiers suivants :
 
-**URLs d'accès :**
-- Frontend principal: http://localhost:4200
-- Si port occupé: http://localhost:4201 (option automatique dans certains scripts)
+```text
+n8n-workflows/agent1-cv-parser.json
+n8n-workflows/agent2-entretien.json
+n8n-workflows/agent3-rh-manager.json
+```
 
-**✅ TESTÉ ET FONCTIONNEL :**
-Le script PowerShell `start-frontend.ps1` a été testé avec succès et lance correctement le serveur Angular ! 🚀
+Les workflows actuels orchestrent les notifications. Le backend conserve la responsabilité du scoring Cohere, de l’extraction du CV, de la persistance et des transitions métier. L’intégration authentifiée Google Calendar/Google Meet n’est pas encore disponible.
 
-## Configuration
+## Initialisation de comptes de développement
 
-### Profils Spring Boot
-- **dev** : Base de données H2 en mémoire (pas d'installation requise)
-- **prod** : PostgreSQL (configuration dans application.properties)
+L’initialisation automatique est désactivée par défaut. Pour l’activer temporairement, définir `APP_INIT_CREATE_DEFAULT_USERS=true` et fournir des variables `APP_DEFAULT_*` complètes. Les mots de passe ne doivent jamais être écrits dans le code ou dans le dépôt.
 
-### Variables d'environnement importantes
-- `JAVA_HOME=C:\Program Files\Java\jdk-17`
-- `SPRING_PROFILES_ACTIVE=dev`
+## Vérifications utiles
+
+| Élément | Adresse ou commande |
+|---|---|
+| Frontend | `http://localhost:4200` |
+| Backend | `http://localhost:8080` |
+| Swagger | `http://localhost:8080/swagger-ui.html` |
+| n8n | `http://localhost:5678` |
+| Tests backend | `mvn test` |
+| Tests frontend | `npm test` |
 
 ## Résolution des problèmes
 
-### Erreur "UnsupportedClassVersionError"
-- **Cause** : Java 8 utilisé au lieu de Java 17
-- **Solution** : Vérifier JAVA_HOME et PATH
+Si Maven utilise une version Java incorrecte, vérifier `java -version` et `mvn -version`, puis configurer `JAVA_HOME` vers un JDK 17. En cas d’erreur npm `ERESOLVE`, utiliser `npm install --legacy-peer-deps`.
 
-### Erreur de compilation Maven
-- **Cause** : Maven utilise Java 8
-- **Solution** : Configurer JAVA_HOME avant d'exécuter Maven
+Si PostgreSQL refuse la connexion, vérifier l’URL, l’utilisateur, le mot de passe, le port 5432 et l’existence de la base `job4you_db`. Si Cohere est indisponible, le backend peut utiliser son mode dégradé ; cette situation doit néanmoins être signalée avant une évaluation de production.
 
-### Erreurs npm ERESOLVE
-- **Solution** : Utiliser `npm install --legacy-peer-deps`
+## Statut
 
-## Structure du projet
-```
-FindYourJob/
-├── JOB4YOU-backend/          # API Spring Boot
-│   ├── start-backend.bat     # Script de démarrage
-│   ├── target/              # JAR compilé
-│   └── src/                 # Code source Java
-├── JOB4YOU-frontend/         # Interface Angular
-│   ├── start-frontend.bat   # Script de démarrage
-│   ├── dist/                # Build Angular
-│   └── src/                 # Code source TypeScript
-└── README-DEMARRAGE.md      # Ce fichier
-```
-
-## État du build
-- ✅ Backend : Compilé avec Java 17, prêt à démarrer
-- ✅ Frontend : Compilé avec Angular 20, prêt à démarrer
-- ✅ Base de données : H2 en mémoire configurée
-- ✅ Scripts de démarrage : Créés pour Windows
+Ce guide décrit un démarrage de développement ou de démonstration. Avant une mise en production, il faut encore mettre en place les migrations versionnées, le HTTPS, la gestion sécurisée des secrets, la protection fine des CV, la signature des webhooks, la configuration CORS restrictive et les tests d’intégration.

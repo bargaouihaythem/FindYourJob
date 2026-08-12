@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Arrays;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -44,12 +46,10 @@ public class LocalFileStorageService {
         init(); // S'assurer que le dossier existe
 
         try {
+            validateBinarySignature(file);
+
             // Générer un nom unique pour le fichier
-            String originalFilename = file.getOriginalFilename();
-            String extension = originalFilename != null && originalFilename.contains(".") 
-                ? originalFilename.substring(originalFilename.lastIndexOf("."))
-                : ".pdf";
-            
+            String extension = extensionForContentType(file.getContentType());
             String fileName = "cv_" + UUID.randomUUID().toString().replace("-", "") + extension;
             
             // Copier le fichier vers le dossier de destination
@@ -70,6 +70,33 @@ public class LocalFileStorageService {
             
         } catch (IOException e) {
             throw new FileStorageException("Échec du stockage du fichier " + file.getOriginalFilename(), e);
+        }
+    }
+
+    private String extensionForContentType(String contentType) {
+        if ("application/msword".equalsIgnoreCase(contentType)) return ".doc";
+        if ("application/vnd.openxmlformats-officedocument.wordprocessingml.document".equalsIgnoreCase(contentType)) return ".docx";
+        return ".pdf";
+    }
+
+    private void validateBinarySignature(MultipartFile file) throws IOException {
+        byte[] header;
+        try (InputStream input = file.getInputStream()) {
+            header = input.readNBytes(8);
+        }
+        String contentType = file.getContentType();
+        boolean pdf = "application/pdf".equalsIgnoreCase(contentType)
+                && header.length >= 5
+                && new String(header, 0, 5, java.nio.charset.StandardCharsets.US_ASCII).equals("%PDF-");
+        boolean docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document".equalsIgnoreCase(contentType)
+                && header.length >= 4
+                && header[0] == 'P' && header[1] == 'K' && header[2] == 3 && header[3] == 4;
+        boolean doc = "application/msword".equalsIgnoreCase(contentType)
+                && header.length >= 8
+                && Arrays.equals(header, new byte[]{(byte) 0xD0, (byte) 0xCF, 0x11, (byte) 0xE0,
+                (byte) 0xA1, (byte) 0xB1, 0x1A, (byte) 0xE1});
+        if (!pdf && !docx && !doc) {
+            throw new FileStorageException("Le contenu du fichier ne correspond pas à un PDF, DOC ou DOCX valide");
         }
     }
 

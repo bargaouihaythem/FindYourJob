@@ -1,42 +1,67 @@
-version: '3.8'
-
 services:
   app:
     build: .
     container_name: job4you-backend
-    restart: always
+    restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${APP_PORT:-8080}:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/job4you_db
-      - SPRING_DATASOURCE_USERNAME=job4you_user
-      - SPRING_DATASOURCE_PASSWORD=job4you_password
-      - APP_JWTSECRET=your_jwt_secret_key
-      - CLOUDINARY_CLOUD_NAME=your_cloud_name
-      - CLOUDINARY_API_KEY=your_api_key
-      - CLOUDINARY_API_SECRET=your_api_secret
-      - SPRING_MAIL_HOST=smtp.gmail.com
-      - SPRING_MAIL_USERNAME=your_email@gmail.com
-      - SPRING_MAIL_PASSWORD=your_app_password
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-job4you_db}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-job4you_user}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini}
+      APP_JWT_SECRET: ${APP_JWT_SECRET:?APP_JWT_SECRET doit être défini}
+      APP_JWT_EXPIRATION: ${APP_JWT_EXPIRATION:-86400000}
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-http://localhost:4200}
+      APP_EMAIL_ENABLED: ${APP_EMAIL_ENABLED:-false}
+      SPRING_MAIL_HOST: ${SPRING_MAIL_HOST:-smtp.gmail.com}
+      SPRING_MAIL_PORT: ${SPRING_MAIL_PORT:-465}
+      SPRING_MAIL_USERNAME: ${SPRING_MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${SPRING_MAIL_PASSWORD:-}
+      N8N_WEBHOOK_AGENT1: ${N8N_WEBHOOK_AGENT1:-}
+      N8N_WEBHOOK_AGENT2: ${N8N_WEBHOOK_AGENT2:-}
+      N8N_WEBHOOK_AGENT3: ${N8N_WEBHOOK_AGENT3:-}
+      N8N_API_KEY: ${N8N_API_KEY:-}
+      COHERE_API_KEY: ${COHERE_API_KEY:-}
+      APP_FILE_UPLOAD_DIR: /app/uploads/cvs
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - job4you-network
     volumes:
       - app-logs:/app/logs
+      - cv-uploads:/app/uploads/cvs
 
   db:
-    image: postgres:13
+    image: postgres:16-alpine
     container_name: job4you-db
-    restart: always
+    restart: unless-stopped
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      - POSTGRES_DB=job4you_db
-      - POSTGRES_USER=job4you_user
-      - POSTGRES_PASSWORD=job4you_password
+      POSTGRES_DB: ${POSTGRES_DB:-job4you_db}
+      POSTGRES_USER: ${POSTGRES_USER:-job4you_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini}
     volumes:
       - db-data:/var/lib/postgresql/data
+    networks:
+      - job4you-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ../JOB4YOU-frontend
+    container_name: job4you-frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      - app
     networks:
       - job4you-network
 
@@ -47,4 +72,4 @@ networks:
 volumes:
   db-data:
   app-logs:
-
+  cv-uploads:

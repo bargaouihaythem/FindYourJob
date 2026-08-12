@@ -165,3 +165,21 @@ WORKFLOW_*.md
 BUILD_CORRECTION_COMPLETE.md
 INTEGRATION_STATUS_REPORT.md
 CV_IMPROVEMENT_*.md
+
+# Preuves et artefacts de tests locaux — ne pas publier avec le dépôt applicatif
+/test-evidence/
+/test-uploads/
+*.eml
+*.webp
+
+# Configurations locales et secrets
+application-local.properties
+application-*.local.properties
+**/application-local.properties
+**/application-*.local.properties
+**/settings-local.xml
+local-config/
+private-config/
+*.env
+.env*
+!*.env.example

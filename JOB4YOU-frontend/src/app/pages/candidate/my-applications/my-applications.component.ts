@@ -96,6 +96,30 @@ export class MyApplicationsComponent implements OnInit {
     const dateObj = new Date(date);
     return dateObj.toLocaleDateString('fr-FR');
   }
+
+  canWithdraw(application: Candidate): boolean {
+    return !['HIRED', 'WITHDRAWN', 'MANAGER_REJECTED', 'AUTO_REJECTED'].includes(application.status);
+  }
+
+  withdrawApplication(application: Candidate): void {
+    if (!this.canWithdraw(application)) return;
+    const confirmed = window.confirm('Voulez-vous vraiment retirer cette candidature ?');
+    if (!confirmed) return;
+
+    const reason = window.prompt('Motif du retrait (facultatif)') ?? undefined;
+    this.candidateService.withdrawApplication(application.id, reason).subscribe({
+      next: (updated) => {
+        const index = this.applications.findIndex(item => item.id === application.id);
+        if (index >= 0) this.applications[index] = updated;
+        this.toastrNotification.showSuccess('Candidature retirée avec succès');
+      },
+      error: (error: any) => {
+        const message = error?.error?.message || 'Impossible de retirer cette candidature';
+        this.toastrNotification.showError(message, 'Retrait refusé');
+      }
+    });
+  }
+
   downloadCV(fileUrl: string | undefined): void {
     if (fileUrl) {
       // Utiliser le service CV avec authentification JWT

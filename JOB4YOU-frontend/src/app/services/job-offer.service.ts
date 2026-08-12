@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -7,7 +8,7 @@ import { JobOffer } from '../models/interfaces';
   providedIn: 'root'
 })
 export class JobOfferService {
-  private apiUrl = 'http://localhost:8080/api/job-offers';
+  private apiUrl = environment.apiUrl + '/job-offers';
 
   constructor(private http: HttpClient) {}
 

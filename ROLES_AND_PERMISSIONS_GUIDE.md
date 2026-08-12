@@ -103,7 +103,7 @@ Tous les utilisateurs peuvent être assignés comme interviewers dans un entreti
 {
   "username": "hr@company.com",
   "email": "hr@company.com",
-  "password": "hr123456",
+  "password": "{{test_password}}",
   "role": ["hr"]
 }
 ```
@@ -113,7 +113,7 @@ Tous les utilisateurs peuvent être assignés comme interviewers dans un entreti
 {
   "username": "manager@company.com",
   "email": "manager@company.com", 
-  "password": "manager123456",
+  "password": "{{test_password}}",
   "role": ["manager"]
 }
 ```
@@ -123,7 +123,7 @@ Tous les utilisateurs peuvent être assignés comme interviewers dans un entreti
 {
   "username": "admin@company.com",
   "email": "admin@company.com",
-  "password": "admin123456", 
+  "password": "{{admin_password}}",
   "role": ["admin"]
 }
 ```

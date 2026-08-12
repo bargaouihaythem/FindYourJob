@@ -13,7 +13,7 @@ const NEW_CODE = [
   "const prenom        = data.firstName || data.candidatPrenom || data.candidateFirstName || '';",
   "const offreTitre    = data.jobOfferTitle || data.offreTitre || 'le poste';",
   "const statut        = data.status || data.nouveauStatut || 'CV_REVIEWED';",
-  "const managerEmail  = data.managerEmail || 'bargaouihaythem1@gmail.com';",
+  "const managerEmail  = data.managerEmail || (process.env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com');",
   "const cvUrl         = data.cvUrl || null;",
   "const date          = new Date().toLocaleDateString('fr-FR');",
   "const isRejected    = statut === 'AUTO_REJECTED' || statut === 'MANAGER_REJECTED' || statut === 'REJECTED';",
@@ -111,7 +111,7 @@ const NEW_NODE_IF_ACCEPTED = {
 
 const NEW_NODE_EMAIL_ACCEPTE = {
   parameters: {
-    fromEmail: 'bargaouihaythem1@gmail.com',
+    fromEmail: process.env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com',
     toEmail: "={{ $json.candidatEmail }}",
     subject: '=🎉 Félicitations — Votre candidature est retenue — {{ $json.offreTitre }}',
     emailType: 'html',

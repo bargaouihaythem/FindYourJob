@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -19,7 +20,7 @@ export interface CVResponse {
   providedIn: 'root'
 })
 export class CVService {
-  private apiUrl = 'http://localhost:8080/api/cvs';
+  private apiUrl = environment.apiUrl + '/cvs';
 
   constructor(private http: HttpClient) {}
 
@@ -37,7 +38,7 @@ export class CVService {
     const formData = new FormData();
     formData.append('application', JSON.stringify(applicationData)); // nom du champ exactement 'application'
     formData.append('cv', file); // nom du champ exactement 'cv'
-    return this.http.post<any>('http://localhost:8080/api/candidates/apply', formData);
+    return this.http.post<any>(`${environment.apiUrl}/candidates/apply`, formData);
   }
 
   getCVByCandidate(candidateId: number): Observable<CVResponse> {

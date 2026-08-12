@@ -17,7 +17,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"admin\",\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"admin123\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"System\",\n  \"role\": [\"admin\"]\n}"
+          "raw": "{\n  \"username\": \"admin\",\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"{{admin_password}}\",\n  \"firstName\": \"Admin\",\n  \"lastName\": \"System\",\n  \"role\": [\"admin\"]\n}"
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/signup",
@@ -77,7 +77,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"username\": \"candidat\",\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"candidat123\",\n  \"firstName\": \"Jean\",\n  \"lastName\": \"Martin\",\n  \"role\": [\"user\"]\n}"
+          "raw": "{\n  \"username\": \"candidat\",\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"{{test_password}}\",\n  \"firstName\": \"Jean\",\n  \"lastName\": \"Martin\",\n  \"role\": [\"user\"]\n}"
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/signup",
@@ -107,7 +107,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"admin123\"\n}"
+          "raw": "{\n  \"email\": \"admin@recrutement.com\",\n  \"password\": \"{{admin_password}}\"\n}"
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/signin",
@@ -167,7 +167,7 @@
         ],
         "body": {
           "mode": "raw",
-          "raw": "{\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"candidat123\"\n}"
+          "raw": "{\n  \"email\": \"candidat@recrutement.com\",\n  \"password\": \"{{test_password}}\"\n}"
         },
         "url": {
           "raw": "http://localhost:8080/api/auth/signin",

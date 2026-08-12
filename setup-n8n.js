@@ -75,8 +75,8 @@ async function main() {
   // 3. Importer les 3 workflows
   const files = [
     'agent1-cv-parser.json',
-    'agent2-rh-manager.json',
-    'agent3-entretien.json'
+    'agent3-rh-manager.json',
+    'agent2-entretien.json'
   ];
 
   const webhookUrls = {};
@@ -135,8 +135,8 @@ async function main() {
   console.log('📋 CONFIGURATION — Copie dans application.properties :');
   console.log('═'.repeat(60));
   console.log(`n8n.webhook.agent1=${webhookUrls['agent1-cv-parser']     || N8N_BASE + '/webhook/agent1-cv-parser'}`);
-  console.log(`n8n.webhook.agent2=${webhookUrls['agent2-rh-manager']    || N8N_BASE + '/webhook/agent2-rh-manager'}`);
-  console.log(`n8n.webhook.agent3=${webhookUrls['agent3-entretien']     || N8N_BASE + '/webhook/agent3-entretien'}`);
+  console.log(`n8n.webhook.agent2=${webhookUrls['agent2-entretien']      || N8N_BASE + '/webhook/agent2-entretien'}`);
+  console.log(`n8n.webhook.agent3=${webhookUrls['agent3-rh-manager']     || N8N_BASE + '/webhook/agent3-rh-manager'}`);
   console.log('═'.repeat(60) + '\n');
 }
 

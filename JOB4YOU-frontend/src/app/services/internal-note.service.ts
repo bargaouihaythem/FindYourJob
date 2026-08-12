@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -8,7 +9,7 @@ import { AuthService } from './auth';
   providedIn: 'root'
 })
 export class InternalNoteService {
-  private apiUrl = 'http://localhost:8080/api/internal-notes';
+  private apiUrl = environment.apiUrl + '/internal-notes';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

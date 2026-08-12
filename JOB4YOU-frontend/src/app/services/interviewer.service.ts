@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -14,7 +15,7 @@ export interface Interviewer {
   providedIn: 'root'
 })
 export class InterviewerService {
-  private apiUrl = 'http://localhost:8080/api/interviews/interviewers';
+  private apiUrl = environment.apiUrl + '/interviews/interviewers';
 
   constructor(
     private http: HttpClient,

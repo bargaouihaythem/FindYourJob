@@ -24,6 +24,9 @@ public class CandidateResponse {
     private Candidate.CandidateStatus status;
     private LocalDateTime applicationDate;
     private LocalDateTime lastUpdated;
+    private String statusReason;
+    private String statusChangedBy;
+    private LocalDateTime statusChangedAt;
     private Long jobOfferId;
     private String jobOfferTitle;
     private com.recrutement.app.entity.JobOffer.JobFamily jobFamily;
@@ -57,6 +60,9 @@ public class CandidateResponse {
         this.status = candidate.getStatus();
         this.applicationDate = candidate.getApplicationDate();
         this.lastUpdated = candidate.getLastUpdated();
+        this.statusReason = candidate.getStatusReason();
+        this.statusChangedBy = candidate.getStatusChangedBy();
+        this.statusChangedAt = candidate.getStatusChangedAt();
         this.jobOfferId = candidate.getJobOffer() != null ? candidate.getJobOffer().getId() : null;
         this.jobOfferTitle = candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : null;
         this.jobFamily = candidate.getJobOffer() != null ? candidate.getJobOffer().getJobFamily() : null;

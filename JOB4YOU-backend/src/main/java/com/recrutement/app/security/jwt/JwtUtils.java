@@ -6,6 +6,7 @@ import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import jakarta.annotation.PostConstruct;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -25,6 +26,21 @@ public class JwtUtils {
 
     @Value("${app.jwt.expiration}")
     private int jwtExpirationMs;
+
+    @PostConstruct
+    void validateConfiguration() {
+        if (jwtSecret == null || jwtSecret.isBlank()) {
+            throw new IllegalStateException("APP_JWT_SECRET doit être configuré");
+        }
+        try {
+            byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
+            if (keyBytes.length < 32) {
+                throw new IllegalStateException("APP_JWT_SECRET doit contenir au moins 256 bits après décodage Base64");
+            }
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("APP_JWT_SECRET doit être une valeur Base64 valide", e);
+        }
+    }
 
     public String generateJwtToken(Authentication authentication) {
         UserPrinciple userPrincipal = (UserPrinciple) authentication.getPrincipal();

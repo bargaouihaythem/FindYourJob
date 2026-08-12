@@ -9,7 +9,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Service de scoring IA par critères pour les candidatures.
@@ -68,8 +67,8 @@ public class AiScoringService {
         } catch (Exception e) {
             log.info("[AiScoringService] Mode simulé activé (Cohere indisponible) : {}", e.getMessage());
             technical = computeTechnicalScore(candidateText, requiredSkills);
-            communication = simulateScore();
-            seniorityMatch = simulateScore();
+            communication = computeCommunicationScore(candidateText);
+            seniorityMatch = computeSeniorityScore(candidateText, experienceLevel);
             source = "SIMULATED";
         }
 
@@ -138,7 +137,33 @@ public class AiScoringService {
         return Math.max(30, score);
     }
 
-    private int simulateScore() {
-        return ThreadLocalRandom.current().nextInt(55, 91); // 55-90
+    private int computeCommunicationScore(String candidateText) {
+        if (candidateText == null || candidateText.isBlank()) {
+            return 50;
+        }
+        int score = 50;
+        int length = candidateText.trim().length();
+        if (length >= 80) score += 10;
+        if (length >= 200) score += 10;
+        if (candidateText.matches("(?s).*[^.!?]$")) score -= 5;
+        if (candidateText.contains("\n")) score += 5;
+        return Math.max(30, Math.min(90, score));
+    }
+
+    private int computeSeniorityScore(String candidateText, String requiredLevel) {
+        if (requiredLevel == null || requiredLevel.isBlank()) {
+            return 70;
+        }
+        String text = candidateText == null ? "" : candidateText.toLowerCase(Locale.ROOT);
+        String level = requiredLevel.toLowerCase(Locale.ROOT);
+        boolean seniorEvidence = text.contains("senior") || text.contains("lead")
+                || text.contains("manager") || text.contains("architect")
+                || text.contains("ans d'expérience") || text.contains("years of experience");
+        boolean juniorEvidence = text.contains("junior") || text.contains("stage")
+                || text.contains("débutant") || text.contains("étudiant");
+        if (level.contains("senior")) return seniorEvidence ? 85 : juniorEvidence ? 40 : 65;
+        if (level.contains("junior") || level.contains("entry")) return juniorEvidence ? 90 : seniorEvidence ? 70 : 75;
+        if (level.contains("mid") || level.contains("interm")) return seniorEvidence ? 80 : juniorEvidence ? 60 : 75;
+        return 70;
     }
 }

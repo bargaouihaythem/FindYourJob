@@ -7,7 +7,7 @@ import com.recrutement.app.dto.SignupRequest;
 import com.recrutement.app.dto.ForgotPasswordRequest;
 import com.recrutement.app.dto.ResetPasswordRequest;
 import com.recrutement.app.service.PasswordResetService;
-import com.recrutement.app.service.EmailService;
+import com.recrutement.app.service.RateLimitService;
 import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.repository.RoleRepository;
@@ -16,6 +16,7 @@ import com.recrutement.app.security.jwt.JwtUtils;
 import com.recrutement.app.security.services.UserPrinciple;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -23,14 +24,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+
+import java.time.Duration;
 
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -53,14 +56,17 @@ public class AuthController {
     PasswordResetService passwordResetService;
 
     @Autowired
-    EmailService emailService;
-
-    public AuthController() {
-        System.out.println("=== AuthController créé ===");
-    }
+    RateLimitService rateLimitService;
 
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest,
+                                               HttpServletRequest request) {
+        String remoteAddress = request.getRemoteAddr() != null ? request.getRemoteAddr() : "unknown";
+        String rateKey = "login:" + remoteAddress + ":" + loginRequest.getUsername().toLowerCase(java.util.Locale.ROOT);
+        if (!rateLimitService.allow(rateKey, 10, Duration.ofMinutes(15))) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(new MessageResponse("Trop de tentatives. Réessayez plus tard."));
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
@@ -114,90 +120,25 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
 
-    @GetMapping("/test")
-    public ResponseEntity<?> test() {
-        System.out.println("=== ENDPOINT TEST APPELÉ ===");
-        return ResponseEntity.ok(new MessageResponse("Test endpoint fonctionne"));
-    }
-
-    @PostMapping("/test-email")
-    public ResponseEntity<?> testEmail(@RequestBody Map<String, String> request) {
-        try {
-            String email = request.get("email");
-            if (email == null || email.trim().isEmpty()) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Email requis"));
-            }
-            
-            System.out.println("=== TEST EMAIL SIMPLE ===");
-            System.out.println("Envoi d'email de test vers: " + email);
-            
-            emailService.sendSimpleEmailSync(
-                email, 
-                "Test Email - Job4You", 
-                "Ceci est un email de test pour vérifier la configuration email. Si vous recevez ceci, la configuration fonctionne !"
-            );
-            
-            System.out.println("Email de test envoyé !");
-            return ResponseEntity.ok(new MessageResponse("Email de test envoyé vers: " + email));
-        } catch (Exception e) {
-            System.out.println("Erreur lors de l'envoi de l'email de test: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest().body(new MessageResponse("Erreur: " + e.getMessage()));
-        }
-    }
-
     @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordRequest request) {
-        System.out.println("=== DEBUT forgotPassword ===");
-        System.out.println("Email reçu: " + (request != null ? request.getEmail() : "request null"));
-        
-        if (request == null || request.getEmail() == null || request.getEmail().trim().isEmpty()) {
-            System.out.println("Email manquant ou invalide !");
-            return ResponseEntity.badRequest()
-                .body(new MessageResponse("Email requis"));
-        }
-        
-        try {
-            System.out.println("Demande de réinitialisation pour l'email: " + request.getEmail());
-            boolean success = passwordResetService.sendPasswordResetCode(request.getEmail());
-            
-            if (success) {
-                System.out.println("Code envoyé avec succès pour: " + request.getEmail());
-                return ResponseEntity.ok(new MessageResponse("Code de réinitialisation envoyé par email"));
-            } else {
-                System.out.println("Échec de l'envoi du code pour: " + request.getEmail());
-                return ResponseEntity.badRequest()
-                    .body(new MessageResponse("Utilisateur non trouvé ou erreur lors de l'envoi"));
-            }
-        } catch (Exception e) {
-            System.out.println("Exception lors de l'envoi du code: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest()
-                .body(new MessageResponse("Erreur lors de l'envoi du code de réinitialisation"));
-        }
+    public ResponseEntity<?> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        // Réponse identique que le compte existe ou non afin d’éviter
+        // l’énumération des utilisateurs.
+        passwordResetService.sendPasswordResetCode(request.getEmail());
+        return ResponseEntity.ok(new MessageResponse(
+                "Si un compte correspond à cette adresse, un code de réinitialisation sera envoyé"));
     }
 
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         try {
-            System.out.println("=== DEBUT resetPassword ===");
-            System.out.println("Code reçu: " + request.getResetCode());
-            
             boolean success = passwordResetService.resetPassword(request.getResetCode(), request.getNewPassword());
-            
             if (success) {
-                System.out.println("Mot de passe réinitialisé avec succès");
                 return ResponseEntity.ok(new MessageResponse("Mot de passe réinitialisé avec succès"));
-            } else {
-                System.out.println("Code invalide ou expiré");
-                return ResponseEntity.badRequest()
-                    .body(new MessageResponse("Code invalide ou expiré"));
             }
+            return ResponseEntity.badRequest().body(new MessageResponse("Code invalide ou expiré"));
         } catch (Exception e) {
-            System.out.println("Exception lors de la réinitialisation: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.badRequest()
-                .body(new MessageResponse("Erreur lors de la réinitialisation du mot de passe"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur lors de la réinitialisation du mot de passe"));
         }
     }
 }

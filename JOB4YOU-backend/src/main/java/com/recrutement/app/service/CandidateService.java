@@ -122,10 +122,13 @@ public class CandidateService {
         // Lier le CV au candidat en mémoire pour que l'Agent 1 reçoive l'URL du CV
         savedCandidate.setCv(cv);
 
-        // Envoyer un e-mail de confirmation au candidat (via Spring Mail)
-        notificationService.sendApplicationConfirmation(savedCandidate);
+        // Un seul système envoie l’accusé de réception : Agent 1 n8n si
+        // configuré, sinon Spring Boot assure le fallback local.
+        if (!n8nService.isAgent1Configured()) {
+            notificationService.sendApplicationConfirmation(savedCandidate);
+        }
 
-        // Déclencher l'Agent 1 n8n (CV Parser + scoring IA) en arrière-plan
+        // Déclencher l’Agent 1 n8n (CV Parser + scoring IA) en arrière-plan
         n8nService.triggerAgent1CvParser(savedCandidate);
 
         return new CandidateResponse(savedCandidate);
@@ -179,6 +182,7 @@ public class CandidateService {
     public CandidateResponse updateCandidate(Long id, CandidateRequest candidateRequest) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        assertCurrentUserCanActOn(candidate);
 
         candidate.setFirstName(candidateRequest.getFirstName());
         candidate.setLastName(candidateRequest.getLastName());
@@ -188,10 +192,9 @@ public class CandidateService {
         candidate.setLinkedinProfile(candidateRequest.getLinkedinProfile());
         candidate.setCoverLetter(candidateRequest.getCoverLetter());
         
-        if (candidateRequest.getStatus() != null) {
-            candidate.setStatus(candidateRequest.getStatus());
-        }
-        
+        // Le statut ne peut pas être modifié par l’endpoint générique :
+        // il doit passer par updateCandidateStatus/managerDecision afin que
+        // la machine à états, l’audit et les notifications soient appliqués.
         candidate.setLastUpdated(LocalDateTime.now());
 
         Candidate updatedCandidate = candidateRepository.save(candidate);
@@ -205,6 +208,7 @@ public class CandidateService {
     public void deleteCandidate(Long id) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        assertCurrentUserCanActOn(candidate);
 
         // Supprimer le CV du stockage local si il existe
         if (candidate.getCv() != null && candidate.getCv().getStoredFilename() != null) {
@@ -264,6 +268,8 @@ public class CandidateService {
      */
     public List<CandidateResponse> getValidatedCandidatesForManager(String username) {
         List<Candidate.CandidateStatus> validatedStatuses = List.of(
+                Candidate.CandidateStatus.CV_REVIEWED,
+                Candidate.CandidateStatus.PHONE_SCREENING,
                 Candidate.CandidateStatus.TECHNICAL_TEST,
                 Candidate.CandidateStatus.INTERVIEW,
                 Candidate.CandidateStatus.FINAL_INTERVIEW,
@@ -307,8 +313,12 @@ public class CandidateService {
      *   Spring Boot → persiste le nouveau statut, déclenche Agent 2 si validation RH
      *   n8n Agent 2 → notifie le manager, envoie le dossier, relance si nécessaire
      */
-    @Transactional
     public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status) {
+        return updateCandidateStatus(id, status, null);
+    }
+
+    @Transactional
+    public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status, String reason) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
@@ -322,7 +332,21 @@ public class CandidateService {
 
         Candidate.CandidateStatus previousStatus = candidate.getStatus();
         assertValidTransition(previousStatus, effectiveStatus);
+
+        String effectiveReason = reason != null ? reason.trim() : "";
+        if (effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED && effectiveReason.isBlank()) {
+            throw new IllegalArgumentException("Un motif est obligatoire pour un rejet manuel");
+        }
+        if (effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED && effectiveReason.isBlank()) {
+            effectiveReason = "Rejet automatique : score IA inférieur au seuil";
+        }
+
         candidate.setStatus(effectiveStatus);
+        if (!effectiveReason.isBlank()) {
+            candidate.setStatusReason(effectiveReason);
+        }
+        candidate.setStatusChangedBy(currentActor());
+        candidate.setStatusChangedAt(LocalDateTime.now());
         candidate.setLastUpdated(LocalDateTime.now());
 
         Candidate updatedCandidate = candidateRepository.save(candidate);
@@ -331,27 +355,22 @@ public class CandidateService {
             auditLogService.log("CANDIDATE", updatedCandidate.getId(), "STATUS_CHANGE", previousStatus, effectiveStatus);
         }
 
-        // CV validé par le RH → le CANDIDAT est informé que son profil est présélectionné
-        // (Agent 2). La notification du MANAGER est désormais déclenchée plus tard, au
-        // passage en "Test technique" (après le pré-filtrage téléphonique RH), afin que le
-        // manager ne soit sollicité que pour les candidats ayant franchi cette première étape.
+        // Validation RH → deux notifications distinctes :
+        // 1) Agent 2 informe le candidat que son profil est présélectionné ;
+        // 2) Agent 3 transmet immédiatement le dossier au(x) manager(s) résolus
+        //    par département, puis par famille métier, puis par managerEmail.
+        // Le manager ne doit pas attendre le statut TECHNICAL_TEST pour recevoir le dossier.
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             List<String> resolvedManagerEmails = managerRoutingService.resolveManagerEmails(updatedCandidate.getJobOffer());
             String refManagerEmail = !resolvedManagerEmails.isEmpty()
-                ? resolvedManagerEmails.get(0) : "bargaouihaythem1@gmail.com";
+                ? resolvedManagerEmails.get(0) : System.getenv().getOrDefault("DEFAULT_MANAGER_EMAIL", "manager@example.com");
             n8nService.triggerAgent2CvSelected(
                 updatedCandidate.getId(), updatedCandidate.getEmail(),
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
                 offreTitre, refManagerEmail
             );
-        }
-
-        // Passage en évaluation technique → transmission du dossier complet au(x) manager(s)
-        // du département (Agent 3). C'est le moment où le manager prend le relais.
-        if (previousStatus != Candidate.CandidateStatus.TECHNICAL_TEST
-                && effectiveStatus == Candidate.CandidateStatus.TECHNICAL_TEST) {
             notifyManagersForTechnicalEvaluation(updatedCandidate);
         }
 
@@ -363,7 +382,8 @@ public class CandidateService {
         if (effectiveStatus == Candidate.CandidateStatus.ACCEPTED
                 || effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
                 || effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
-                || effectiveStatus == Candidate.CandidateStatus.HIRED) {
+                || effectiveStatus == Candidate.CandidateStatus.HIRED
+                || effectiveStatus == Candidate.CandidateStatus.WITHDRAWN) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             n8nService.triggerAgent3FinalDecision(
@@ -375,6 +395,22 @@ public class CandidateService {
         }
 
         return new CandidateResponse(updatedCandidate);
+    }
+
+    @Transactional
+    public CandidateResponse withdrawApplication(Long id, String reason) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        assertCandidateOwnerOrPrivileged(candidate);
+        if (candidate.getStatus() == Candidate.CandidateStatus.HIRED
+                || candidate.getStatus() == Candidate.CandidateStatus.WITHDRAWN
+                || candidate.getStatus() == Candidate.CandidateStatus.MANAGER_REJECTED
+                || candidate.getStatus() == Candidate.CandidateStatus.AUTO_REJECTED) {
+            throw new IllegalArgumentException("Cette candidature ne peut plus être retirée");
+        }
+        String withdrawalReason = reason == null || reason.isBlank()
+                ? "Retrait demandé par le candidat" : reason.trim();
+        return updateCandidateStatus(id, Candidate.CandidateStatus.WITHDRAWN, withdrawalReason);
     }
 
     /**
@@ -399,7 +435,7 @@ public class CandidateService {
         String cvUrl = candidate.getCv() != null ? candidate.getCv().getFileUrl() : null;
         List<String> resolved = managerRoutingService.resolveManagerEmails(candidate.getJobOffer());
         List<String> managerEmails = !resolved.isEmpty()
-            ? resolved : List.of("bargaouihaythem1@gmail.com");
+            ? resolved : List.of(System.getenv().getOrDefault("DEFAULT_MANAGER_EMAIL", "manager@example.com"));
         for (String managerEmail : managerEmails) {
             n8nService.triggerAgent3HrValidation(
                 candidate.getId(), candidate.getEmail(),
@@ -482,6 +518,32 @@ public class CandidateService {
             throw new IllegalArgumentException(
                     "Transition de statut non autorisée : " + from + " → " + to);
         }
+    }
+
+    private void assertCandidateOwnerOrPrivileged(Candidate candidate) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new AccessDeniedException("Authentification requise");
+        }
+        User currentUser = userRepository.findByUsername(authentication.getName()).orElse(null);
+        if (currentUser == null) {
+            throw new AccessDeniedException("Utilisateur introuvable");
+        }
+        boolean privileged = currentUser.getRoles().stream().anyMatch(r ->
+                r.getName() == Role.ERole.ROLE_HR || r.getName() == Role.ERole.ROLE_ADMIN);
+        boolean owner = currentUser.getRoles().stream().anyMatch(r -> r.getName() == Role.ERole.ROLE_USER)
+                && currentUser.getEmail() != null && candidate.getEmail() != null
+                && currentUser.getEmail().equalsIgnoreCase(candidate.getEmail());
+        if (!privileged && !owner) {
+            throw new AccessDeniedException("Vous ne pouvez retirer que votre propre candidature");
+        }
+    }
+
+    private String currentActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        return authentication != null && authentication.isAuthenticated()
+                ? authentication.getName() : "SYSTEM";
     }
 
     private void assertCurrentUserCanActOn(Candidate candidate) {
@@ -589,7 +651,9 @@ public class CandidateService {
                 : Candidate.CandidateStatus.AUTO_REJECTED;  // score bas → rejeté par IA (Agent 3)
 
         // Déléguer à updateCandidateStatus pour déclencher Agent 2 ou Agent 3
-        return updateCandidateStatus(saved.getId(), newStatus);
+        String scoreReason = newStatus == Candidate.CandidateStatus.AUTO_REJECTED
+                ? "Rejet automatique : score IA inférieur au seuil" : null;
+        return updateCandidateStatus(saved.getId(), newStatus, scoreReason);
     }
 
     /**
@@ -681,6 +745,11 @@ public class CandidateService {
      */
     @Transactional
     public CandidateResponse managerDecision(Long id, Candidate.CandidateStatus decision) {
+        return managerDecision(id, decision, null);
+    }
+
+    @Transactional
+    public CandidateResponse managerDecision(Long id, Candidate.CandidateStatus decision, String reason) {
         if (decision != Candidate.CandidateStatus.ACCEPTED && decision != Candidate.CandidateStatus.REJECTED) {
             throw new IllegalArgumentException("Décision manager invalide : doit être ACCEPTED ou REJECTED");
         }
@@ -699,7 +768,7 @@ public class CandidateService {
             throw new IllegalArgumentException("Le dossier doit d'abord être validé par le RH (CV_REVIEWED) avant décision manager");
         }
 
-        return updateCandidateStatus(id, decision);
+        return updateCandidateStatus(id, decision, reason);
     }
 
     /**

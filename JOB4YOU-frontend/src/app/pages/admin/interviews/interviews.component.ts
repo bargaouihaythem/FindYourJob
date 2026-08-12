@@ -1,3 +1,4 @@
+import { environment } from "../../../../environments/environment";
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
@@ -520,7 +521,7 @@ export class InterviewsComponent implements OnInit {
    * Télécharge un fichier via une requête HTTP authentifiée
    */
   private downloadFileAuthenticated(fileName: string, candidateName: string): void {
-    const fileUrl = `http://localhost:8080/api/files/${fileName}/download`;
+    const fileUrl = `${environment.apiUrl}/files/${fileName}/download`;
     
     this.cvService.downloadFile(fileUrl).subscribe({
       next: (blob: Blob) => {

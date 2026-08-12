@@ -23,7 +23,7 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/n8n")
-@CrossOrigin(origins = "*")
+
 public class N8nTestController {
 
     @Value("${n8n.webhook.agent1:}")
@@ -80,11 +80,12 @@ public class N8nTestController {
             return ResponseEntity.badRequest().body(error);
         }
 
-        // Valider que c'est bien une URL n8n pour éviter les appels vers des serveurs externes
-        if (!webhookUrl.startsWith("http://localhost") && !webhookUrl.startsWith("https://")) {
+        // Ne jamais accepter une URL arbitraire fournie par le client :
+        // le test doit viser uniquement l’un des webhooks configurés.
+        if (!isConfiguredWebhook(webhookUrl)) {
             Map<String, Object> error = new HashMap<>();
             error.put("ok", false);
-            error.put("message", "URL non autorisée. Utiliser une URL localhost ou https://");
+            error.put("message", "URL non autorisée. Utiliser un webhook n8n configuré");
             return ResponseEntity.badRequest().body(error);
         }
 
@@ -142,6 +143,12 @@ public class N8nTestController {
 
     private boolean isConfigured(String url) {
         return url != null && !url.isBlank();
+    }
+
+    private boolean isConfiguredWebhook(String requestedUrl) {
+        return requestedUrl != null && (requestedUrl.equals(agent1Webhook)
+                || requestedUrl.equals(agent2Webhook)
+                || requestedUrl.equals(agent3Webhook));
     }
 
     /** Masque la partie token/path de l'URL pour les logs affichés */

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Component;
  * Configuration pour créer l'utilisateur admin par défaut au démarrage
  */
 @Component
+@Order(2)
 public class AdminUserCreator implements CommandLineRunner {    
     private static final Logger logger = LoggerFactory.getLogger(AdminUserCreator.class);
 
@@ -24,6 +26,33 @@ public class AdminUserCreator implements CommandLineRunner {
     
     @Value("${app.init.create-default-users:false}")
     private boolean createDefaultUsers;
+
+    @Value("${APP_DEFAULT_ADMIN_USERNAME:admin}")
+    private String defaultAdminUsername;
+
+    @Value("${APP_DEFAULT_ADMIN_PASSWORD:}")
+    private String defaultAdminPassword;
+
+    @Value("${APP_DEFAULT_ADMIN_EMAIL:}")
+    private String defaultAdminEmail;
+
+    @Value("${APP_DEFAULT_HR_USERNAME:rh}")
+    private String defaultHrUsername;
+
+    @Value("${APP_DEFAULT_HR_PASSWORD:}")
+    private String defaultHrPassword;
+
+    @Value("${APP_DEFAULT_HR_EMAIL:}")
+    private String defaultHrEmail;
+
+    @Value("${APP_DEFAULT_CANDIDATE_USERNAME:candidat}")
+    private String defaultCandidateUsername;
+
+    @Value("${APP_DEFAULT_CANDIDATE_PASSWORD:}")
+    private String defaultCandidatePassword;
+
+    @Value("${APP_DEFAULT_CANDIDATE_EMAIL:}")
+    private String defaultCandidateEmail;
 
     @Override
     public void run(String... args) throws Exception {
@@ -70,17 +99,24 @@ public class AdminUserCreator implements CommandLineRunner {
             }
         }
         
-        createUser("haythemadmin", "haythemadmin", "haythemadmin@admin.com", 
-                  "Haythem", "Admin", "ROLE_ADMIN", "Utilisateur admin");
-        
-        createUser("rh_user", "rh1234567", "rh@company.com", 
-                  "Sarah", "RH", "ROLE_HR", "Utilisateur RH");
-        
-        createUser("candidat_test", "candidat123", "candidat@test.com", 
-                  "Jean", "Dupont", "ROLE_USER", "Candidat simple");
-        
-        createUser("haythem_user", "haythem123", "bargaouihaythem1@gmail.com", 
-                  "Haythem", "Bargaoui", "ROLE_USER", "Utilisateur de test pour mot de passe oublié");
+        if (defaultAdminPassword == null || defaultAdminPassword.isBlank()
+                || defaultAdminEmail == null || defaultAdminEmail.isBlank()
+                || defaultHrPassword == null || defaultHrPassword.isBlank()
+                || defaultHrEmail == null || defaultHrEmail.isBlank()
+                || defaultCandidatePassword == null || defaultCandidatePassword.isBlank()
+                || defaultCandidateEmail == null || defaultCandidateEmail.isBlank()) {
+            logger.warn("Initialisation ignorée : les variables APP_DEFAULT_* nécessaires ne sont pas configurées.");
+            return;
+        }
+
+        createUser(defaultAdminUsername, defaultAdminPassword, defaultAdminEmail,
+                  "Administrateur", "JOB4YOU", "ROLE_ADMIN", "Utilisateur administrateur");
+
+        createUser(defaultHrUsername, defaultHrPassword, defaultHrEmail,
+                  "Responsable", "RH", "ROLE_HR", "Utilisateur RH");
+
+        createUser(defaultCandidateUsername, defaultCandidatePassword, defaultCandidateEmail,
+                  "Candidat", "Test", "ROLE_USER", "Utilisateur candidat");
         
         logger.info("✅ Création des utilisateurs par défaut terminée avec succès!");
     }
@@ -103,18 +139,41 @@ public class AdminUserCreator implements CommandLineRunner {
                     username, encodedPassword, email, firstName, lastName);
 
                 if (result > 0) {
+                    assignRole(username, role);
                     logger.info("✅ Utilisateur '{}' créé avec succès !", username);
                     logger.info("  Username: {}", username);
-                    logger.info("  Password: {}", password);
+                    logger.info("  Password: [masqué]");
                     logger.info("  Role: {}", role);                } else {
                     logger.error("❌ Échec de la création de l'utilisateur '{}'", username);
                 }
             } else {
+                assignRole(username, role);
                 logger.info("ℹ️  L'utilisateur '{}' existe déjà", username);
             }
 
         } catch (Exception e) {
             logger.error("❌ Erreur lors de la création de l'utilisateur '{}': {}", username, e.getMessage());
+        }
+    }
+
+    private void assignRole(String username, String roleName) {
+        try {
+            Long userId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM users WHERE username = ?", Long.class, username);
+            Long roleId = jdbcTemplate.queryForObject(
+                    "SELECT id FROM roles WHERE name = ?", Long.class, roleName);
+            if (userId != null && roleId != null) {
+                Integer relationCount = jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM user_roles WHERE user_id = ? AND role_id = ?",
+                        Integer.class, userId, roleId);
+                if (relationCount == null || relationCount == 0) {
+                    jdbcTemplate.update(
+                            "INSERT INTO user_roles (user_id, role_id) VALUES (?, ?)",
+                            userId, roleId);
+                }
+            }
+        } catch (Exception e) {
+            logger.warn("Impossible d'associer le rôle {} à l'utilisateur {} : {}", roleName, username, e.getMessage());
         }
     }
 }

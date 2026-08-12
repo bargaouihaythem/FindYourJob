@@ -4,9 +4,11 @@ import com.recrutement.app.entity.Role;
 import com.recrutement.app.repository.RoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 @Component
+@Order(1)
 public class DataInitializer implements CommandLineRunner {
 
     @Autowired

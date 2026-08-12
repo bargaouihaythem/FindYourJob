@@ -22,7 +22,8 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "X-N8N-API-Key", "value": "={{ $env.JOB4YOU_N8N_API_KEY || '' }}" }
           ]
         },
         "options": {}
@@ -35,7 +36,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
+        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
         "toEmail": "={{ $('Webhook — Nouvelle candidature').item.json.email }}",
         "subject": "✅ Candidature reçue — {{ $('Webhook — Nouvelle candidature').item.json.jobOfferTitle }}",
         "emailType": "html",

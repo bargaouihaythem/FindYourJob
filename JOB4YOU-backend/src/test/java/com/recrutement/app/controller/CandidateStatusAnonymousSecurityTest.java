@@ -5,8 +5,10 @@ import com.recrutement.app.dto.CandidateResponse;
 import com.recrutement.app.entity.Candidate.CandidateStatus;
 import com.recrutement.app.security.jwt.AuthEntryPointJwt;
 import com.recrutement.app.security.jwt.JwtUtils;
+import com.recrutement.app.security.jwt.N8nApiKeyAuthenticationFilter;
 import com.recrutement.app.security.services.UserDetailsServiceImpl;
 import com.recrutement.app.service.CandidateService;
+import com.recrutement.app.service.N8nRequestAuthenticator;
 import com.recrutement.app.service.PdfReportService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,27 +25,10 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * Vérifie, avec la VRAIE configuration de sécurité ({@link WebSecurityConfig},
- * qui autorise anonymement l'URL de mise à jour de statut pour n8n), qu'un appel
- * anonyme ne peut positionner que CV_REVIEWED ou AUTO_REJECTED — jamais
- * ACCEPTED/HIRED/REJECTED en direct.
- *
- * Contrairement à CandidateControllerWorkflowTest (qui n'importe que
- * EnableMethodSecurity et hérite donc de la sécurité Spring Boot par défaut,
- * entièrement authentifiée), cette classe importe WebSecurityConfig pour que
- * les requêtes anonymes atteignent réellement l'évaluation PreAuthorize,
- * comme en production.
- *
- * {@link AuthEntryPointJwt} n'est PAS mocké ici (contrairement à
- * CandidateControllerWorkflowTest) : pour un utilisateur anonyme, Spring
- * Security délègue un AccessDeniedException à l'AuthenticationEntryPoint
- * plutôt que de renvoyer 403 directement — il faut donc la vraie implémentation
- * (qui répond 401) pour que le test reflète le comportement réel de prod.
- */
+/** Vérifie le refus des appels anonymes et l'authentification machine n8n. */
 @WebMvcTest(CandidateController.class)
-@Import({WebSecurityConfig.class, AuthEntryPointJwt.class})
-@DisplayName("CandidateController — /status : autorisations réelles pour appels anonymes (n8n)")
+@Import({WebSecurityConfig.class, AuthEntryPointJwt.class, N8nApiKeyAuthenticationFilter.class})
+@DisplayName("CandidateController — statut : JWT ou clé n8n obligatoire")
 class CandidateStatusAnonymousSecurityTest {
 
     @Autowired MockMvc mockMvc;
@@ -52,6 +37,7 @@ class CandidateStatusAnonymousSecurityTest {
     @MockBean PdfReportService pdfReportService;
     @MockBean UserDetailsServiceImpl userDetailsService;
     @MockBean JwtUtils jwtUtils;
+    @MockBean N8nRequestAuthenticator n8nRequestAuthenticator;
 
     private CandidateResponse fakeResponse(Long id, CandidateStatus status) {
         CandidateResponse r = new CandidateResponse();
@@ -62,32 +48,43 @@ class CandidateStatusAnonymousSecurityTest {
     }
 
     @Test
-    @DisplayName("anonyme + CV_REVIEWED → 200 (Agent 1 valide le score IA)")
-    void anonymous_canSetCvReviewed() throws Exception {
+    @DisplayName("anonyme + CV_REVIEWED → 401")
+    void anonymousCannotSetCvReviewed() throws Exception {
+        mockMvc.perform(patch("/api/candidates/1/status")
+                        .with(csrf())
+                        .param("status", "CV_REVIEWED"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("clé n8n valide + CV_REVIEWED → 200")
+    void validN8nKeyCanSetCvReviewed() throws Exception {
+        when(n8nRequestAuthenticator.isValid("test-key")).thenReturn(true);
         when(candidateService.updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED))
                 .thenReturn(fakeResponse(1L, CandidateStatus.CV_REVIEWED));
 
         mockMvc.perform(patch("/api/candidates/1/status")
                         .with(csrf())
+                        .header("X-N8N-API-Key", "test-key")
                         .param("status", "CV_REVIEWED"))
                 .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("anonyme + AUTO_REJECTED → 200 (Agent 1 rejette automatiquement)")
-    void anonymous_canSetAutoRejected() throws Exception {
-        when(candidateService.updateCandidateStatus(1L, CandidateStatus.AUTO_REJECTED))
-                .thenReturn(fakeResponse(1L, CandidateStatus.AUTO_REJECTED));
+    @DisplayName("clé n8n invalide + AUTO_REJECTED → 401")
+    void invalidN8nKeyCannotSetAutoRejected() throws Exception {
+        when(n8nRequestAuthenticator.isValid("wrong-key")).thenReturn(false);
 
         mockMvc.perform(patch("/api/candidates/1/status")
                         .with(csrf())
+                        .header("X-N8N-API-Key", "wrong-key")
                         .param("status", "AUTO_REJECTED"))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
-    @DisplayName("anonyme + ACCEPTED → 401 (ne peut pas contourner RH/Manager)")
-    void anonymous_cannotSetAccepted() throws Exception {
+    @DisplayName("anonyme + ACCEPTED → 401")
+    void anonymousCannotSetAccepted() throws Exception {
         mockMvc.perform(patch("/api/candidates/1/status")
                         .with(csrf())
                         .param("status", "ACCEPTED"))
@@ -96,7 +93,7 @@ class CandidateStatusAnonymousSecurityTest {
 
     @Test
     @DisplayName("anonyme + HIRED → 401")
-    void anonymous_cannotSetHired() throws Exception {
+    void anonymousCannotSetHired() throws Exception {
         mockMvc.perform(patch("/api/candidates/1/status")
                         .with(csrf())
                         .param("status", "HIRED"))
@@ -105,7 +102,7 @@ class CandidateStatusAnonymousSecurityTest {
 
     @Test
     @DisplayName("anonyme + REJECTED → 401")
-    void anonymous_cannotSetRejectedDirectly() throws Exception {
+    void anonymousCannotSetRejectedDirectly() throws Exception {
         mockMvc.perform(patch("/api/candidates/1/status")
                         .with(csrf())
                         .param("status", "REJECTED"))

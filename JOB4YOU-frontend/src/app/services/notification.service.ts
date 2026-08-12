@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -8,7 +9,7 @@ import { AuthService } from './auth';
   providedIn: 'root'
 })
 export class NotificationService {
-  private apiUrl = 'http://localhost:8080/api/notifications';
+  private apiUrl = environment.apiUrl + '/notifications';
 
   constructor(
     private http: HttpClient,
@@ -53,7 +54,7 @@ export class NotificationService {
    */
   sendDetailedFeedbackNotification(feedbackId: number, notificationData: FeedbackNotificationRequest): Observable<MessageResponse> {
     return this.http.post<MessageResponse>(
-      `http://localhost:8080/api/feedbacks/${feedbackId}/send-detailed-notification`,
+      `${environment.apiUrl}/feedbacks/${feedbackId}/send-detailed-notification`,
       notificationData,
       { headers: this.authService.getAuthHeaders() }
     );

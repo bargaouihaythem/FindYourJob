@@ -49,7 +49,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
+        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
         "toEmail": "={{ $json.candidateEmail }}",
         "subject": "✅ Votre profil a été retenu — {{ $json.jobTitle }}",
         "emailType": "html",
@@ -73,7 +73,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
+        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
         "toEmail": "={{ $json.candidateEmail }}",
         "subject": "📅 Votre entretien est planifié — {{ $json.jobTitle }}",
         "emailType": "html",
@@ -87,7 +87,7 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
+        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
         "toEmail": "={{ $json.interviewerEmail || 'rh1@job4you.com' }}",
         "subject": "📅 Entretien planifié — {{ $json.candidateFirst }} {{ $json.candidateLast }} / {{ $json.jobTitle }}",
         "emailType": "html",

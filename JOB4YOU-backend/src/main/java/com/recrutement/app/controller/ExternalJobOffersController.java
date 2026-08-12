@@ -17,7 +17,7 @@ import java.util.List;
  * Source : Remotive (API publique gratuite). Le scraping LinkedIn n'est pas
  * proposé : contraire à ses conditions d'utilisation (voir ExternalJobOffersService).
  */
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/external-offers")
 @Tag(name = "External Offers", description = "Étude comparative des offres d'emploi externes (Remotive)")

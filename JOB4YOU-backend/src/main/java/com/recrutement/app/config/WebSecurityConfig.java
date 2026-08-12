@@ -2,15 +2,10 @@ package com.recrutement.app.config;
 
 import com.recrutement.app.security.jwt.AuthEntryPointJwt;
 import com.recrutement.app.security.jwt.AuthTokenFilter;
+import com.recrutement.app.security.jwt.N8nApiKeyAuthenticationFilter;
 import com.recrutement.app.security.services.UserDetailsServiceImpl;
-
-import io.swagger.v3.oas.models.Components;
-import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
-import io.swagger.v3.oas.models.security.SecurityScheme;
-
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,9 +13,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -34,7 +27,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true )
+@EnableMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig {
 
     @Autowired
@@ -42,6 +35,12 @@ public class WebSecurityConfig {
 
     @Autowired
     private AuthEntryPointJwt unauthorizedHandler;
+
+    @Autowired
+    private N8nApiKeyAuthenticationFilter n8nApiKeyAuthenticationFilter;
+
+    @Value("${app.cors.allowed-origins:http://localhost:4200}")
+    private String allowedOrigins;
 
     @Bean
     public AuthTokenFilter authenticationJwtTokenFilter() {
@@ -66,11 +65,6 @@ public class WebSecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-  /*  @Bean
-    public WebSecurityCustomizer webSecurityCustomizer() {
-        return (web) -> web.ignoring().requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-resources/**", "/webjars/**");
-    }*/
-
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -79,7 +73,6 @@ public class WebSecurityConfig {
             .exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Autoriser Swagger
                 .requestMatchers(
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
@@ -87,45 +80,44 @@ public class WebSecurityConfig {
                     "/swagger-resources/**",
                     "/webjars/**"
                 ).permitAll()
-                // Autoriser tes endpoints publics
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/job-offers/public/**").permitAll()
-                // .requestMatchers("/api/candidates/apply").permitAll() // Commenté : candidature nécessite un compte
-                .requestMatchers("/api/files/**").permitAll() // Allow access to uploaded files
-                .requestMatchers("/api/candidates/*/ai-score").permitAll() // n8n Agent 1 saves AI score
-                .requestMatchers("/api/candidates/*/ai-score/recompute").permitAll() // n8n Agent 1 recalcule le score via Cohere
-                .requestMatchers("/api/candidates/*/status").permitAll() // n8n Agent 1 auto CV_REVIEWED
-                .requestMatchers("/api/notifications/n8n/**").permitAll() // n8n Agent 2 reads daily candidates
-                .requestMatchers("/api/matching/**").permitAll() // Matching inverse CV -> offres, accessible sans compte
-                .requestMatchers("/error").permitAll()     // <-- Ajout pour éviter 401 sur /error
-                
-                // Endpoints pour tous les utilisateurs authentifiés
+                .requestMatchers("/api/matching/**").permitAll()
+                .requestMatchers("/error").permitAll()
+                .requestMatchers("/actuator/health").permitAll()
+                // Les fichiers, scores, statuts et notifications n8n exigent
+                // maintenant un JWT ou une authentification machine ROLE_N8N.
+                .requestMatchers("/api/files/**").authenticated()
                 .requestMatchers("/api/candidates/**").authenticated()
-                .requestMatchers("/api/interviews/**").authenticated() 
+                .requestMatchers("/api/interviews/**").authenticated()
                 .requestMatchers("/api/feedbacks/**").authenticated()
                 .requestMatchers("/api/job-offers/**").authenticated()
                 .requestMatchers("/api/notifications/**").authenticated()
                 .requestMatchers("/api/emails/**").authenticated()
-                
-                // Toute autre requête nécessite une auth
                 .anyRequest().authenticated()
             );
 
-        // Authentification JWT
         http.authenticationProvider(authenticationProvider());
-        http.addFilterBefore(authenticationJwtTokenFilter(), UsernamePasswordAuthenticationFilter.class);
+        // La clé n8n est traitée avant le filtre JWT. Si un JWT est aussi fourni,
+        // le filtre JWT reprend normalement la priorité et authentifie l'utilisateur.
+        http.addFilterBefore(n8nApiKeyAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterAfter(authenticationJwtTokenFilter(), N8nApiKeyAuthenticationFilter.class);
 
         return http.build();
     }
-    
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        configuration.setAllowedOrigins(Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-N8N-API-Key"));
+        configuration.setExposedHeaders(Arrays.asList("Content-Disposition"));
         configuration.setAllowCredentials(true);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;

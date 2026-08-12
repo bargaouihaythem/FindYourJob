@@ -27,7 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/candidates")
 @Tag(name = "Candidates", description = "API pour la gestion des candidats")
@@ -154,15 +154,18 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/status")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or " +
-            "(isAnonymous() and (#status.name() == 'CV_REVIEWED' or #status.name() == 'AUTO_REJECTED'))")
-    @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager, ou n8n en anonyme limité à CV_REVIEWED/AUTO_REJECTED)")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Mettre à jour le statut d'un candidat (RH/Admin/Manager ou n8n authentifié)")
     public ResponseEntity<?> updateCandidateStatus(
             @PathVariable Long id,
             @Parameter(description = "Nouveau statut")
-            @RequestParam Candidate.CandidateStatus status) {
+            @RequestParam Candidate.CandidateStatus status,
+            @Parameter(description = "Motif obligatoire pour un rejet manuel")
+            @RequestParam(required = false) String reason) {
         try {
-            CandidateResponse response = candidateService.updateCandidateStatus(id, status);
+            CandidateResponse response = (reason == null || reason.isBlank())
+                    ? candidateService.updateCandidateStatus(id, status)
+                    : candidateService.updateCandidateStatus(id, status, reason);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             // Transition de statut non autorisée (machine à états) → 400 plutôt que 500
@@ -171,6 +174,7 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/ai-score")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Sauvegarder le score IA calculé par l'Agent 1 n8n")
     public ResponseEntity<CandidateResponse> saveAiScore(
             @PathVariable Long id,
@@ -182,7 +186,7 @@ public class CandidateController {
     }
 
     @PostMapping("/{id}/ai-score/recompute")
-    @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER') or isAnonymous()")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via Cohere, avec fallback simulé si indisponible. Appelé par n8n Agent 1 à chaque nouvelle candidature, ou manuellement par le RH/Manager.")
     public ResponseEntity<CandidateResponse> recomputeAiScore(@PathVariable Long id) {
         CandidateResponse response = candidateService.recomputeAiScore(id);
@@ -216,13 +220,29 @@ public class CandidateController {
 
     @PatchMapping("/{id}/manager-decision")
     @PreAuthorize("hasRole('MANAGER') or hasRole('HR') or hasRole('ADMIN')")
-    @Operation(summary = "Décision du manager sur un dossier validé", description = "ACCEPTED ou REJECTED — le dossier doit déjà être validé par le RH (CV_REVIEWED ou plus avancé)")
+    @Operation(summary = "Décision du manager sur un dossier validé", description = "ACCEPTED ou REJECTED — un motif est obligatoire en cas de rejet")
     public ResponseEntity<?> managerDecision(
             @PathVariable Long id,
-            @RequestParam Candidate.CandidateStatus decision) {
+            @RequestParam Candidate.CandidateStatus decision,
+            @RequestParam(required = false) String reason) {
         try {
-            CandidateResponse response = candidateService.managerDecision(id, decision);
+            CandidateResponse response = (reason == null || reason.isBlank())
+                    ? candidateService.managerDecision(id, decision)
+                    : candidateService.managerDecision(id, decision, reason);
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{id}/withdraw")
+    @PreAuthorize("hasRole('USER') or hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Retirer une candidature", description = "Le candidat peut retirer sa candidature avant un état terminal.")
+    public ResponseEntity<?> withdrawApplication(
+            @PathVariable Long id,
+            @RequestParam(required = false) String reason) {
+        try {
+            return ResponseEntity.ok(candidateService.withdrawApplication(id, reason));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
         }

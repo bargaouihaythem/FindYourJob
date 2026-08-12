@@ -1,3 +1,4 @@
+import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
@@ -8,7 +9,7 @@ import { AuthService } from './auth';
   providedIn: 'root'
 })
 export class ReminderService {
-  private apiUrl = 'http://localhost:8080/api/reminders';
+  private apiUrl = environment.apiUrl + '/reminders';
 
   constructor(private http: HttpClient, private authService: AuthService) {}
 

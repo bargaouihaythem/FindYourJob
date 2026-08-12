@@ -1,459 +1,146 @@
-# CAHIER DES CHARGES - FindYourJob
+# Cahier des charges corrigé — JOB4YOU
 
-## Table des matières
-1. [Contexte et définition du problème](#contexte)
-2. [Objectif de projet](#objectif)
-3. [Acteurs](#acteurs)
-4. [Les actions associées à chaque acteur](#actions)
-5. [Choix de technologie](#choix-techno)
-6. [Modules à développer](#modules)
-7. [Méthodologie de conception adoptée](#methodologie)
-8. [Architecture](#architecture)
-9. [Choix technologiques](#choix-technologiques)
+## 1. Présentation du projet
 
----
+JOB4YOU est une plateforme web destinée à centraliser le processus de recrutement interne. Elle permet de gérer les offres d’emploi, les candidatures, les CV, les entretiens, les feedbacks, les décisions et les notifications.
 
-## 1 - Contexte et définition du problème {#contexte}
+Le projet est développé avec un frontend Angular 20, un backend Spring Boot 3.2, une base PostgreSQL, un service de scoring Cohere et des workflows n8n optionnels. Le présent document décrit l’état réellement observé dans le dépôt et distingue les fonctions disponibles des évolutions encore nécessaires.
 
-### Contexte
-FindYourJob est une plateforme de recrutement innovante développée en partenariat entre **Sesame** et **Sopra Steria HR Software**. Elle vise à moderniser et automatiser le processus de recrutement en offrant une solution intégrée pour les candidats et les responsables RH.
+## 2. Problématique
 
-### Problème identifié
-- **Processus de recrutement fragmenté** : Les solutions RH actuelles manquent d'intégration efficace
-- **Absence d'analyse automatisée des CV** : Les recruteurs passent trop de temps à trier manuellement les candidatures
-- **Communication inefficace** : Manque de notifications automatisées et de suivi en temps réel
-- **Manque de transparence** : Les candidats ne suivent pas l'état de leurs candidatures
+Le processus de recrutement nécessite une meilleure centralisation des données, une traçabilité des décisions, une collaboration contrôlée entre RH et managers et une réduction des tâches répétitives. JOB4YOU répond à ces besoins par une application web à rôles, des transitions de statut contrôlées, un scoring assisté et des notifications automatisées.
 
-### Enjeux
-- Réduire le temps de traitement des candidatures de 60%
-- Améliorer l'expérience candidate par une communication automatisée
-- Offrir une solution de scoring IA pour prioriser les candidats
-- Intégrer l'entretien technique directement dans la plateforme
+## 3. Objectif général
 
----
+L’objectif est de fournir une base fonctionnelle permettant de gérer le cycle de recrutement interne depuis la publication d’une offre jusqu’à la décision finale, tout en conservant une validation humaine des décisions importantes.
 
-## 2 - Objectif de projet {#objectif}
+## 4. Objectifs fonctionnels
 
-### Objectif général
-Créer une plateforme SaaS complète de gestion du recrutement permettant :
+| Objectif | État réel |
+|---|---|
+| Publier, modifier, filtrer et clôturer des offres | Réalisé dans l’application |
+| Recevoir des candidatures et stocker les CV | Réalisé, avec stockage local |
+| Extraire le texte des CV PDF/DOC/DOCX | Réalisé côté backend |
+| Calculer un score par critères technique, communication et séniorité | Réalisé via Cohere si disponible, avec fallback dégradé |
+| Corriger manuellement le score avec justification | Réalisé avec audit |
+| Gérer les entretiens, statuts, feedbacks et rappels | Réalisé dans le périmètre actuel |
+| Appliquer un périmètre de visibilité manager | Réalisé côté backend et testé |
+| Envoyer des emails transactionnels | Réalisé via Spring Mail et n8n selon le flux |
+| Consulter les offres externes Remotive | Réalisé comme fonctionnalité de comparaison |
+| Créer des événements Google Calendar authentifiés | Non réalisé dans le workflow actuel |
+| Fournir un lien Google Meet réel | Non réalisé ; un lien de démonstration est actuellement préparé |
 
-### Objectifs spécifiques
-1. **Gestion des candidatures** : Recevoir, trier et analyser les candidatures automatiquement
-2. **Scoring IA** : Évaluer automatiquement les CV avec un score de pertinence (65-95%)
-3. **Notifications automatisées** : Envoyer des confirmations et mises à jour par email
-4. **Gestion des entretiens** : Planifier, notifier et suivre les entretiens techniques
-5. **Tableaux de bord** : Fournir des dashboards de suivi pour RH et administrateurs
-6. **Sécurité et RGPD** : Implémenter l'authentification JWT et la gestion des rôles
+## 5. Acteurs
 
-### Livrables attendus
-- ✅ Plateforme web responsive (Frontend Angular 20)
-- ✅ API REST complète (Backend Spring Boot 3.2)
-- ✅ 3 agents n8n automatisés (CV Parser, RH Manager, Interview Manager)
-- ✅ Intégration Groq LLM pour l'analyse de CV
-- ✅ Base de données PostgreSQL sécurisée
-- ✅ Documentation complète et déployable sur Docker
+| Acteur | Responsabilités |
+|---|---|
+| Candidat | Consulter les offres, déposer une candidature, suivre son dossier et consulter ses entretiens |
+| Responsable RH | Gérer les offres, examiner les candidatures, valider les dossiers, planifier les étapes et contrôler les décisions |
+| Manager | Consulter les dossiers de son périmètre, participer à l’évaluation, fournir un feedback et prendre une décision autorisée |
+| Administrateur | Gérer les utilisateurs, les rôles, les départements, les profils de pondération et l’audit |
+| Backend | Appliquer les règles métier, sécuriser les accès, persister les données et orchestrer les traitements |
+| n8n | Orchestrer des notifications et des callbacks lorsque les webhooks sont activés |
+| Cohere | Fournir le scoring structuré et le matching lorsque la clé de service est configurée |
 
----
+## 6. Règles métier principales
 
-## 3 - Acteurs {#acteurs}
+Une candidature possède un cycle de vie contrôlé. Les transitions incohérentes, les décisions sur un dossier non examiné et la planification d’un entretien sur un dossier clos doivent être refusées par le backend.
 
-### Acteurs identifiés
+Le score IA est une aide à la présélection. Le seuil actuel est de 60/100. Une correction manuelle nécessite une justification et doit être journalisée. Un rejet automatique doit pouvoir être réexaminé selon les règles du rôle RH ou administrateur.
 
-| Acteur | Description | Rôle |
-|--------|------------|------|
-| **Candidat** | Personne en recherche d'emploi | Consulter offres, postuler, suivre candidature |
-| **Responsable RH** | Gestionnaire des ressources humaines | Gérer offres, évaluer candidats, planifier entretiens |
-| **Administrateur** | Gestionnaire système | Gérer utilisateurs, permissions, configurations |
-| **Interviewer/Manager technique** | Responsable entretiens techniques | Évaluer candidats, noter entretiens |
-| **Système n8n** | Orchestrateur automatisé | Traiter CV, envoyer notifications, gérer entretiens |
-| **Groq LLM** | Intelligence artificielle | Analyser et scorer les CV |
+Un manager ne doit consulter et modifier que les dossiers relevant de son offre, de son département ou de son périmètre métier configuré. Ce contrôle doit être appliqué aux routes de lecture comme aux routes d’écriture.
 
----
+## 7. Scoring et intelligence artificielle
 
-## 4 - Les actions associées à chaque acteur {#actions}
+Le backend construit un texte à partir du contenu extrait du CV et, si nécessaire, de la lettre de motivation. Cohere reçoit un prompt structuré et doit retourner trois valeurs comprises entre 0 et 100 :
 
-### Actions Candidat
-- ✅ S'inscrire/Se connecter
-- ✅ Consulter offres d'emploi
-- ✅ Postuler à une offre
-- ✅ Télécharger/améliorer son CV
-- ✅ Recevoir confirmations et notifications
-- ✅ Suivre l'état de ses candidatures
-- ✅ Programmer ses entretiens
-- ✅ Accéder à ses résultats d'entretien
+- score technique ;
+- score de communication ;
+- score d’adéquation de la séniorité.
 
-### Actions Responsable RH
-- ✅ Créer/publier offres d'emploi
-- ✅ Consulter les candidatures reçues
-- ✅ Visualiser les scores IA des CV
-- ✅ Filtrer/trier les candidats
-- ✅ Programmer des entretiens
-- ✅ Envoyer notifications
-- ✅ Consulter tableau de bord (dashboard)
-- ✅ Exporter rapports de candidatures
+Les pondérations par défaut sont configurées à 50 % pour la technique, 20 % pour la communication et 30 % pour la séniorité. Elles peuvent être adaptées par profil de métier selon la configuration du projet.
 
-### Actions Administrateur
-- ✅ Gérer les utilisateurs et leurs rôles
-- ✅ Configurer les paramètres système
-- ✅ Visualiser les logs et audit
-- ✅ Gérer les permissions d'accès
-- ✅ Monitorer la santé du système
+Lorsque Cohere est indisponible ou non configuré, le backend utilise un mode dégradé. Ce mode garantit la continuité du dépôt de candidature, mais il ne doit pas être présenté comme une évaluation IA équivalente à Cohere.
 
-### Actions Interviewer
-- ✅ Consulter liste des entretiens programmés
-- ✅ Accéder aux informations du candidat
-- ✅ Noter l'entretien
-- ✅ Soumettre le verdict (accepté/rejeté)
-- ✅ Fournir feedback au candidat
+L’IA ne doit pas être considérée comme l’autorité finale de recrutement. Les résultats doivent rester explicables, révisables et soumis à une validation humaine.
 
----
+## 8. Architecture technique
 
-## 5 - Choix de technologie {#choix-techno}
-
-### Justification des choix
-
-| Technologie | Justification |
-|-------------|--------------|
-| **Angular 20** | Framework moderne, réactif, performant pour interfaces RH complexes |
-| **Spring Boot 3.2** | Framework Java robuste pour APIs REST, écosystème mature |
-| **PostgreSQL** | SGBDR performant, sécurisé, adapté aux données sensibles RH |
-| **n8n v2.8.4** | Orchestration workflow low-code, parfait pour automation RH |
-| **Groq LLM** | API LLM rapide et économique pour scoring CV en temps réel |
-| **Docker** | Containerisation pour déploiement uniforme et scalable |
-| **JWT** | Authentification stateless, sécurisée et scalable |
-| **Gmail SMTP** | Serveur mail fiable pour notifications candidat/RH |
-
----
-
-## 6 - Modules à développer {#modules}
-
-### Module M1 : Gestion des Candidatures
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Créer formulaire candidature | Candidat | ✅ Complété |
-| Recevoir et valider candidature | Système n8n | ✅ Complété |
-| Analyser CV avec IA | Groq LLM | ✅ Complété |
-| Générer score de pertinence | Système n8n | ✅ Complété |
-| Notifier candidat de réception | Système n8n (Email) | ✅ Complété |
-| Sauvegarder score en base | API Spring Boot | ✅ Complété |
-
-### Module M2 : Gestion des Offres d'Emploi
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Créer/publier offre | RH | ✅ Complété |
-| Consulter offres disponibles | Candidat | ✅ Complété |
-| Filtrer par domaine/localité | Candidat | ✅ Complété |
-| Visualiser détails offre | Candidat | ✅ Complété |
-| Archiver offre | RH | ✅ Complété |
-
-### Module M3 : Gestion des Entretiens
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Programmer entretien | RH | ✅ Complété |
-| Notifier candidat | Système n8n | ✅ Complété |
-| Notifier RH/Interviewer | Système n8n | ✅ Complété |
-| Soumettre résultat entretien | Interviewer | ✅ Complété |
-| Notifier candidat du résultat | Système n8n | ✅ Complété |
-
-### Module M4 : Dashboard & Rapports
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Dashboard RH (statistiques) | RH | ✅ Complété |
-| Dashboard Candidat (suivi) | Candidat | ✅ Complété |
-| Rapports exportables | RH/Admin | ✅ Complété |
-| Logs audit | Admin | ✅ Complété |
-
-### Module M5 : Authentification & Autorisation
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Inscription utilisateur | Candidat/RH | ✅ Complété |
-| Connexion JWT | Tous | ✅ Complété |
-| Gestion des rôles | Admin | ✅ Complété |
-| Protection des routes | Système | ✅ Complété |
-| Réinitialisation mot de passe | Candidat/RH | ✅ Complété |
-
-### Module M6 : Amélioration de CV
-
-| Tâche | Acteur(s) | Statut |
-|-------|-----------|--------|
-| Analyse du CV | Groq LLM | ✅ Complété |
-| Suggestions d'amélioration | Système | ✅ Complété |
-| Téléchargement CV | Candidat | ✅ Complété |
-| Versioning CV | Candidat | ✅ Complété |
-
----
-
-## 7 - Méthodologie de conception adoptée {#methodologie}
-
-### Approche globale : Agile Scrum
-
-### Phases du projet
-1. **Phase 1 - Analyse & Design** (Complété)
-   - Analyse des besoins
-   - Design UX/UI
-   - Architecture système
-   - Planification sprints
-
-2. **Phase 2 - Développement Sprint 1-3** (Complété)
-   - Frontend (Angular components)
-   - Backend (Spring Boot APIs)
-   - n8n workflows
-   - Intégration base de données
-
-3. **Phase 3 - Tests & Intégration** (En cours)
-   - Tests unitaires
-   - Tests d'intégration
-   - Tests n8n workflows
-   - Tests de charge
-
-4. **Phase 4 - Déploiement** (À venir)
-   - Dockerization
-   - Configuration production
-   - Déploiement
-   - Documentation
-
-### Outils & Conventions
-- **Versioning** : Git (GitHub/GitLab)
-- **Code Review** : Pull Requests obligatoires
-- **Documentation** : Markdown + Swagger UI
-- **Communication** : Daily standups
-- **Sprints** : 2 semaines
-- **Réunions** : Planning, Review, Retrospective
-
----
-
-## 8 - Architecture {#architecture}
-
-### Architecture générale (3-tiers)
-
-```
-┌─────────────────────────────────────┐
-│    Frontend (Angular 20)            │
-│  - Components                       │
-│  - Services                         │
-│  - Guards & Interceptors            │
-│  - Responsive UI                    │
-└──────────────┬──────────────────────┘
-               │ HTTP/HTTPS
-┌──────────────▼──────────────────────┐
-│    Backend (Spring Boot 3.2)        │
-│  - REST APIs                        │
-│  - Business Logic                   │
-│  - JWT Authentication               │
-│  - Role-based Authorization         │
-└──────────────┬──────────────────────┘
-               │ JDBC
-┌──────────────▼──────────────────────┐
-│    Base de Données                  │
-│  - PostgreSQL 14+                   │
-│  - Tables métier (Candidates,       │
-│    Offers, Applications, etc.)      │
-└─────────────────────────────────────┘
-
-┌─────────────────────────────────────┐
-│    n8n Orchestration (localhost)    │
-│  - Agent 1: CV Parser + Groq        │
-│  - Agent 2: RH Manager              │
-│  - Agent 3: Interview Manager       │
-└──────────────┬──────────────────────┘
-               │ Webhooks
-        Spring Boot Backend
+```text
+Frontend Angular 20
+        │ HTTP/JWT
+        ▼
+Backend Spring Boot 3.2
+        ├── API REST et règles métier
+        ├── Spring Security et JWT
+        ├── Extraction des CV
+        ├── Scoring Cohere ou fallback
+        ├── Audit et rappels
+        └── Webhooks n8n optionnels
+                │
+                ▼
+PostgreSQL + services de notification
 ```
 
-### Flux de données
-1. **Candidature** : Candidat → Frontend → Backend → n8n (CV Parser) → Groq LLM → Backend → Email
-2. **Entretien** : RH → Backend → n8n (Interview Manager) → Email (Candidat + Interviewer)
-3. **Dashboard** : Backend → Frontend (données temps réel)
+Le calcul principal du score est exécuté par le backend. n8n orchestre les notifications et certains flux asynchrones. Cette distinction doit être conservée dans la documentation technique et dans le rapport PFE.
 
----
+## 9. Workflows n8n
 
-## 9 - Choix technologiques {#choix-technologiques}
+### Agent 1 — Candidature et scoring
 
-### Frontend - Angular 20
+Le workflow reçoit l’événement de candidature, demande au backend de recalculer le score et peut envoyer un email enrichi. L’extraction du CV et l’appel Cohere sont réalisés par le backend.
 
-**Stack technologique**
-```
-- Angular 20.x (latest)
-- Bootstrap 5.3 (responsive grid)
-- SCSS (styling préprocessé)
-- TypeScript 5.x
-- RxJS (reactive programming)
-- ngx-toastr (notifications)
-```
+### Agent 2 — Planification des entretiens
 
-**Justification**
-- Angular 20 : Framework moderne avec CLI robuste
-- Bootstrap : Design responsive rapide
-- SCSS : Maintainabilité CSS améliorée
-- TypeScript : Type-safety et meilleure expérience dev
-- RxJS : Gestion élégante des flux asynchrones
+Le workflow reçoit l’événement de création d’un entretien et envoie les informations au candidat et à l’intervieweur. Le backend conserve l’entretien, met à jour le statut et crée les rappels. Google Calendar et Google Meet ne sont pas encore intégrés de façon authentifiée.
 
-### Backend - Spring Boot 3.2
+### Agent 3 — Routage RH vers manager et décision finale
 
-**Dépendances clés**
-```xml
-- spring-boot-starter-web (REST APIs)
-- spring-boot-starter-data-jpa (ORM)
-- spring-boot-starter-security (Authentication)
-- spring-boot-starter-mail (SMTP)
-- postgresql driver
-- jwt-api (auth tokens)
-- springdoc-openapi (Swagger UI)
-- lombok (code generation)
-```
+Le workflow transmet les informations utiles au manager et envoie l’email correspondant à la décision finale. Le backend reste responsable de l’autorisation et de la transition de statut.
 
-**Justification**
-- Spring Boot 3.2 : LTS, stabilité garantie
-- JPA/Hibernate : ORM performant et standardisé
-- Spring Security : Framework auth robuste
-- Swagger : Documentation API automatique
-- PostgreSQL driver : Support natif DB
+## 10. Sécurité et données personnelles
 
-### Base de Données - PostgreSQL
+Les mots de passe doivent être hachés avec BCrypt et les routes doivent être protégées par Spring Security et JWT. Les règles de rôle doivent être complétées par un contrôle du périmètre métier pour les managers.
 
-**Schéma principal**
-```sql
-Tables:
-- users (id, username, email, password_hash, role)
-- candidates (id, user_id, cv_url, phone, experience)
-- job_offers (id, title, description, salary, posted_by)
-- applications (id, candidate_id, offer_id, cv_score, status)
-- interviews (id, application_id, scheduled_at, interviewer_id, feedback)
-- ai_scores (id, candidate_id, score, analysis, created_at)
-```
+Les CV et données de candidature sont des données personnelles. Le système doit prévoir une politique de conservation, une suppression contrôlée, une limitation des accès, une protection des URLs de fichiers, une validation approfondie du contenu téléversé et une analyse antivirus avant un déploiement de production.
 
-**Justification**
-- PostgreSQL : SGBDR performant, fiable
-- ACID compliance : Intégrité des données RH
-- JSON support : Flexibilité données complexes
-- Full-text search : Recherche CV rapide
-- Replication : Haute disponibilité
+Les clés Cohere, JWT, n8n, SMTP et PostgreSQL ne doivent jamais être inscrites en clair dans le dépôt. Elles doivent être injectées par des variables d’environnement ou par une configuration locale ignorée par Git. Tout secret déjà exposé doit être révoqué et renouvelé, puis retiré de l’historique Git.
 
-### n8n - Orchestration Workflows
+## 11. Tests et validation
 
-**3 Workflows automatisés**
+Le dépôt contient huit classes de tests backend couvrant notamment le scoring, les transitions, les workflows candidats, le routage manager et les contrôles de sécurité. Le nombre de méthodes annotées `@Test` doit être recalculé à chaque version ; la branche inspectée contient environ 90 méthodes.
 
-**Workflow 1 : Agent 1 - CV Parser + Groq**
-```
-Webhook (POST /api/agent1-cv-parser)
-  ↓
-Extract candidature data
-  ↓
-Call Groq LLM (score + analysis)
-  ↓
-Send confirmation email
-  ↓
-Save score to Spring Boot API
-  ↓
-Return JSON response
-```
+Avant un déploiement de production, il est nécessaire d’ajouter ou de documenter :
 
-**Workflow 2 : Agent 2 - RH Manager**
-```
-Webhook (POST /api/agent2-rh-manager)
-  ↓
-Process application status
-  ↓
-Send notifications (email)
-  ↓
-Update database
-  ↓
-Return status
-```
+- tests d’intégration avec une base PostgreSQL de test ;
+- tests d’intégration des webhooks n8n ;
+- tests de sécurité sur les callbacks et les téléchargements de CV ;
+- tests de charge et de temps de réponse ;
+- rapport de couverture de code ;
+- tests de non-régression du cycle de vie des candidatures.
 
-**Workflow 3 : Agent 3 - Interview Manager**
-```
-Webhook (POST /api/agent3-entretien)
-  ↓
-Schedule interview
-  ↓
-Send notifications (candidate + interviewer)
-  ↓
-Update calendar
-  ↓
-Return confirmation
-```
+## 12. Installation et déploiement
 
-**Justification**
-- n8n : Low-code automation platform
-- Webhooks : Communication asynchrone
-- Groq : LLM local/cloud rapide
-- Email : Notifications instantanées
-- Error handling : Retry automatique
+Le projet peut être démarré localement avec Java 17, Maven, Node.js, PostgreSQL et, si nécessaire, n8n. Des fichiers Docker sont présents pour faciliter un déploiement local, mais la préparation à la production exige encore la gestion des secrets, des migrations versionnées, du HTTPS, des sauvegardes, de la supervision et d’une configuration CORS restrictive.
 
-### Intégrations externes
+## 13. Livrables
 
-| Service | Usage | Credentials |
-|---------|-------|-------------|
-| **Groq API** | LLM scoring CV | API Key (gsk_...) |
-| **Gmail SMTP** | Notifications email | bargaouihaythem1@gmail.com |
-| **Docker Hub** | Registry conteneurs | Credentials optionnelles |
+Les livrables sont :
 
-### Infrastructure - Docker
+1. le frontend Angular ;
+2. le backend Spring Boot ;
+3. les scripts et configurations PostgreSQL ;
+4. les trois workflows n8n ;
+5. la collection Postman et la documentation Swagger ;
+6. la documentation technique et le rapport PFE ;
+7. les tests backend et frontend présents dans le dépôt.
 
-**Dockerfile structure**
-```dockerfile
-# Frontend
-FROM node:20-alpine
-WORKDIR /app
-COPY . .
-RUN npm install && npm run build
-EXPOSE 4200
+## 14. Évolutions prévues
 
-# Backend
-FROM openjdk:17-slim
-WORKDIR /app
-COPY *.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+Les évolutions prioritaires sont l’intégration authentifiée de Google Calendar et Google Meet, le stockage sécurisé ou externalisé des CV, l’analyse antivirus, le nettoyage de l’historique Git, la mise en place de migrations Flyway ou Liquibase, l’ajout d’une CI/CD, la couverture de tests complémentaire et la formalisation de la conservation des données personnelles.
 
-# PostgreSQL (docker-compose)
-postgres:14
-  POSTGRES_DB: job4you_db
-  POSTGRES_USER: postgres
-  POSTGRES_PASSWORD: postgres
-```
+## 15. Statut du projet
 
-**Justification**
-- Containerisation : Deployment uniforme
-- Multi-stage builds : Images légères
-- docker-compose : Orchestration locale
-- Scalabilité : Kubernetes-ready
+**Statut recommandé : prototype fonctionnel ou pilote interne en environnement de développement.** Le projet ne doit pas être décrit comme totalement prêt pour la production tant que les secrets, les URLs de CV, les webhooks, la protection des données et les intégrations externes ne sont pas durcis.
 
-### Sécurité
-
-**Mécanismes implémentés**
-- ✅ JWT pour authentification stateless
-- ✅ Spring Security pour autorisation
-- ✅ HTTPS pour transport chiffré
-- ✅ Password hashing (bcrypt)
-- ✅ CORS configuré
-- ✅ SQL injection prevention (JPA)
-- ✅ Rate limiting (n8n)
-- ✅ RGPD compliance (data export/delete)
-
----
-
-## Résumé des indicateurs clés
-
-| Indicateur | Valeur |
-|-----------|--------|
-| **Équipe** | 1 Developer Full Stack |
-| **Durée estimation** | 16-20 semaines |
-| **Budget** | À déterminer |
-| **Utilisateurs cibles** | PME/ETI RH (100-1000 users) |
-| **Disponibilité** | 99.5% SLA |
-| **Support** | L+5 8h-18h |
-| **Maintenance** | Incluse année 1 |
-
----
-
-**Date document** : 22 juin 2026  
-**Statut** : En cours de développement (Phase 3/4)  
-**Version** : 1.0
-
+**Auteur :** Haythem Bargaoui — Projet de fin d’études.

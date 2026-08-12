@@ -20,7 +20,7 @@ import java.util.List;
  * Paramétrage RH de la pondération du score IA par famille de métier
  * (CS/ProdOps/RSD/Autre) et niveau de séniorité (Junior/Confirmé/Senior).
  */
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/scoring-profiles")
 @Tag(name = "Scoring Profiles", description = "Pondération du score IA par famille de métier et niveau")

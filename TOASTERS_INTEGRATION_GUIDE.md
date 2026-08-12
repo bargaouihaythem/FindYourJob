@@ -110,9 +110,9 @@ ToastrModule.forRoot({
 - **Mot de passe oublié** : `http://localhost:4200/forgot-password`
 
 ### Comptes de test (si configurés)
-- **Admin** : admin@job4you.com / password123
-- **HR** : hr@job4you.com / password123
-- **User** : user@job4you.com / password123
+- **Admin** : admin@job4you.com / <mot-de-passe-local>
+- **HR** : hr@job4you.com / <mot-de-passe-local>
+- **User** : user@job4you.com / <mot-de-passe-local>
 
 ## 🎯 Utilisation
 

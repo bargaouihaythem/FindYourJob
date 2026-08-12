@@ -18,7 +18,7 @@ import java.util.List;
  * Notes internes RH/Admin sur un candidat : jamais exposées au candidat
  * (à la différence des Feedback, potentiellement formalisés/envoyés).
  */
-@CrossOrigin(origins = "*", maxAge = 3600)
+
 @RestController
 @RequestMapping("/api/internal-notes")
 @Tag(name = "Internal Notes", description = "Notes internes RH/Admin sur les candidats")
