@@ -220,6 +220,29 @@ public class NotificationService {
     }
 
     /**
+     * Informe le candidat que son entretien téléphonique RH a été validé et que son
+     * dossier est désormais transmis à l'équipe/manager concerné pour la suite du
+     * processus (évaluation technique). Envoyée au moment du passage en TECHNICAL_TEST,
+     * en complément de la notification adressée au manager (Agent 3).
+     */
+    public void sendPhoneScreeningValidatedNotification(Candidate candidate) {
+        JobOffer jobOffer = candidate.getJobOffer();
+        String candidateName = candidate.getFirstName() + " " + candidate.getLastName();
+        String jobOfferTitle = (jobOffer != null) ? jobOffer.getTitle() : "votre candidature";
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("candidateName", candidateName);
+        variables.put("jobOfferTitle", jobOfferTitle);
+
+        emailService.sendTemplateEmail(
+            candidate.getEmail(),
+            "Votre entretien téléphonique a été validé",
+            "emails/phone-screening-validated",
+            variables
+        );
+    }
+
+    /**
      * Envoie un email personnalisé
      */
     public void sendCustomEmail(String to, String subject, String content, boolean isHtml) {

@@ -63,6 +63,17 @@ La plateforme permet de publier et filtrer les offres, de déposer une candidatu
 
 Le score IA comprend trois composantes : adéquation technique, qualité de la communication et adéquation de la séniorité. Les pondérations sont configurables. Un RH ou un administrateur peut corriger manuellement le score avec une justification obligatoire ; la correction est conservée dans l’audit.
 
+### Pipeline de validation RH → Manager
+
+Le parcours d’un dossier est gouverné côté backend par une machine à états qui valide chaque transition :
+
+1. **Examen du CV** par le RH → le candidat est informé par e-mail que son profil est présélectionné.
+2. **Entretien téléphonique de pré-qualification** : étape obligatoire — aucune acceptation directe n’est possible depuis l’étape « CV examiné ». Un CV manifestement inadapté peut en revanche être refusé ou retiré sans attendre cet entretien.
+3. **Transmission au manager** : une fois l’entretien téléphonique validé par le RH, le dossier passe en évaluation technique et est transmis au manager compétent, résolu par département, puis par famille de métier, puis par e-mail configuré sur l’offre. Le candidat reçoit à ce moment une confirmation par e-mail. C’est seulement à partir de cette étape que le dossier apparaît dans la vue « dossiers validés » et l’agenda du manager.
+4. **Entretiens technique / manager / final**, puis **décision finale** (acceptation ou refus, avec motif obligatoire en cas de refus).
+
+Planifier un entretien (module dédié) est une action de logistique/agenda — elle ne modifie pas, à elle seule, le statut du candidat. L’avancement du pipeline reste piloté exclusivement par des actions de statut explicites (RH ou manager), elles-mêmes validées par la machine à états.
+
 ### Gestion RH et manager
 
 Les espaces internes comprennent la gestion des offres, des candidats, des entretiens, des feedbacks, du tableau de bord, du pipeline Kanban, des notes internes, des utilisateurs, des profils de pondération et du journal d’audit. Un manager ne doit consulter et modifier que les dossiers relevant de son périmètre métier configuré.
@@ -71,7 +82,7 @@ Chaque manager dispose également d’une page **Mon calendrier** qui présente,
 
 ### Notifications et rappels
 
-Les emails de confirmation, de présélection, de convocation, de décision, d’annulation et de reprogrammation sont pris en charge selon le parcours. Des rappels d’entretien peuvent être créés par le backend. n8n est utilisé comme couche d’orchestration complémentaire lorsque les webhooks sont configurés.
+Les emails de confirmation, de présélection, de validation d’entretien téléphonique, de convocation, de décision, d’annulation et de reprogrammation sont pris en charge selon le parcours. Des rappels d’entretien peuvent être créés par le backend. n8n est utilisé comme couche d’orchestration complémentaire lorsque les webhooks sont configurés.
 
 ### Offres externes
 
@@ -150,10 +161,13 @@ Les comptes de test ne sont pas publiés dans ce README. Ils doivent être cré�
 
 ```text
 POST  /api/candidates/apply
+PATCH /api/candidates/{id}/status
+POST  /api/candidates/{id}/withdraw
 POST  /api/candidates/{id}/ai-score/recompute
 PATCH /api/candidates/{id}/ai-score/override
 GET   /api/candidates/job-offer/{jobOfferId}/ranking
 PATCH /api/candidates/{id}/manager-decision
+POST  /api/interviews
 GET   /api/interviews/my-calendar?startDate=&endDate=
 GET   /api/external-offers/remotive?search=&limit=
 ```
@@ -162,7 +176,7 @@ Les endpoints sensibles doivent être protégés par JWT, par les rôles applica
 
 ## Tests
 
-Le backend contient des tests unitaires et de contrôleur couvrant notamment le workflow candidat, le seuil IA, les transitions de statut, le routage manager, l’isolation de périmètre et le calendrier manager. Après cette évolution, la suite Maven exécute **96 tests sans échec ni erreur**. Des tests d’intégration, de charge et de sécurité complémentaires restent nécessaires avant une mise en production.
+Le backend contient des tests unitaires et de contrôleur couvrant notamment le workflow candidat, le seuil IA, les transitions de statut (y compris le caractère obligatoire de l’entretien téléphonique avant acceptation), le découplage entre planification d’entretien et statut, le routage manager, l’isolation de périmètre et le calendrier manager. La suite Maven exécute **101 tests sans échec ni erreur**. Des tests d’intégration, de charge et de sécurité complémentaires restent nécessaires avant une mise en production.
 
 ## Limites connues et évolutions
 

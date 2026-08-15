@@ -114,7 +114,11 @@ export class InterviewsComponent implements OnInit {
       duration: [60, [Validators.required, Validators.min(15)]],
       location: ['', Validators.required],
       type: ['TECHNICAL', Validators.required],
-      notes: ['']
+      notes: [''],
+      // Option A : planifier un entretien = pure logistique (agenda) et ne change PAS le statut.
+      // Cette case (décochée par défaut) permet, par commodité, de faire aussi avancer le statut
+      // du candidat à l'étape correspondante — via l'endpoint de statut, donc validé par le garde-fou.
+      advanceStatus: [false]
     });
 
     this.feedbackForm = this.fb.group({
@@ -412,6 +416,10 @@ export class InterviewsComponent implements OnInit {
         this.interviewService.createInterview(interviewToSend).subscribe({
           next: () => {
             this.toastrNotification.showInterviewCreatedSuccess();
+            // Commodité optionnelle : avancer aussi le statut du candidat (garde-fouté côté backend)
+            if (interviewData.advanceStatus) {
+              this.advanceCandidateStatusForType(candidateId, interviewData.type);
+            }
             this.loadInterviews();
             this.closeInterviewModal();
           },
@@ -433,6 +441,37 @@ export class InterviewsComponent implements OnInit {
           }
         });
       }
+    }
+  }
+
+  /**
+   * Fait avancer le statut du candidat à l'étape correspondant au type d'entretien planifié.
+   * Passe par l'endpoint de statut (donc validé par la machine à états côté backend) : une
+   * transition non autorisée renvoie un 400 affiché comme avertissement, sans bloquer la
+   * planification déjà effectuée.
+   */
+  private advanceCandidateStatusForType(candidateId: number, type: string): void {
+    const target = this.mapInterviewTypeToStatus(type);
+    if (!target) { return; }
+    this.candidateService.updateCandidateStatus(candidateId, target).subscribe({
+      next: () => this.toastrNotification.showSuccess('Statut du candidat avancé à l\'étape correspondante.', 'Statut mis à jour'),
+      error: (err: any) => {
+        const msg = err?.error?.message || 'Le statut n\'a pas pu être avancé (transition non autorisée par le workflow).';
+        this.toastrNotification.showWarning(msg);
+      }
+    });
+  }
+
+  /** Étape de statut candidat correspondant à un type d'entretien (cf. machine à états). */
+  private mapInterviewTypeToStatus(type: string): string | null {
+    switch (type) {
+      case 'PHONE_SCREENING': return 'PHONE_SCREENING';
+      case 'TECHNICAL': return 'TECHNICAL_TEST';
+      case 'HR':
+      case 'MANAGER':
+      case 'GROUP': return 'INTERVIEW';
+      case 'FINAL': return 'FINAL_INTERVIEW';
+      default: return null;
     }
   }
 

@@ -568,8 +568,17 @@
               <i class="fas fa-sticky-note me-2"></i>
               Notes
             </label>
-            <textarea class="form-control" formControlName="notes" rows="3" 
+            <textarea class="form-control" formControlName="notes" rows="3"
                       placeholder="Notes additionnelles sur l'entretien..."></textarea>
+          </div>
+          <div class="mb-3 form-check" *ngIf="!selectedInterview">
+            <input type="checkbox" class="form-check-input" id="advanceStatus" formControlName="advanceStatus">
+            <label class="form-check-label" for="advanceStatus">
+              Faire aussi avancer le statut du candidat à l'étape correspondante
+            </label>
+            <small class="d-block text-muted">
+              Optionnel : par défaut, planifier un entretien ne modifie pas le statut (agenda uniquement).
+            </small>
           </div>
         </form>
       </div>

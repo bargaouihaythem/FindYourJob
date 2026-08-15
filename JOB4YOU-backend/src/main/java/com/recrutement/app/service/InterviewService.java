@@ -19,21 +19,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import com.recrutement.app.entity.Interview;
-import com.recrutement.app.entity.User;
-import com.recrutement.app.exception.ResourceNotFoundException;
-import com.recrutement.app.repository.CandidateRepository;
-import com.recrutement.app.repository.InterviewRepository;
-import com.recrutement.app.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 public class InterviewService {
@@ -61,9 +46,6 @@ public class InterviewService {
 
     @Autowired
     private AccessControlService accessControlService;
-
-    @Autowired
-    private CandidateService candidateService;
 
     /**
      * Planifie un nouvel entretien
@@ -109,17 +91,11 @@ public class InterviewService {
         interview.setCreatedAt(LocalDateTime.now());
         interview.setUpdatedAt(LocalDateTime.now());
 
-        // Mettre à jour le statut du candidat si nécessaire
-        Candidate.CandidateStatus statusBefore = candidate.getStatus();
-        updateCandidateStatus(candidate, interviewRequest.getType());
-
-        // Si la planification d'un entretien technique fait entrer le candidat en phase
-        // technique pour la première fois, on transmet son dossier au(x) manager(s) —
-        // cohérent avec le déclenchement depuis la fiche candidat (CandidateService).
-        if (statusBefore != Candidate.CandidateStatus.TECHNICAL_TEST
-                && candidate.getStatus() == Candidate.CandidateStatus.TECHNICAL_TEST) {
-            candidateService.notifyManagersForTechnicalEvaluation(candidate);
-        }
+        // NB : planifier un entretien est un acte de LOGISTIQUE (agenda) et ne modifie plus le
+        // statut du candidat. L'avancement du pipeline (PHONE_SCREENING, TECHNICAL_TEST, ...) reste
+        // piloté exclusivement par les actions de statut RH/manager, seules garde-fouées par la
+        // machine à états (CandidateService.assertValidTransition). La notification du manager reste
+        // déclenchée par le passage en TECHNICAL_TEST, côté CandidateService.
 
         Interview savedInterview = interviewRepository.save(interview);
 
@@ -310,35 +286,6 @@ public class InterviewService {
         } else if (interview.getStatus() == null) {
             interview.setStatus(Interview.InterviewStatus.SCHEDULED);
         }
-    }
-
-    /**
-     * Met à jour le statut du candidat en fonction du type d'entretien
-     */
-    private void updateCandidateStatus(Candidate candidate, Interview.InterviewType interviewType) {
-        // Si le candidat est déjà ACCEPTED, l'entretien planifié → INTERVIEW_SCHEDULED
-        if (candidate.getStatus() == Candidate.CandidateStatus.ACCEPTED) {
-            candidate.setStatus(Candidate.CandidateStatus.INTERVIEW_SCHEDULED);
-        } else {
-            switch (interviewType) {
-                case PHONE_SCREENING:
-                    candidate.setStatus(Candidate.CandidateStatus.PHONE_SCREENING);
-                    break;
-                case TECHNICAL:
-                    candidate.setStatus(Candidate.CandidateStatus.TECHNICAL_TEST);
-                    break;
-                case HR:
-                case MANAGER:
-                case GROUP:
-                    candidate.setStatus(Candidate.CandidateStatus.INTERVIEW);
-                    break;
-                case FINAL:
-                    candidate.setStatus(Candidate.CandidateStatus.FINAL_INTERVIEW);
-                    break;
-            }
-        }
-        candidate.setLastUpdated(LocalDateTime.now());
-        candidateRepository.save(candidate);
     }
 
     /**

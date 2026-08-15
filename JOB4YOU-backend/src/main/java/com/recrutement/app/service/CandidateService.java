@@ -268,8 +268,6 @@ public class CandidateService {
      */
     public List<CandidateResponse> getValidatedCandidatesForManager(String username) {
         List<Candidate.CandidateStatus> validatedStatuses = List.of(
-                Candidate.CandidateStatus.CV_REVIEWED,
-                Candidate.CandidateStatus.PHONE_SCREENING,
                 Candidate.CandidateStatus.TECHNICAL_TEST,
                 Candidate.CandidateStatus.INTERVIEW,
                 Candidate.CandidateStatus.FINAL_INTERVIEW,
@@ -355,11 +353,10 @@ public class CandidateService {
             auditLogService.log("CANDIDATE", updatedCandidate.getId(), "STATUS_CHANGE", previousStatus, effectiveStatus);
         }
 
-        // Validation RH → deux notifications distinctes :
-        // 1) Agent 2 informe le candidat que son profil est présélectionné ;
-        // 2) Agent 3 transmet immédiatement le dossier au(x) manager(s) résolus
-        //    par département, puis par famille métier, puis par managerEmail.
-        // Le manager ne doit pas attendre le statut TECHNICAL_TEST pour recevoir le dossier.
+        // CV validé par le RH → le CANDIDAT est informé que son profil est présélectionné
+        // (Agent 2). La notification du MANAGER est déclenchée plus tard, au passage en
+        // "Test technique" (après le pré-filtrage téléphonique RH), afin que le manager ne
+        // soit sollicité que pour les candidats ayant franchi cette première étape.
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
@@ -371,7 +368,15 @@ public class CandidateService {
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
                 offreTitre, refManagerEmail
             );
+        }
+
+        // Passage en évaluation technique → transmission du dossier complet au(x) manager(s)
+        // du département (Agent 3), et confirmation au CANDIDAT que son entretien
+        // téléphonique est validé et que son dossier avance à l'étape suivante.
+        if (previousStatus != Candidate.CandidateStatus.TECHNICAL_TEST
+                && effectiveStatus == Candidate.CandidateStatus.TECHNICAL_TEST) {
             notifyManagersForTechnicalEvaluation(updatedCandidate);
+            notificationService.sendPhoneScreeningValidatedNotification(updatedCandidate);
         }
 
         // Agent 3 — Décision finale → email au candidat
@@ -466,8 +471,10 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case CV_REVIEWED:
+                // Pas d'acceptation directe depuis CV_REVIEWED : l'entretien téléphonique RH
+                // est une étape obligatoire du pipeline avant toute décision d'embauche. Un CV
+                // jugé mauvais peut en revanche être refusé ou retiré sans passer par cette étape.
                 allowed = to == Candidate.CandidateStatus.PHONE_SCREENING
-                        || to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN
                         // Correction manuelle du score IA à la baisse (< seuil) par le RH
@@ -766,6 +773,11 @@ public class CandidateService {
         );
         if (!reviewable.contains(candidate.getStatus())) {
             throw new IllegalArgumentException("Le dossier doit d'abord être validé par le RH (CV_REVIEWED) avant décision manager");
+        }
+        if (decision == Candidate.CandidateStatus.ACCEPTED
+                && candidate.getStatus() == Candidate.CandidateStatus.CV_REVIEWED) {
+            throw new IllegalArgumentException(
+                    "Le candidat doit d'abord passer l'entretien téléphonique RH (PHONE_SCREENING) avant d'être accepté");
         }
 
         return updateCandidateStatus(id, decision, reason);

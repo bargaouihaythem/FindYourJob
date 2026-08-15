@@ -95,27 +95,25 @@ class CandidateServiceTest {
         @Test
         @DisplayName("retourne uniquement les candidats transmis au manager (phase technique+)")
         void shouldReturnOnlyValidatedStatuses() {
-            Candidate reviewed   = makeCandidate(1L, CandidateStatus.CV_REVIEWED);
             Candidate technical  = makeCandidate(2L, CandidateStatus.TECHNICAL_TEST);
             Candidate interview   = makeCandidate(3L, CandidateStatus.INTERVIEW);
             Candidate accepted    = makeCandidate(4L, CandidateStatus.ACCEPTED);
 
             when(candidateRepository.findByStatusIn(anyList()))
-                    .thenReturn(List.of(reviewed, technical, interview, accepted));
+                    .thenReturn(List.of(technical, interview, accepted));
 
             List<CandidateResponse> result = candidateService.getValidatedCandidatesForManager(null);
 
-            assertThat(result).hasSize(4);
+            assertThat(result).hasSize(3);
             assertThat(result).extracting("status")
                     .containsExactlyInAnyOrder(
-                            CandidateStatus.CV_REVIEWED,
                             CandidateStatus.TECHNICAL_TEST,
                             CandidateStatus.INTERVIEW,
                             CandidateStatus.ACCEPTED);
         }
 
         @Test
-        @DisplayName("interroge findByStatusIn à partir de CV_REVIEWED après validation RH")
+        @DisplayName("interroge findByStatusIn à partir de TECHNICAL_TEST (le manager n'intervient qu'après le pré-filtrage RH)")
         void shouldQueryWithCorrectStatuses() {
             when(candidateRepository.findByStatusIn(anyList())).thenReturn(List.of());
 
@@ -123,12 +121,12 @@ class CandidateServiceTest {
 
             verify(candidateRepository).findByStatusIn(argThat(statuses -> {
                 List<CandidateStatus> s = (List<CandidateStatus>) statuses;
-                return s.contains(CandidateStatus.CV_REVIEWED)
-                    && s.contains(CandidateStatus.PHONE_SCREENING)
-                    && s.contains(CandidateStatus.TECHNICAL_TEST)
+                return s.contains(CandidateStatus.TECHNICAL_TEST)
                     && s.contains(CandidateStatus.INTERVIEW)
                     && s.contains(CandidateStatus.FINAL_INTERVIEW)
                     && s.contains(CandidateStatus.ACCEPTED)
+                    && !s.contains(CandidateStatus.CV_REVIEWED)
+                    && !s.contains(CandidateStatus.PHONE_SCREENING)
                     && !s.contains(CandidateStatus.APPLIED)
                     && !s.contains(CandidateStatus.REJECTED)
                     && !s.contains(CandidateStatus.WITHDRAWN);
@@ -176,7 +174,7 @@ class CandidateServiceTest {
     class UpdateCandidateStatusTests {
 
         @Test
-        @DisplayName("CV_REVIEWED déclenche l'email candidat et la transmission au manager")
+        @DisplayName("CV_REVIEWED déclenche l'email candidat (Agent 2) mais PAS encore le manager (Agent 3)")
         void shouldTriggerAgent2WhenCvReviewed() {
             Candidate candidate = makeCandidate(10L, CandidateStatus.APPLIED);
             when(candidateRepository.findById(10L)).thenReturn(Optional.of(candidate));
@@ -185,21 +183,25 @@ class CandidateServiceTest {
             candidateService.updateCandidateStatus(10L, CandidateStatus.CV_REVIEWED);
 
             verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.CV_REVIEWED));
+            // Le candidat est informé (Agent 2), mais le manager n'est PAS encore notifié :
+            // sa notification est déclenchée au passage en TECHNICAL_TEST.
             verify(n8nService).triggerAgent2CvSelected(eq(10L), anyString(), anyString(), anyString(), anyString(), any());
-            verify(n8nService).triggerAgent3HrValidation(eq(10L), anyString(), anyString(), anyString(), anyString(),
-                    nullable(String.class), anyString(), any(), any());
+            verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
-        @DisplayName("TECHNICAL_TEST ne renvoie pas une seconde notification manager")
-        void shouldNotNotifyManagerAgainWhenTechnicalTest() {
+        @DisplayName("TECHNICAL_TEST transmet le dossier au manager (Agent 3)")
+        void shouldNotifyManagerWhenTechnicalTest() {
             Candidate candidate = makeCandidate(15L, CandidateStatus.PHONE_SCREENING);
             when(candidateRepository.findById(15L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             candidateService.updateCandidateStatus(15L, CandidateStatus.TECHNICAL_TEST);
 
-            verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(n8nService).triggerAgent3HrValidation(eq(15L), anyString(), anyString(), anyString(), anyString(),
+                    nullable(String.class), anyString(), any(), any());
+            // Le candidat est également informé que son entretien téléphonique est validé.
+            verify(notificationService).sendPhoneScreeningValidatedNotification(candidate);
         }
 
         @Test
@@ -477,13 +479,26 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("accepte la décision quand le dossier a déjà été validé par le RH")
-        void shouldAcceptDecisionWhenAlreadyValidated() {
+        @DisplayName("refuse l'acceptation directe depuis CV_REVIEWED : l'entretien téléphonique RH est obligatoire")
+        void shouldRejectDirectAcceptanceFromCvReviewed() {
             Candidate candidate = makeCandidate(41L, CandidateStatus.CV_REVIEWED);
             when(candidateRepository.findById(41L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.managerDecision(41L, CandidateStatus.ACCEPTED))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("entretien téléphonique");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("accepte la décision une fois l'entretien téléphonique RH passé")
+        void shouldAcceptDecisionAfterPhoneScreening() {
+            Candidate candidate = makeCandidate(42L, CandidateStatus.PHONE_SCREENING);
+            when(candidateRepository.findById(42L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            candidateService.managerDecision(41L, CandidateStatus.ACCEPTED);
+            candidateService.managerDecision(42L, CandidateStatus.ACCEPTED);
 
             verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.ACCEPTED));
         }
@@ -541,6 +556,7 @@ class CandidateServiceTest {
         @DisplayName("un manager peut agir sur un candidat de sa propre offre (managerEmail)")
         void shouldAllowManagerOwningTheJobOfferByEmail() {
             Candidate candidate = candidateWithOffer(50L, "manager.rd@company.com", null);
+            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
             User manager = makeManagerUser("manager_rd", "manager.rd@company.com", null);
 
             authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
@@ -558,6 +574,7 @@ class CandidateServiceTest {
             Department rd = new Department("R&D", "R&D");
             rd.setId(1L);
             Candidate candidate = candidateWithOffer(51L, "autre.manager@company.com", rd);
+            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
             User manager = makeManagerUser("manager_rd", "manager.rd@company.com", rd);
 
             authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
@@ -573,6 +590,7 @@ class CandidateServiceTest {
         @DisplayName("un manager peut agir sur un candidat via sa famille de métier assignée (routage automatique)")
         void shouldAllowManagerOwningTheJobOfferByJobFamily() {
             Candidate candidate = candidateWithOfferJobFamily(54L, JobOffer.JobFamily.CS);
+            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
             User manager = makeManagerUser("manager_cs", "manager.cs@company.com", null);
             manager.setJobFamily(JobOffer.JobFamily.CS);
 
@@ -615,6 +633,7 @@ class CandidateServiceTest {
             rd.setId(1L);
 
             Candidate candidate = candidateWithOffer(53L, "manager.devops@company.com", devops);
+            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
             User manager = makeManagerUser("manager_rd", "manager.rd@company.com", rd);
 
             authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
@@ -631,6 +650,7 @@ class CandidateServiceTest {
             Department devops = new Department("4YOU", "4YOU");
             devops.setId(2L);
             Candidate candidate = candidateWithOffer(54L, "manager.devops@company.com", devops);
+            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
 
             User hrUser = new User();
             hrUser.setId(200L);

@@ -693,9 +693,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       case 'APPLIED':
         return [step('CV_REVIEWED', 'CV examiné', 'fas fa-eye text-info'), withdraw];
       case 'CV_REVIEWED':
-        return [step('PHONE_SCREENING', 'Entretien téléphonique', 'fas fa-phone text-warning'), accept, reject, withdraw];
+        // Pas d'acceptation directe : l'entretien téléphonique RH est une étape obligatoire
+        // avant toute embauche. Un CV manifestement mauvais peut en revanche être refusé
+        // ou retiré sans attendre cet entretien.
+        return [step('PHONE_SCREENING', 'Entretien téléphonique', 'fas fa-phone text-warning'), reject, withdraw];
       case 'PHONE_SCREENING':
-        return [step('TECHNICAL_TEST', 'Test technique', 'fas fa-code text-warning'), accept, reject, withdraw];
+        return [step('TECHNICAL_TEST', 'Valider → transmettre au manager (Test technique)', 'fas fa-user-check text-success'), accept, reject, withdraw];
       case 'TECHNICAL_TEST':
         return [step('INTERVIEW', 'Entretien', 'fas fa-comments text-primary'), accept, reject, withdraw];
       case 'INTERVIEW':
@@ -723,13 +726,16 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     switch (backendStatus) {
       case 'CV_REVIEWED':
         return {
-          title: 'CV validé et routé',
-          message: `CV examiné : le dossier a été transmis au ${this.managerLabel(candidate)} pour validation.`
+          title: 'CV examiné',
+          message: 'Le candidat est informé que son profil est présélectionné.'
         };
       case 'PHONE_SCREENING':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien téléphonique.' };
       case 'TECHNICAL_TEST':
-        return { title: 'Statut modifié', message: 'Candidat placé en test technique.' };
+        return {
+          title: 'Transmis au manager',
+          message: `Entretien téléphonique validé : le dossier a été transmis au ${this.managerLabel(candidate)} pour la phase technique.`
+        };
       case 'INTERVIEW':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien.' };
       case 'FINAL_INTERVIEW':
