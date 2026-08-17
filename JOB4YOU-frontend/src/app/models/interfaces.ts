@@ -217,6 +217,7 @@ export interface Interview {
   interviewDate: Date;
   durationMinutes?: number;
   location?: string;
+  meetLink?: string;
   type: 'PHONE_SCREENING' | 'TECHNICAL' | 'HR' | 'MANAGER' | 'FINAL' | 'GROUP';
   status: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'RESCHEDULED';
   notes?: string;

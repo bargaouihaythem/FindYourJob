@@ -55,6 +55,9 @@
                   {{ interview.jobOfferTitle || 'Offre non renseignée' }} · {{ getTypeLabel(interview.type) }}
                   <span *ngIf="interview.location"> · {{ interview.location }}</span>
                 </p>
+                <a *ngIf="interview.meetLink" [href]="interview.meetLink" target="_blank" rel="noopener" class="small">
+                  <i class="fas fa-video me-1"></i>Rejoindre le lien Google Meet
+                </a>
               </div>
             </div>
           </div>

@@ -19,6 +19,7 @@ public class InterviewResponse {
     private String notes;
     private Integer durationMinutes;
     private String location;
+    private String meetLink;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long candidateId;
@@ -39,6 +40,7 @@ public class InterviewResponse {
         this.notes = interview.getNotes();
         this.durationMinutes = interview.getDurationMinutes();
         this.location = interview.getLocation();
+        this.meetLink = interview.getMeetLink();
         this.createdAt = interview.getCreatedAt();
         this.updatedAt = interview.getUpdatedAt();
         this.candidateId = interview.getCandidate() != null ? interview.getCandidate().getId() : null;

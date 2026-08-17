@@ -272,6 +272,21 @@ public class InterviewService {
     }
 
     /**
+     * Enregistre le lien Google Meet réel, transmis par l'agent n8n après création
+     * de l'événement dans Google Calendar. Pas de contrôle de périmètre ici : cet
+     * endpoint est déjà protégé au niveau du contrôleur par le rôle N8N, sur le
+     * même modèle que CandidateService.saveAiScore.
+     */
+    @Transactional
+    public InterviewResponse saveMeetLink(Long id, String meetLink) {
+        Interview interview = interviewRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        interview.setMeetLink(meetLink);
+        Interview updatedInterview = interviewRepository.save(interview);
+        return new InterviewResponse(updatedInterview);
+    }
+
+    /**
      * Méthode utilitaire pour mapper les données de la requête vers l'entité
      */
     private void mapRequestToEntity(InterviewRequest request, Interview interview) {

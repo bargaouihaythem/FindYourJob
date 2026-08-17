@@ -37,6 +37,9 @@ public class Interview {
 
     private String location; // Peut être une adresse physique ou un lien de visioconférence
 
+    @Column(name = "meet_link")
+    private String meetLink; // Lien Google Meet réel, renseigné par l'agent n8n après création de l'événement Calendar
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

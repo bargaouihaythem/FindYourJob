@@ -751,8 +751,12 @@
                 <p class="mb-2">
                   <strong>Lieu :</strong> {{ selectedInterview.location || 'N/A' }}
                 </p>
+                <p class="mb-2" *ngIf="selectedInterview.meetLink">
+                  <strong>Lien Google Meet :</strong>
+                  <a [href]="selectedInterview.meetLink" target="_blank" rel="noopener">{{ selectedInterview.meetLink }}</a>
+                </p>
                 <p class="mb-2">
-                  <strong>Statut :</strong> 
+                  <strong>Statut :</strong>
                   <span [class]="getStatusBadgeClass(selectedInterview.status)">
                     {{ getStatusText(selectedInterview.status) }}
                   </span>

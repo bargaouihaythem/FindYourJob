@@ -1,4 +1,5 @@
 {
+  "id": "aDlMEwef9SLGf0Xd",
   "name": "Agent 2 — Planification entretien + Email participants",
   "nodes": [
     {
@@ -12,19 +13,29 @@
       "name": "Webhook — Entretien créé",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "agent2-entretien"
     },
     {
       "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "cond-cv-selectionne",
-              "leftValue": "={{ $json.event }}",
+              "leftValue": "={{ $json.body.event }}",
               "rightValue": "CV_SELECTIONNE",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
@@ -35,17 +46,23 @@
       "name": "Profil sélectionné (pré-entretien) ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst candidateId    = data.candidateId;\nconst firstName      = data.candidateFirstName || 'Candidat';\nconst lastName       = data.candidateLastName  || '';\nconst candidateEmail = data.candidateEmail || '';\nconst jobTitle       = data.jobOfferTitle || 'le poste';\n\nreturn [{ json: {\n  candidateId, firstName, lastName, candidateEmail, jobTitle,\n  selectedAt: new Date().toISOString()\n} }];"
+        "jsCode": "const data = $input.first().json.body;\n\nconst candidateId    = data.candidateId;\nconst firstName      = data.candidateFirstName || 'Candidat';\nconst lastName       = data.candidateLastName  || '';\nconst candidateEmail = data.candidateEmail || '';\nconst jobTitle       = data.jobOfferTitle || 'le poste';\n\nreturn [{ json: {\n  candidateId, firstName, lastName, candidateEmail, jobTitle,\n  selectedAt: new Date().toISOString()\n} }];"
       },
       "id": "prepare-selection",
       "name": "Préparer données sélection",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 180]
+      "position": [
+        720,
+        180
+      ]
     },
     {
       "parameters": {
@@ -59,69 +76,222 @@
       "name": "Email — Candidat (profil retenu)",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [960, 180]
+      "position": [
+        960,
+        180
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst interviewId     = data.interviewId;\nconst candidateFirst  = data.candidateFirstName || 'Candidat';\nconst candidateLast   = data.candidateLastName  || '';\nconst candidateEmail  = data.candidateEmail;\nconst jobTitle        = data.jobOfferTitle || 'le poste';\nconst interviewDate   = data.scheduledDate;\n  \nconst typeLabels = {\n  PHONE:     '📞 Entretien téléphonique',\n  VIDEO:     '💻 Entretien vidéo (visioconférence)',\n  ONSITE:    '🏢 Entretien sur site',\n  TECHNICAL: '⚙️ Test technique',\n};\nconst interviewType  = typeLabels[data.interviewType] || data.interviewType || 'Entretien';\nconst interviewerName  = data.interviewerName  || 'Notre équipe';\nconst interviewerEmail = data.interviewerEmail || null;\nconst notes          = data.notes || '';\n\n// Génère un lien Meet fictif (en prod : Google Calendar API)\nconst meetLink = data.interviewType === 'VIDEO'\n  ? `https://meet.google.com/${Math.random().toString(36).substr(2, 9)}`\n  : null;\n\nconst dateFormatted = interviewDate\n  ? new Date(interviewDate).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })\n  : 'À confirmer';\n\nreturn [{ json: {\n  interviewId, candidateFirst, candidateLast, candidateEmail,\n  jobTitle, interviewType, interviewerName, interviewerEmail, interviewDate,\n  dateFormatted, notes, meetLink,\n  scheduledAt: new Date().toISOString()\n} }];"
+        "jsCode": "const data = $input.first().json.body;\n\nconst interviewId     = data.interviewId;\nconst candidateFirst  = data.candidateFirstName || 'Candidat';\nconst candidateLast   = data.candidateLastName  || '';\nconst candidateEmail  = data.candidateEmail;\nconst jobTitle        = data.jobOfferTitle || 'le poste';\nconst interviewDate   = data.scheduledDate;\nconst durationMinutes = data.durationMinutes || 30;\n\nconst typeLabels = {\n  PHONE:     '📞 Entretien téléphonique',\n  VIDEO:     '💻 Entretien vidéo (visioconférence)',\n  ONSITE:    '🏢 Entretien sur site',\n  TECHNICAL: '⚙️ Test technique',\n};\nconst interviewType    = typeLabels[data.interviewType] || data.interviewType || 'Entretien';\nconst isVideo           = data.interviewType === 'VIDEO';\nconst interviewerName  = data.interviewerName  || 'Notre équipe';\nconst interviewerEmail = data.interviewerEmail || null;\nconst notes            = data.notes || '';\n\nconst startIso = interviewDate ? new Date(interviewDate).toISOString() : null;\nconst endIso   = interviewDate ? new Date(new Date(interviewDate).getTime() + durationMinutes * 60000).toISOString() : null;\n\nconst dateFormatted = interviewDate\n  ? new Date(interviewDate).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })\n  : 'À confirmer';\n\nreturn [{ json: {\n  interviewId, candidateFirst, candidateLast, candidateEmail,\n  jobTitle, interviewType, isVideo, interviewerName, interviewerEmail, interviewDate,\n  startIso, endIso, dateFormatted, notes,\n  scheduledAt: new Date().toISOString()\n} }];"
       },
       "id": "prepare-interview",
       "name": "Préparer données entretien",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [720, 420]
+      "position": [
+        700,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "mode": "list",
+          "value": "primary"
+        },
+        "start": "={{ $json.startIso }}",
+        "end": "={{ $json.endIso }}",
+        "additionalFields": {
+          "summary": "=Entretien {{ $json.interviewType }} — {{ $json.candidateFirst }} {{ $json.candidateLast }} — {{ $json.jobTitle }}",
+          "description": "=Entretien JOB4YOU pour le poste {{ $json.jobTitle }}.\nCandidat : {{ $json.candidateFirst }} {{ $json.candidateLast }} ({{ $json.candidateEmail }})\nIntervieweur : {{ $json.interviewerName }}\n{{ $json.notes ? 'Notes : ' + $json.notes : '' }}",
+          "attendees": "={{ [$json.candidateEmail, $json.interviewerEmail].filter(e => !!e) }}",
+          "conferenceDataUi": {
+            "conferenceDataValues": {
+              "conferenceSolution": "hangoutsMeet"
+            }
+          }
+        }
+      },
+      "id": "create-calendar-event",
+      "name": "Créer événement Google Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        960,
+        420
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "O0jrRBrWsXYR5qor",
+          "name": "Google Calendar account"
+        }
+      },
+      "notesInFlow": true,
+      "notes": "Crée l'événement (avec lien Meet auto-généré) pour tout entretien planifié. Nécessite une credential OAuth2 'Google Calendar account' configurée dans n8n (Settings > Credentials)."
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=http://localhost:8080/api/interviews/{{ $('Préparer données entretien').item.json.interviewId }}/meet-link",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "meetLink",
+              "value": "={{ $json.hangoutLink }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-Key",
+              "value": "={{ $env.JOB4YOU_N8N_API_KEY || '' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "save-meet-link",
+      "name": "Sauvegarder lien Meet (callback backend)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1220,
+        420
+      ]
     },
     {
       "parameters": {
         "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
-        "toEmail": "={{ $json.candidateEmail }}",
-        "subject": "📅 Votre entretien est planifié — {{ $json.jobTitle }}",
+        "toEmail": "={{ $('Préparer données entretien').item.json.candidateEmail }}",
+        "subject": "=📅 Votre entretien est planifié — {{ $('Préparer données entretien').item.json.jobTitle }}",
         "emailType": "html",
-        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Confirmation d'entretien</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $json.candidateFirst }} {{ $json.candidateLast }},</h2>\n    <p>Votre entretien pour le poste de <strong>{{ $json.jobTitle }}</strong> a été planifié.</p>\n    \n    <div style=\"background: white; border-left: 4px solid #10b981; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;\">\n      <h3 style=\"color: #059669; margin-top:0;\">📋 Détails de l'entretien</h3>\n      <table style=\"width:100%; border-collapse: collapse;\">\n        <tr><td style=\"color:#6b7280; padding: 6px 0; width:140px;\">Type</td><td style=\"font-weight:bold;\">{{ $json.interviewType }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 6px 0;\">Date</td><td style=\"font-weight:bold; color:#1e40af;\">{{ $json.dateFormatted }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 6px 0;\">Intervieweur</td><td>{{ $json.interviewerName }}</td></tr>\n        {{ $json.notes ? '<tr><td style=\"color:#6b7280; padding: 6px 0;\">Notes</td><td>' + $json.notes + '</td></tr>' : '' }}\n      </table>\n    </div>\n\n    {{ $json.meetLink ? '<a href=\"' + $json.meetLink + '\" style=\"display:inline-block; background:#059669; color:white; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold;\">🎥 Rejoindre Google Meet</a>' : '' }}\n\n    <p>En cas de question ou d'empêchement, contactez-nous dès que possible.</p>\n\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par JOB4YOU Agent 3.\n    </p>\n  </div>\n</body></html>"
+        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Confirmation d'entretien</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }},</h2>\n    <p>Votre entretien pour le poste de <strong>{{ $('Préparer données entretien').item.json.jobTitle }}</strong> a été planifié.</p>\n    \n    <div style=\"background: white; border-left: 4px solid #10b981; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;\">\n      <h3 style=\"color: #059669; margin-top:0;\">📋 Détails de l'entretien</h3>\n      <table style=\"width:100%; border-collapse: collapse;\">\n        <tr><td style=\"color:#6b7280; padding: 6px 0; width:140px;\">Type</td><td style=\"font-weight:bold;\">{{ $('Préparer données entretien').item.json.interviewType }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 6px 0;\">Date</td><td style=\"font-weight:bold; color:#1e40af;\">{{ $('Préparer données entretien').item.json.dateFormatted }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 6px 0;\">Intervieweur</td><td>{{ $('Préparer données entretien').item.json.interviewerName }}</td></tr>\n        {{ $('Préparer données entretien').item.json.notes ? '<tr><td style=\"color:#6b7280; padding: 6px 0;\">Notes</td><td>' + $('Préparer données entretien').item.json.notes + '</td></tr>' : '' }}\n      </table>\n    </div>\n\n    {{ $json.hangoutLink ? '<a href=\"' + $json.hangoutLink + '\" style=\"display:inline-block; background:#059669; color:white; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold;\">🎥 Rejoindre Google Meet</a>' : '' }}\n\n    <p>En cas de question ou d'empêchement, contactez-nous dès que possible.</p>\n\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par JOB4YOU Agent 3.\n    </p>\n  </div>\n</body></html>"
       },
       "id": "email-candidat",
       "name": "Email — Candidat (convocation)",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [960, 360]
+      "position": [
+        1220,
+        300
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      }
     },
     {
       "parameters": {
         "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
-        "toEmail": "={{ $json.interviewerEmail || 'rh1@job4you.com' }}",
-        "subject": "📅 Entretien planifié — {{ $json.candidateFirst }} {{ $json.candidateLast }} / {{ $json.jobTitle }}",
+        "toEmail": "={{ $('Préparer données entretien').item.json.interviewerEmail || 'rh1@job4you.com' }}",
+        "subject": "=📅 Entretien planifié — {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }} / {{ $('Préparer données entretien').item.json.jobTitle }}",
         "emailType": "html",
-        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU — Rappel entretien</h1>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <p>Un entretien a été planifié :</p>\n    <ul>\n      <li><strong>Candidat :</strong> {{ $json.candidateFirst }} {{ $json.candidateLast }} ({{ $json.candidateEmail }})</li>\n      <li><strong>Poste :</strong> {{ $json.jobTitle }}</li>\n      <li><strong>Type :</strong> {{ $json.interviewType }}</li>\n      <li><strong>Date :</strong> {{ $json.dateFormatted }}</li>\n      <li><strong>Intervieweur :</strong> {{ $json.interviewerName }}</li>\n      {{ $json.meetLink ? '<li><strong>Lien Meet :</strong> <a href=\"' + $json.meetLink + '\">' + $json.meetLink + '</a></li>' : '' }}\n    </ul>\n    <p style=\"color: #6b7280; font-size: 12px;\">Email automatique JOB4YOU Agent 3 — {{ $json.scheduledAt }}</p>\n  </div>\n</body></html>"
+        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU — Rappel entretien</h1>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <p>Un entretien a été planifié :</p>\n    <ul>\n      <li><strong>Candidat :</strong> {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }} ({{ $('Préparer données entretien').item.json.candidateEmail }})</li>\n      <li><strong>Poste :</strong> {{ $('Préparer données entretien').item.json.jobTitle }}</li>\n      <li><strong>Type :</strong> {{ $('Préparer données entretien').item.json.interviewType }}</li>\n      <li><strong>Date :</strong> {{ $('Préparer données entretien').item.json.dateFormatted }}</li>\n      <li><strong>Intervieweur :</strong> {{ $('Préparer données entretien').item.json.interviewerName }}</li>\n      {{ $json.hangoutLink ? '<li><strong>Lien Meet :</strong> <a href=\"' + $json.hangoutLink + '\">' + $json.hangoutLink + '</a></li>' : '' }}\n    </ul>\n    <p style=\"color: #6b7280; font-size: 12px;\">Email automatique JOB4YOU Agent 3 — {{ $('Préparer données entretien').item.json.scheduledAt }}</p>\n  </div>\n</body></html>"
       },
       "id": "email-rh",
       "name": "Email — Intervieweur (confirmation planification)",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [960, 480]
+      "position": [
+        1220,
+        540
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      }
     }
   ],
   "connections": {
     "Webhook — Entretien créé": {
-      "main": [[ { "node": "Profil sélectionné (pré-entretien) ?", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Profil sélectionné (pré-entretien) ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Profil sélectionné (pré-entretien) ?": {
       "main": [
-        [ { "node": "Préparer données sélection", "type": "main", "index": 0 } ],
-        [ { "node": "Préparer données entretien", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Préparer données sélection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Préparer données entretien",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Préparer données sélection": {
-      "main": [[ { "node": "Email — Candidat (profil retenu)", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Email — Candidat (profil retenu)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Préparer données entretien": {
       "main": [
         [
-          { "node": "Email — Candidat (convocation)", "type": "main", "index": 0 },
-          { "node": "Email — Intervieweur (confirmation planification)", "type": "main", "index": 0 }
+          {
+            "node": "Créer événement Google Calendar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Créer événement Google Calendar": {
+      "main": [
+        [
+          {
+            "node": "Sauvegarder lien Meet (callback backend)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email — Candidat (convocation)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Email — Intervieweur (confirmation planification)",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["job4you", "agent2", "entretien"]
+  "settings": {
+    "executionOrder": "v1"
+  }
 }

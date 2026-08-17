@@ -171,6 +171,16 @@ public class InterviewController {
         return ResponseEntity.ok(interviews);
     }
 
+    @PatchMapping("/{id}/meet-link")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @Operation(summary = "Sauvegarder le lien Google Meet réel créé par l'Agent 2 n8n")
+    public ResponseEntity<InterviewResponse> saveMeetLink(
+            @PathVariable Long id,
+            @RequestParam String meetLink) {
+        InterviewResponse response = interviewService.saveMeetLink(id, meetLink);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/interviewers")
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Récupérer la liste des interviewers")

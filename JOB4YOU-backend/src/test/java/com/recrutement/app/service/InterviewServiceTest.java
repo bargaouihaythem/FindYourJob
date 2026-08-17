@@ -133,4 +133,21 @@ class InterviewServiceTest {
 
         verify(interviewRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("saveMeetLink enregistre le lien Google Meet réel transmis par l'agent n8n")
+    void shouldSaveRealMeetLink() {
+        Interview interview = new Interview();
+        interview.setId(5L);
+        when(interviewRepository.findById(5L)).thenReturn(Optional.of(interview));
+        when(interviewRepository.save(any(Interview.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        var response = interviewService.saveMeetLink(5L, "https://meet.google.com/abc-defg-hij");
+
+        assertThat(response.getMeetLink()).isEqualTo("https://meet.google.com/abc-defg-hij");
+        assertThat(interview.getMeetLink()).isEqualTo("https://meet.google.com/abc-defg-hij");
+        // Callback système déjà gardé par le rôle N8N au niveau contrôleur : pas de
+        // vérification de périmètre ici, comme CandidateService.saveAiScore.
+        verify(accessControlService, never()).assertCanAccessCandidate(any());
+    }
 }
