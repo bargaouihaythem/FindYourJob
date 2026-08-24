@@ -6,7 +6,7 @@ JOB4YOU est une plateforme web de gestion du recrutement interne. Elle centralis
 
 Le socle fonctionnel est opérationnel dans un environnement de développement ou de démonstration. Le backend réalise l’extraction du texte des CV et le scoring par critères via Cohere lorsque la clé est configurée. En cas d’indisponibilité de Cohere, un mode dégradé est utilisé afin de ne pas bloquer le dépôt d’une candidature.
 
-Les workflows n8n orchestrent les événements et les emails. Ils ne remplacent pas le backend : le calcul du score et les principales règles métier restent exécutés par Spring Boot. L’intégration complète avec Google Calendar et Google Meet n’est pas encore opérationnelle ; le workflow d’entretien prépare les informations et génère actuellement un lien de démonstration pour les entretiens vidéo.
+Les workflows n8n orchestrent les événements et les emails. Ils ne remplacent pas le backend : le calcul du score et les principales règles métier restent exécutés par Spring Boot. L’intégration avec Google Calendar et Google Meet est opérationnelle : le workflow d’entretien crée un événement Google Calendar réel (via OAuth2) et récupère le lien Google Meet authentique généré par Google, ensuite persisté côté backend.
 
 ## Stack technique
 
@@ -49,7 +49,7 @@ Le workflow est déclenché par une nouvelle candidature. Il appelle l’endpoin
 
 ### Agent 2 — Planification des entretiens
 
-Le workflow est déclenché lors de la création d’un entretien. Il envoie les informations de convocation au candidat et à l’intervieweur. La planification, les transitions de statut et les rappels sont gérés par le backend. La création réelle d’événements Google Calendar ou de liens Google Meet authentifiés reste une évolution à intégrer.
+Le workflow est déclenché lors de la création d’un entretien. Il crée un événement Google Calendar réel (participants, créneau) et récupère le lien Google Meet authentique généré par Google, puis envoie les informations de convocation au candidat et à l’intervieweur. La planification, les transitions de statut et les rappels sont gérés par le backend.
 
 ### Agent 3 — Routage RH vers manager et décision finale
 
@@ -176,11 +176,11 @@ Les endpoints sensibles doivent être protégés par JWT, par les rôles applica
 
 ## Tests
 
-Le backend contient des tests unitaires et de contrôleur couvrant notamment le workflow candidat, le seuil IA, les transitions de statut (y compris le caractère obligatoire de l’entretien téléphonique avant acceptation), le découplage entre planification d’entretien et statut, le routage manager, l’isolation de périmètre et le calendrier manager. La suite Maven exécute **101 tests sans échec ni erreur**. Des tests d’intégration, de charge et de sécurité complémentaires restent nécessaires avant une mise en production.
+Le backend contient des tests unitaires et de contrôleur couvrant notamment le workflow candidat, le seuil IA, les transitions de statut (y compris le caractère obligatoire de l’entretien téléphonique avant acceptation), le découplage entre planification d’entretien et statut, le routage manager, l’isolation de périmètre et le calendrier manager. La suite Maven exécute **108 tests sans échec ni erreur**. Des tests d’intégration, de charge et de sécurité complémentaires restent nécessaires avant une mise en production.
 
 ## Limites connues et évolutions
 
-Les points suivants doivent être traités avant un déploiement de production : rotation et stockage sécurisé des secrets, nettoyage de l’historique Git, migrations versionnées de base de données, protection fine des URLs de CV, analyse antivirus des fichiers, configuration CORS restrictive, signature des webhooks, intégration Google Calendar/Meet réelle, stratégie de conservation des données personnelles, tests d’intégration et pipeline CI/CD.
+Les points suivants doivent être traités avant un déploiement de production : rotation et stockage sécurisé des secrets, nettoyage de l’historique Git, migrations versionnées de base de données, protection fine des URLs de CV, analyse antivirus des fichiers, configuration CORS restrictive, signature des webhooks, stratégie de conservation des données personnelles, tests d’intégration et pipeline CI/CD.
 
 ## Auteur
 
