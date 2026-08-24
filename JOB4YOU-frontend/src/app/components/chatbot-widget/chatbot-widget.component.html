@@ -1,0 +1,44 @@
+<ng-container *ngIf="isVisible()">
+  <button
+    type="button"
+    class="chatbot-bubble"
+    (click)="toggleOpen()"
+    [attr.aria-label]="isOpen ? 'Fermer l\'assistant' : 'Ouvrir l\'assistant'">
+    <i class="fas" [ngClass]="isOpen ? 'fa-times' : 'fa-comment-dots'"></i>
+  </button>
+
+  <div class="chatbot-panel" *ngIf="isOpen">
+    <div class="chatbot-panel-header">
+      <i class="fas fa-robot me-2"></i>
+      <span>Assistant JOB4YOU</span>
+      <button type="button" class="chatbot-close-btn" (click)="close()" aria-label="Fermer l'assistant">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="chatbot-panel-body" #panelBody>
+      <div *ngFor="let msg of messages" class="chatbot-message" [ngClass]="msg.role" [innerHTML]="formatMessage(msg.text)">
+      </div>
+      <div *ngIf="isLoading" class="chatbot-message bot chatbot-typing">
+        <i class="fas fa-ellipsis-h"></i>
+      </div>
+    </div>
+
+    <div class="chatbot-panel-footer">
+      <input
+        type="text"
+        class="form-control"
+        placeholder="Posez votre question..."
+        [(ngModel)]="input"
+        (keyup.enter)="send()"
+        [disabled]="isLoading" />
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="send()"
+        [disabled]="isLoading || !input.trim()">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+    </div>
+  </div>
+</ng-container>

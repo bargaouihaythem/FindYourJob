@@ -94,6 +94,7 @@ public class WebSecurityConfig {
                 .requestMatchers("/api/job-offers/**").authenticated()
                 .requestMatchers("/api/notifications/**").authenticated()
                 .requestMatchers("/api/emails/**").authenticated()
+                .requestMatchers("/api/chatbot/**").authenticated()
                 .anyRequest().authenticated()
             );
 

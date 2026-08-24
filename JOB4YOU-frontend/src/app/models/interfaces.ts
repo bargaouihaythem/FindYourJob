@@ -86,6 +86,14 @@ export interface MessageResponse {
   message: string;
 }
 
+export interface ChatbotAskResponse {
+  answer: string;
+}
+
+export interface ChatbotGreetingResponse {
+  greeting: string;
+}
+
 export interface EmailResponse {
   success: boolean;
   message: string;

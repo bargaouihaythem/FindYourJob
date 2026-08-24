@@ -23,6 +23,7 @@ services:
       N8N_WEBHOOK_AGENT3: ${N8N_WEBHOOK_AGENT3:-}
       N8N_API_KEY: ${N8N_API_KEY:-}
       COHERE_API_KEY: ${COHERE_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       APP_FILE_UPLOAD_DIR: /app/uploads/cvs
     depends_on:
       db:
