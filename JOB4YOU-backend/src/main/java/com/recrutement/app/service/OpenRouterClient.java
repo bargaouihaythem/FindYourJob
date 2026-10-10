@@ -35,7 +35,7 @@ public class OpenRouterClient {
     @Value("${openrouter.api.url:https://openrouter.ai/api/v1/chat/completions}")
     private String apiUrl;
 
-    @Value("${openrouter.model:stealth/ox-alpha}")
+    @Value("${openrouter.model:z-ai/glm-5.3-flash}")
     private String model;
 
     private final RestTemplate restTemplate;

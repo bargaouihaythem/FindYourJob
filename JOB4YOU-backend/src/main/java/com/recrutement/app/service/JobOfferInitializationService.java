@@ -50,22 +50,42 @@ public class JobOfferInitializationService implements ApplicationRunner {
         }
 
         // Vérifier si des offres existent déjà
-        long existingJobOffers = jobOfferRepository.count();
-        if (existingJobOffers > 0 && !forceCreateJobOffers) {
-            logger.info("✅ {} offres d'emploi déjà présentes, initialisation ignorée.", existingJobOffers);
+        long totalOffers = jobOfferRepository.count();
+        long activeOffers = jobOfferRepository.countByStatus(JobOffer.JobStatus.ACTIVE);
+
+        if (activeOffers == 0 && totalOffers > 0) {
+            logger.info("⚠️ Aucune offre ACTIVE trouvée (toutes les {} offres étaient expirées). Réactivation avec date limite en janvier 2027...", totalOffers);
+            List<JobOffer> allOffers = jobOfferRepository.findAll();
+            LocalDateTime deadlineJan2027 = LocalDateTime.of(2027, 1, 31, 23, 59, 59);
+            for (JobOffer offer : allOffers) {
+                offer.setStatus(JobOffer.JobStatus.ACTIVE);
+                offer.setDeadline(deadlineJan2027);
+            }
+            jobOfferRepository.saveAll(allOffers);
+            logger.info("✅ {} offres réactivées avec succès avec expiration au 31/01/2027 !", allOffers.size());
+            return;
+        }
+
+        if (totalOffers > 0 && !forceCreateJobOffers) {
+            logger.info("✅ {} offres d'emploi déjà présentes (dont {} actives), initialisation ignorée.", totalOffers, activeOffers);
             logger.info("💡 Pour forcer la création de nouvelles offres, définissez app.init.force-create-job-offers=true");
             return;
         }
 
-        if (existingJobOffers > 0 && forceCreateJobOffers) {
-            logger.info("🔄 {} offres existantes trouvées, mais création forcée activée. Ajout de nouvelles offres...", existingJobOffers);
+        if (totalOffers > 0 && forceCreateJobOffers) {
+            logger.info("🔄 {} offres existantes trouvées, mais création forcée activée. Ajout de nouvelles offres...", totalOffers);
         }
 
-        // Vérifier qu'un utilisateur HR existe
-        Optional<User> hrUser = userRepository.findByUsername("hrUser");
+        // Vérifier qu'un utilisateur HR existe (rh, admin ou hrUser)
+        Optional<User> hrUser = userRepository.findByUsername("rh");
         if (hrUser.isEmpty()) {
-            // Fallback: chercher n'importe quel utilisateur pour créer les offres
-            logger.warn("⚠️ Aucun utilisateur 'hrUser' trouvé, recherche d'un autre utilisateur...");
+            hrUser = userRepository.findByUsername("admin");
+        }
+        if (hrUser.isEmpty()) {
+            hrUser = userRepository.findByUsername("hrUser");
+        }
+        if (hrUser.isEmpty()) {
+            logger.warn("⚠️ Recherche d'un autre utilisateur pour créer les offres...");
             List<User> allUsers = userRepository.findAll();
             if (!allUsers.isEmpty()) {
                 hrUser = Optional.of(allUsers.get(0));
@@ -77,7 +97,7 @@ public class JobOfferInitializationService implements ApplicationRunner {
             }
         }
 
-        logger.info("📝 Création des offres d'emploi par défaut...");
+        logger.info("📝 Création des offres d'emploi par défaut avec l'utilisateur '{}'...", hrUser.get().getUsername());
         createDefaultJobOffers(hrUser.get().getUsername());
         logger.info("✅ Offres d'emploi créées avec succès!");
     }
@@ -442,7 +462,7 @@ public class JobOfferInitializationService implements ApplicationRunner {
             request.setLocation(location);
             request.setSalaryRange(salaryRange);
             request.setStatus(JobOffer.JobStatus.ACTIVE);
-            request.setDeadline(LocalDateTime.now().plusMonths(2)); // 2 mois de validité
+            request.setDeadline(LocalDateTime.of(2027, 1, 31, 23, 59, 59)); // Expire fin janvier 2027
 
             jobOfferService.createJobOffer(request, hrUsername);
             logger.info("✅ Offre créée: {}", title);
