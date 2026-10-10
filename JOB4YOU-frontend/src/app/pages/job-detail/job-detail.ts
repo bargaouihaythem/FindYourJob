@@ -131,6 +131,17 @@ export class JobDetailComponent implements OnInit {
   }
 
   /**
+   * Vérifie si l'utilisateur connecté est un administrateur, RH ou manager
+   */
+  isAdministrativeUser(): boolean {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser?.roles) return false;
+    return currentUser.roles.some((r: string) => 
+      ['ROLE_ADMIN', 'ROLE_HR', 'ROLE_MANAGER', 'ROLE_TEAM_LEAD', 'ROLE_SENIOR_DEV', 'ROLE_TEAM'].includes(r)
+    );
+  }
+
+  /**
    * Vérifie si l'utilisateur connecté a déjà postulé pour cette offre
    */
   checkIfAlreadyApplied(email: string, jobOfferId: number): void {

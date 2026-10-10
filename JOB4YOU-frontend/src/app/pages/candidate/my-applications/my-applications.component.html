@@ -1,4 +1,4 @@
-<div class="container-fluid py-4">
+<div class="container py-4">
   <div class="row">
     <div class="col-12">
       <h2 class="mb-4">
@@ -35,56 +35,62 @@
       <div *ngIf="!loading && !error && applications.length > 0">
         <div class="row">
           <div class="col-12">
-            <div class="card">
-              <div class="card-body">
+            <div class="card shadow-sm border-0 rounded-3">
+              <div class="card-body p-0">
                 <div class="table-responsive">
-                  <table class="table table-hover">
-                    <thead class="table-light">
+                  <table class="table table-hover align-middle mb-0">
+                    <thead>
                       <tr>
-                        <th>Offre d'emploi</th>
-                        <th>Date de candidature</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
+                        <th class="py-3 px-4 text-white">Offre d'emploi</th>
+                        <th class="py-3 px-3 text-white text-center" style="width: 170px;">Date</th>
+                        <th class="py-3 px-3 text-white text-center" style="width: 220px;">Statut</th>
+                        <th class="py-3 px-3 text-white text-center" style="width: 210px;">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr *ngFor="let application of applications">
-                        <td>
-                          <div>
-                            <h6 class="mb-1">{{ application.jobOfferTitle || 'N/A' }}</h6>
-                            <small class="text-muted">ID: #{{ application.jobOfferId }}</small>
+                      <tr *ngFor="let application of applications" class="border-bottom">
+                        <td class="py-3 px-4">
+                          <div class="fw-bold text-dark fs-6">{{ application.jobOfferTitle || ('Offre #' + application.jobOfferId) }}</div>
+                          <div class="small text-muted mt-1">
+                            <span class="badge bg-light text-secondary border me-1">Réf: #{{ application.jobOfferId }}</span>
+                            <span class="badge bg-light text-secondary border" *ngIf="application.departmentName">{{ application.departmentName }}</span>
                           </div>
                         </td>
-                        <td>
-                          {{ formatDate(application.applicationDate) }}
-                        </td>
-                        <td>
-                          <span [class]="getStatusClass(application.status)">
-                            {{ getStatusText(application.status) }}
+                        <td class="py-3 px-3 text-center text-nowrap">
+                          <span class="text-secondary fw-medium">
+                            <i class="far fa-calendar-alt text-primary me-1"></i>
+                            {{ formatDate(application.applicationDate) }}
                           </span>
                         </td>
-                        <td>
-                          <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" 
-                                    [routerLink]="['/job-offers', application.jobOfferId]"
-                                    title="Voir l'offre">
-                              <i class="fas fa-eye"></i>
-                            </button>                            <button class="btn btn-outline-secondary" 
+                        <td class="py-3 px-3 text-center text-nowrap">
+                          <span [class]="getStatusClass(application.status)" class="rounded-pill px-3 py-2 fw-semibold shadow-xs">
+                            <i [class]="getStatusIcon(application.status)"></i>
+                            {{ getStatusText(application.status) }}
+                          </span>
+                          <div class="small text-muted mt-1 fst-italic" *ngIf="application.statusReason">
+                            <i class="fas fa-info-circle me-1"></i>{{ application.statusReason }}
+                          </div>
+                        </td>
+                        <td class="py-3 px-3 text-center text-nowrap">
+                          <div class="d-inline-flex gap-1 justify-content-center">
+                            <a [routerLink]="['/job-offers', application.jobOfferId]" 
+                               class="btn btn-sm btn-outline-primary px-2"
+                               title="Voir l'offre">
+                              <i class="fas fa-eye me-1"></i>Offre
+                            </a>
+                            <button class="btn btn-sm btn-outline-secondary px-2" 
                                     *ngIf="application.cv?.fileUrl"
                                     (click)="downloadCV(application.cv?.fileUrl)"
                                     title="Télécharger mon CV">
-                              <i class="fas fa-download"></i>
+                              <i class="fas fa-download me-1"></i>CV
                             </button>
-                            <button class="btn btn-outline-danger"
+                            <button class="btn btn-sm btn-outline-danger px-2" 
                                     *ngIf="canWithdraw(application)"
-                                    (click)="withdrawApplication(application)"
+                                    (click)="openWithdrawModal(application)"
                                     title="Retirer la candidature">
-                              <i class="fas fa-user-minus"></i>
+                              <i class="fas fa-user-minus me-1"></i>Retirer
                             </button>
                           </div>
-                          <small class="d-block text-muted mt-1" *ngIf="application.statusReason">
-                            Motif : {{ application.statusReason }}
-                          </small>
                         </td>
                       </tr>
                     </tbody>
@@ -93,6 +99,59 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de confirmation de retrait de candidature -->
+  <div *ngIf="showWithdrawModal" 
+       class="modal fade show d-block" 
+       tabindex="-1" 
+       style="background-color: rgba(0,0,0,0.5); z-index: 1055;">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title">
+            <i class="fas fa-exclamation-triangle me-2"></i>Retirer ma candidature
+          </h5>
+          <button type="button" class="btn-close btn-close-white" (click)="closeWithdrawModal()" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="mb-3">
+            Êtes-vous sûr de vouloir retirer votre candidature pour le poste de 
+            <strong class="text-primary">{{ selectedApplicationToWithdraw?.jobOfferTitle || 'cette offre' }}</strong> ?
+          </p>
+          <div class="alert alert-warning py-2 px-3 small">
+            <i class="fas fa-info-circle me-1"></i>
+            Cette action est irréversible. Votre dossier ne sera plus examiné par l'équipe de recrutement.
+          </div>
+          <div class="mb-3">
+            <label for="withdrawReasonInput" class="form-label fw-bold small text-muted">
+              Motif du retrait (facultatif) :
+            </label>
+            <textarea id="withdrawReasonInput" 
+                      class="form-control" 
+                      rows="3" 
+                      [(ngModel)]="withdrawReason" 
+                      placeholder="Ex: J'ai accepté une autre opportunité, changement de projet professionnel..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" 
+                  class="btn btn-outline-secondary" 
+                  (click)="closeWithdrawModal()" 
+                  [disabled]="isWithdrawing">
+            Annuler
+          </button>
+          <button type="button" 
+                  class="btn btn-danger" 
+                  (click)="confirmWithdraw()" 
+                  [disabled]="isWithdrawing">
+            <i class="fas fa-spinner fa-spin me-1" *ngIf="isWithdrawing"></i>
+            <i class="fas fa-user-minus me-1" *ngIf="!isWithdrawing"></i>
+            Confirmer le retrait
+          </button>
         </div>
       </div>
     </div>

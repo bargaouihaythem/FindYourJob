@@ -137,17 +137,23 @@
           </button>
         </li>
         <!-- Utilisateur connecté -->
-        <li class="nav-item dropdown" *ngIf="isAuthenticated() && currentUser">
-          <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-            <i class="fas fa-user-circle me-1"></i>
-            {{ currentUser.username }}
+        <!-- Utilisateur connecté (nom / profil) -->
+        <li class="nav-item d-flex align-items-center" *ngIf="isAuthenticated() && currentUser">
+          <span class="nav-link text-white d-flex align-items-center py-1 px-2" style="cursor: default;">
+            <i class="fas fa-user-circle me-1 fs-5"></i>
+            <span class="fw-semibold">{{ currentUser.username }}</span>
+          </span>
+        </li>
+
+        <!-- Lien Déconnexion direct à l'extrême droite -->
+        <li class="nav-item d-flex align-items-center ms-1" *ngIf="isAuthenticated()">
+          <a class="nav-link text-white d-flex align-items-center py-1 px-2" 
+             (click)="logout()" 
+             style="cursor: pointer;"
+             title="Se déconnecter">
+            <i class="fas fa-sign-out-alt me-1"></i>
+            <span class="fw-semibold">Déconnexion</span>
           </a>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" (click)="logout()" style="cursor: pointer;">
-              <i class="fas fa-sign-out-alt me-2"></i>
-              Déconnexion
-            </a></li>
-          </ul>
         </li>
         
         <!-- Utilisateur non connecté -->

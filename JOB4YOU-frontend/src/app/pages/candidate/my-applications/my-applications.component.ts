@@ -74,48 +74,106 @@ export class MyApplicationsComponent implements OnInit {
 
   getStatusClass(status: string): string {
     switch (status) {
-      case 'APPLIED': return 'badge bg-primary';
-      case 'CV_REVIEWED': return 'badge bg-info';
-      case 'PHONE_SCREENING': return 'badge bg-warning';
-      case 'TECHNICAL_TEST': return 'badge bg-secondary';
-      case 'INTERVIEW': return 'badge bg-warning';
-      case 'FINAL_INTERVIEW': return 'badge bg-warning';
-      case 'ACCEPTED': return 'badge bg-success';
-      case 'INTERVIEW_SCHEDULED': return 'badge bg-info text-dark';
-      case 'HIRED': return 'badge bg-success';
-      case 'REJECTED': return 'badge bg-danger';
-      case 'AUTO_REJECTED': return 'badge bg-danger';
-      case 'MANAGER_REJECTED': return 'badge bg-danger';
-      case 'WITHDRAWN': return 'badge bg-secondary';
-      default: return 'badge bg-secondary';
+      case 'APPLIED': return 'badge bg-primary text-white';
+      case 'CV_REVIEWED': return 'badge bg-info text-dark';
+      case 'PHONE_SCREENING': return 'badge bg-warning text-dark';
+      case 'TECHNICAL_TEST': return 'badge bg-secondary text-white';
+      case 'INTERVIEW': 
+      case 'FINAL_INTERVIEW':
+      case 'INTERVIEW_SCHEDULED': return 'badge bg-info text-white';
+      case 'ACCEPTED':
+      case 'HIRED': return 'badge bg-success text-white';
+      case 'REJECTED':
+      case 'AUTO_REJECTED':
+      case 'MANAGER_REJECTED': return 'badge bg-danger text-white';
+      case 'WITHDRAWN': return 'badge bg-dark text-white';
+      default: return 'badge bg-secondary text-white';
     }
+  }
+
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case 'APPLIED': return 'fas fa-paper-plane me-1';
+      case 'CV_REVIEWED': return 'fas fa-file-alt me-1';
+      case 'PHONE_SCREENING': return 'fas fa-phone me-1';
+      case 'TECHNICAL_TEST': return 'fas fa-laptop-code me-1';
+      case 'INTERVIEW':
+      case 'FINAL_INTERVIEW':
+      case 'INTERVIEW_SCHEDULED': return 'fas fa-calendar-check me-1';
+      case 'ACCEPTED':
+      case 'HIRED': return 'fas fa-check-circle me-1';
+      case 'REJECTED':
+      case 'AUTO_REJECTED':
+      case 'MANAGER_REJECTED': return 'fas fa-times-circle me-1';
+      case 'WITHDRAWN': return 'fas fa-ban me-1';
+      default: return 'fas fa-info-circle me-1';
+    }
+  }
+
+  get totalApplicationsCount(): number {
+    return this.applications.length;
+  }
+
+  get activeApplicationsCount(): number {
+    return this.applications.filter(a => !['HIRED', 'WITHDRAWN', 'REJECTED', 'AUTO_REJECTED', 'MANAGER_REJECTED'].includes(a.status)).length;
+  }
+
+  get acceptedApplicationsCount(): number {
+    return this.applications.filter(a => ['ACCEPTED', 'HIRED'].includes(a.status)).length;
   }
 
   formatDate(date: Date | string): string {
     if (!date) return 'N/A';
     const dateObj = new Date(date);
-    return dateObj.toLocaleDateString('fr-FR');
+    return dateObj.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
   }
+
+  // Modal de retrait de candidature
+  showWithdrawModal = false;
+  selectedApplicationToWithdraw: Candidate | null = null;
+  withdrawReason = '';
+  isWithdrawing = false;
 
   canWithdraw(application: Candidate): boolean {
     return !['HIRED', 'WITHDRAWN', 'MANAGER_REJECTED', 'AUTO_REJECTED'].includes(application.status);
   }
 
-  withdrawApplication(application: Candidate): void {
+  openWithdrawModal(application: Candidate): void {
     if (!this.canWithdraw(application)) return;
-    const confirmed = window.confirm('Voulez-vous vraiment retirer cette candidature ?');
-    if (!confirmed) return;
+    this.selectedApplicationToWithdraw = application;
+    this.withdrawReason = '';
+    this.isWithdrawing = false;
+    this.showWithdrawModal = true;
+  }
 
-    const reason = window.prompt('Motif du retrait (facultatif)') ?? undefined;
-    this.candidateService.withdrawApplication(application.id, reason).subscribe({
+  closeWithdrawModal(): void {
+    this.showWithdrawModal = false;
+    this.selectedApplicationToWithdraw = null;
+    this.withdrawReason = '';
+    this.isWithdrawing = false;
+  }
+
+  confirmWithdraw(): void {
+    if (!this.selectedApplicationToWithdraw) return;
+    this.isWithdrawing = true;
+    const appId = this.selectedApplicationToWithdraw.id;
+    const reason = this.withdrawReason?.trim() || undefined;
+
+    this.candidateService.withdrawApplication(appId, reason).subscribe({
       next: (updated) => {
-        const index = this.applications.findIndex(item => item.id === application.id);
+        const index = this.applications.findIndex(item => item.id === appId);
         if (index >= 0) this.applications[index] = updated;
-        this.toastrNotification.showSuccess('Candidature retirée avec succès');
+        this.toastrNotification.showSuccess('Votre candidature a bien été retirée avec succès.', 'Retrait confirmé');
+        this.closeWithdrawModal();
       },
       error: (error: any) => {
-        const message = error?.error?.message || 'Impossible de retirer cette candidature';
-        this.toastrNotification.showError(message, 'Retrait refusé');
+        const message = error?.error?.message || 'Une erreur est survenue lors du retrait de votre candidature.';
+        this.toastrNotification.showError(message, 'Erreur de suppression');
+        this.isWithdrawing = false;
       }
     });
   }

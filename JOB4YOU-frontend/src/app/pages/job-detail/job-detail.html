@@ -82,10 +82,13 @@
             <div *ngIf="job.status === 'ACTIVE' && hasAlreadyApplied && isAuthenticated()" 
                  class="alert alert-info">
               <i class="fas fa-check-circle me-2"></i>
-              Vous avez déjà postulé pour cette offre. 
-              <a routerLink="/candidate/my-applications" class="alert-link">
-                Consultez vos candidatures
-              </a>
+              <strong>Candidature déjà transmise</strong>
+              <p class="mb-0 mt-1">
+                Vous avez déjà postulé pour cette offre. 
+                <a routerLink="/candidate/my-applications" class="alert-link">
+                  Consultez l'état de votre candidature
+                </a>
+              </p>
             </div>
 
             <!-- Message pour les utilisateurs non connectés -->
@@ -104,13 +107,13 @@
               </a>
             </div>
 
-            <!-- Message pour les utilisateurs administratifs -->
-            <div *ngIf="job.status === 'ACTIVE' && !canApplyToJob() && isAuthenticated()" 
+            <!-- Message pour les utilisateurs administratifs uniquement (RH, Manager, Admin) -->
+            <div *ngIf="job.status === 'ACTIVE' && !hasAlreadyApplied && isAdministrativeUser()" 
                  class="alert alert-info">
               <i class="fas fa-info-circle me-2"></i>
-              <strong>Accès administrateur</strong>
+              <strong>Espace Recruteur / Administrateur</strong>
               <p class="mb-0 mt-2">
-                Vous visualisez cette offre en tant qu'administrateur. 
+                Vous visualisez cette offre avec un profil recruteur/administrateur. 
                 Les candidatures sont gérées via l'interface d'administration.
               </p>
             </div>

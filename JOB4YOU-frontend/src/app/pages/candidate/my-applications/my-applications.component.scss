@@ -9,18 +9,34 @@
   border-bottom: 1px solid #dee2e6;
 }
 
-.table th {
-  font-weight: 600;
-  color: #495057;
-  border-top: none;
+.table {
+  border-radius: 0.5rem;
+  overflow: hidden;
+
+  thead th {
+    background: linear-gradient(135deg, var(--primary-color, #2563eb), var(--primary-dark, #1d4ed8)) !important;
+    color: #ffffff !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+    letter-spacing: 0.3px;
+    border: none;
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+  }
+
+  td {
+    vertical-align: middle;
+    padding: 1rem;
+  }
 }
 
-.table td {
-  vertical-align: middle;
+.shadow-xs {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.btn-group-sm .btn {
-  padding: 0.25rem 0.5rem;
+.badge {
+  font-size: 0.8rem;
+  font-weight: 500;
 }
 
 .text-muted {
