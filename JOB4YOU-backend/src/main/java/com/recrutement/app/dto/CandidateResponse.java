@@ -46,6 +46,10 @@ public class CandidateResponse {
     private String manualScoreBy;
     private LocalDateTime manualScoreDate;
     private Integer effectiveScore;
+    private String matchedSkills;
+    private String missingSkills;
+    private Boolean needsHumanReview;
+    private String humanReviewReason;
 
     // Constructeur pour mapper depuis l'entité Candidate
     public CandidateResponse(Candidate candidate) {
@@ -83,6 +87,10 @@ public class CandidateResponse {
         this.manualScoreBy = candidate.getManualScoreBy();
         this.manualScoreDate = candidate.getManualScoreDate();
         this.effectiveScore = candidate.getManualScore() != null ? candidate.getManualScore() : candidate.getAiScore();
+        this.matchedSkills = candidate.getMatchedSkills();
+        this.missingSkills = candidate.getMissingSkills();
+        this.needsHumanReview = candidate.getNeedsHumanReview();
+        this.humanReviewReason = candidate.getHumanReviewReason();
     }
 }
 

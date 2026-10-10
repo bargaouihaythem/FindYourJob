@@ -243,12 +243,20 @@
               <!-- Score IA (Agent 1 n8n) -->
               <td class="text-center">
                 <ng-container *ngIf="candidate.aiScore != null && candidate.aiScore > 0; else noScore">
-                  <span class="badge rounded-pill px-2 py-1"
-                        [style.background-color]="candidate.aiScore >= 80 ? '#d1fae5' : candidate.aiScore >= 60 ? '#fef3c7' : '#fee2e2'"
-                        [style.color]="candidate.aiScore >= 80 ? '#065f46' : candidate.aiScore >= 60 ? '#92400e' : '#991b1b'"
-                        title="Score analysé par l'Agent 1 n8n">
-                    <i class="fas fa-robot me-1"></i>{{ candidate.aiScore }}/100
-                  </span>
+                  <div class="d-flex flex-column align-items-center gap-1">
+                    <span class="badge rounded-pill px-2 py-1"
+                          [style.background-color]="candidate.aiScore >= 80 ? '#d1fae5' : candidate.aiScore >= 60 ? '#fef3c7' : '#fee2e2'"
+                          [style.color]="candidate.aiScore >= 80 ? '#065f46' : candidate.aiScore >= 60 ? '#92400e' : '#991b1b'"
+                          title="Score analysé par l'Agent 1 n8n">
+                      <i class="fas fa-robot me-1"></i>{{ candidate.aiScore }}/100
+                    </span>
+                    <span *ngIf="candidate.needsHumanReview"
+                          class="badge rounded-pill bg-warning text-dark px-2 py-1"
+                          style="font-size: 0.72rem;"
+                          [title]="candidate.humanReviewReason || 'Arbitrage RH recommandé'">
+                      <i class="fas fa-exclamation-triangle me-1"></i>Arbitrage RH
+                    </span>
+                  </div>
                 </ng-container>
                 <ng-template #noScore>
                   <span class="text-muted small" title="Analyse IA non encore effectuée">—</span>
@@ -635,6 +643,15 @@
                   <span *ngIf="!selectedCandidate.effectiveScore || selectedCandidate.effectiveScore === 0"
                         class="ms-auto text-muted small">En attente d'analyse…</span>
                 </div>
+                <!-- Alerte Human-in-the-Loop (Remarque 2) -->
+                <div class="alert alert-warning d-flex align-items-center mt-2 mb-2 py-2 px-3 border border-warning-subtle rounded-3" *ngIf="selectedCandidate.needsHumanReview">
+                  <i class="fas fa-exclamation-triangle text-warning fs-5 me-2 flex-shrink-0"></i>
+                  <div>
+                    <strong class="text-dark d-block">Arbitrage humain requis (Human-in-the-Loop) :</strong>
+                    <span class="text-secondary small">{{ selectedCandidate.humanReviewReason }}</span>
+                  </div>
+                </div>
+
                 <div *ngIf="selectedCandidate.effectiveScore != null && selectedCandidate.effectiveScore > 0">
                   <div class="progress mb-2" style="height: 8px;">
                     <div class="progress-bar"
@@ -665,6 +682,26 @@
                         Corrigé par {{ selectedCandidate.manualScoreBy }} le {{ formatDate(selectedCandidate.manualScoreDate!) }} :
                         « {{ selectedCandidate.manualScoreReason }} »
                       </p>
+                    </div>
+                  </div>
+
+                  <!-- Compétences validées et manquantes (XAI - Remarque 3) -->
+                  <div class="mt-3 pt-2 border-top" *ngIf="selectedCandidate.matchedSkills || selectedCandidate.missingSkills">
+                    <div class="mb-2" *ngIf="selectedCandidate.matchedSkills">
+                      <span class="small fw-bold text-success"><i class="fas fa-check-circle me-1"></i>Compétences validées :</span>
+                      <div class="d-flex flex-wrap gap-1 mt-1">
+                        <span *ngFor="let s of selectedCandidate.matchedSkills.split(', ')" class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                          {{ s }}
+                        </span>
+                      </div>
+                    </div>
+                    <div *ngIf="selectedCandidate.missingSkills">
+                      <span class="small fw-bold text-danger"><i class="fas fa-times-circle me-1"></i>Compétences manquantes / à évaluer :</span>
+                      <div class="d-flex flex-wrap gap-1 mt-1">
+                        <span *ngFor="let s of selectedCandidate.missingSkills.split(', ')" class="badge bg-danger-subtle text-danger border border-danger px-2 py-1">
+                          {{ s }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -684,14 +684,28 @@ public class CandidateService {
         candidate.setAiScoreSource(result.source);
         candidate.setAiSummary(result.summary);
         candidate.setAiRecommendation(result.recommendation);
+        candidate.setMatchedSkills(result.matchedSkills);
+        candidate.setMissingSkills(result.missingSkills);
+        candidate.setNeedsHumanReview(result.needsHumanReview);
+        candidate.setHumanReviewReason(result.humanReviewReason);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
-        Candidate.CandidateStatus newStatus = result.finalScore >= AI_SCORE_THRESHOLD
-                ? Candidate.CandidateStatus.CV_REVIEWED
-                : Candidate.CandidateStatus.AUTO_REJECTED;
+        // Remarque 2 (Human-in-the-Loop) : si le traitement nécessite un arbitrage humain
+        // (erreur technique ou zone grise), on évite le rejet automatique et on transmet aux RH (CV_REVIEWED)
+        Candidate.CandidateStatus newStatus;
+        String statusReason = null;
+        if (Boolean.TRUE.equals(result.needsHumanReview)) {
+            newStatus = Candidate.CandidateStatus.CV_REVIEWED;
+            statusReason = "En attente de révision humaine RH : " + result.humanReviewReason;
+        } else if (result.finalScore >= AI_SCORE_THRESHOLD) {
+            newStatus = Candidate.CandidateStatus.CV_REVIEWED;
+        } else {
+            newStatus = Candidate.CandidateStatus.AUTO_REJECTED;
+            statusReason = "Rejet automatique : score IA (" + result.finalScore + "/100) inférieur au seuil (" + AI_SCORE_THRESHOLD + ")";
+        }
 
-        return updateCandidateStatus(saved.getId(), newStatus);
+        return updateCandidateStatus(saved.getId(), newStatus, statusReason);
     }
 
     /**
@@ -717,6 +731,9 @@ public class CandidateService {
         candidate.setManualScoreReason(reason);
         candidate.setManualScoreBy(correctedBy);
         candidate.setManualScoreDate(LocalDateTime.now());
+        // L'intervention humaine est validée
+        candidate.setNeedsHumanReview(false);
+        candidate.setHumanReviewReason("Arbitrage humain effectué par " + correctedBy + " : " + reason);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
@@ -727,7 +744,7 @@ public class CandidateService {
                 ? Candidate.CandidateStatus.CV_REVIEWED
                 : Candidate.CandidateStatus.AUTO_REJECTED;
 
-        return updateCandidateStatus(saved.getId(), newStatus);
+        return updateCandidateStatus(saved.getId(), newStatus, "Décision RH post-arbitrage : " + reason);
     }
 
     /**

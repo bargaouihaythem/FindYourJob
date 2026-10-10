@@ -13,16 +13,14 @@ import java.util.Locale;
 /**
  * Service de scoring IA par critères pour les candidatures.
  *
- * Le score final combine 3 critères pondérés :
- *   - technique     : adéquation compétences candidat / compétences requises
+ * Combine les 3 critères :
+ *   - technique     : adéquation compétences normalisées candidat / compétences requises (Remarque 3)
  *   - communication : qualité / professionnalisme du texte de candidature
- *   - séniorité     : adéquation entre le niveau demandé par l'offre
- *                     (JUNIOR/MID/SENIOR) et le niveau perçu du candidat
+ *   - séniorité     : adéquation entre le niveau requis et le niveau détecté
  *
- * Moteur IA : Cohere (Chat API) — accessible depuis le réseau Sopra Steria,
- * contrairement à l'API d'inférence HuggingFace qui y est bloquée (DNS).
- * Si Cohere n'est pas configuré ou indisponible, un mode dégradé (simulé)
- * est utilisé pour ne jamais bloquer le flux de candidature.
+ * Intègre :
+ *   - L'explicabilité XAI : compétences trouvées, manquantes, bonus, justification (Remarque 3)
+ *   - La détection d'erreurs et des cas nécessitant une intervention humaine (Remarque 2)
  */
 @Service
 public class AiScoringService {
@@ -31,10 +29,14 @@ public class AiScoringService {
 
     private final CohereClient cohereClient;
     private final ScoringWeightProfileService scoringWeightProfileService;
+    private final SkillNormalizationService skillNormalizationService;
 
-    public AiScoringService(CohereClient cohereClient, ScoringWeightProfileService scoringWeightProfileService) {
+    public AiScoringService(CohereClient cohereClient,
+                            ScoringWeightProfileService scoringWeightProfileService,
+                            SkillNormalizationService skillNormalizationService) {
         this.cohereClient = cohereClient;
         this.scoringWeightProfileService = scoringWeightProfileService;
+        this.skillNormalizationService = skillNormalizationService;
     }
 
     public static class AiScoreResult {
@@ -45,6 +47,11 @@ public class AiScoringService {
         public String source; // COHERE | SIMULATED
         public String summary;
         public String recommendation;
+        public String matchedSkills;
+        public String missingSkills;
+        public boolean needsHumanReview;
+        public String humanReviewReason;
+        public String detailedJustification;
     }
 
     public AiScoreResult computeScore(Candidate candidate, JobOffer jobOffer) {
@@ -52,6 +59,10 @@ public class AiScoringService {
         String jobTitle = jobOffer != null ? jobOffer.getTitle() : null;
         String requiredSkills = jobOffer != null ? jobOffer.getRequiredSkills() : null;
         String experienceLevel = jobOffer != null ? jobOffer.getExperienceLevel() : null;
+
+        // 1. Analyse structurée des compétences et normalisation (Remarque 3)
+        SkillNormalizationService.MatchingExplanation explanation =
+                skillNormalizationService.analyzeMatching(candidateText, requiredSkills, experienceLevel);
 
         int technical;
         int communication;
@@ -66,7 +77,8 @@ public class AiScoringService {
             source = "COHERE";
         } catch (Exception e) {
             log.info("[AiScoringService] Mode simulé activé (Cohere indisponible) : {}", e.getMessage());
-            technical = computeTechnicalScore(candidateText, requiredSkills);
+            // Calcul technique basé sur la normalisation fine des compétences
+            technical = Math.max(30, (int) Math.round(explanation.getTechnicalMatchRate() * 100));
             communication = computeCommunicationScore(candidateText);
             seniorityMatch = computeSeniorityScore(candidateText, experienceLevel);
             source = "SIMULATED";
@@ -89,9 +101,39 @@ public class AiScoringService {
         result.seniorityMatchScore = seniorityMatch;
         result.finalScore = finalScore;
         result.source = source;
+        result.matchedSkills = String.join(", ", explanation.getMatchedSkills());
+        result.missingSkills = String.join(", ", explanation.getMissingSkills());
+        result.detailedJustification = explanation.getDetailedJustification();
+
+        // 2. Détection d'erreurs et cas nécessitant une intervention humaine (Remarque 2)
+        boolean hasParsingIssue = candidate.getCv() != null
+                && (candidate.getCv().getExtractedText() == null || candidate.getCv().getExtractedText().trim().length() < 50);
+        boolean isGrayZone = finalScore >= 55 && finalScore <= 65;
+        boolean isDegradedMode = "SIMULATED".equals(source);
+
+        if (hasParsingIssue) {
+            result.needsHumanReview = true;
+            result.humanReviewReason = "Échec d'extraction du texte du CV (scan, image ou fichier corrompu) : vérification manuelle obligatoire du document.";
+        } else if (isGrayZone) {
+            result.needsHumanReview = true;
+            result.humanReviewReason = String.format(Locale.FRANCE,
+                    "Score en zone grise incertaine (%d/100, seuil critique = 60) : arbitrage humain recommandé.", finalScore);
+        } else if (isDegradedMode) {
+            result.needsHumanReview = true;
+            result.humanReviewReason = "Mode de secours dégradé activé (API IA indisponible, délai dépassé ou réponse invalide) : score calculé localement, validation humaine requise.";
+        } else {
+            result.needsHumanReview = false;
+            result.humanReviewReason = null;
+        }
+
+        // Synthèse enrichie avec explicabilité XAI
+        String skillsResume = !explanation.getMatchedSkills().isEmpty()
+                ? " · Compétences validées : " + String.join(", ", explanation.getMatchedSkills())
+                : "";
         result.summary = String.format(Locale.FRANCE,
-                "Technique : %d/100 · Communication : %d/100 · Adéquation séniorité : %d/100 (source : %s)",
-                technical, communication, seniorityMatch, source);
+                "Technique : %d/100 · Communication : %d/100 · Séniorité : %d/100 (source : %s)%s",
+                technical, communication, seniorityMatch, source, skillsResume);
+
         result.recommendation = finalScore >= 85 ? "EXCELLENT_MATCH"
                 : finalScore >= 60 ? "GOOD_MATCH"
                 : "WEAK_MATCH";
@@ -99,12 +141,6 @@ public class AiScoringService {
         return result;
     }
 
-    /**
-     * Construit le texte du candidat pour le scoring IA : le texte extrait du
-     * CV (PDF/DOCX) est prioritaire car bien plus riche que la lettre de
-     * motivation ; celle-ci sert de complément, puis de repli si le CV n'a
-     * pas pu être extrait (scan image, format non supporté, etc.).
-     */
     private String buildCandidateText(Candidate candidate) {
         StringBuilder sb = new StringBuilder();
         String cvText = candidate.getCv() != null ? candidate.getCv().getExtractedText() : null;
@@ -112,29 +148,6 @@ public class AiScoringService {
         if (candidate.getCoverLetter() != null) sb.append(candidate.getCoverLetter()).append(". ");
         if (sb.length() == 0) sb.append("Candidat sans CV exploitable ni lettre de motivation fournie.");
         return sb.toString();
-    }
-
-    /**
-     * Score technique déterministe : pourcentage de compétences requises
-     * (offre) retrouvées dans le texte du candidat (mots-clés, insensible à la casse).
-     */
-    private int computeTechnicalScore(String candidateText, String requiredSkills) {
-        if (requiredSkills == null || requiredSkills.isBlank()) {
-            return 70; // valeur neutre si l'offre ne précise pas de compétences
-        }
-
-        String textLower = candidateText.toLowerCase(Locale.ROOT);
-        List<String> skills = new ArrayList<>();
-        for (String s : requiredSkills.split(",")) {
-            String trimmed = s.trim();
-            if (!trimmed.isEmpty()) skills.add(trimmed.toLowerCase(Locale.ROOT));
-        }
-        if (skills.isEmpty()) return 70;
-
-        long matched = skills.stream().filter(textLower::contains).count();
-        int score = (int) Math.round((matched * 100.0) / skills.size());
-        // Score plancher pour éviter les 0 secs qui découragent (le mot-clé exact peut manquer sans que le profil soit mauvais)
-        return Math.max(30, score);
     }
 
     private int computeCommunicationScore(String candidateText) {

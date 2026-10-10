@@ -183,3 +183,12 @@ private-config/
 *.env
 .env*
 !*.env.example
+
+# Temporary media & demo artifacts
+__pycache__/
+*.pyc
+temp-video-*/
+test-vid/
+record_full_demo.js
+record_two_complete_scenarios.js
+

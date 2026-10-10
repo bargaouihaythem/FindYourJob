@@ -197,6 +197,12 @@ export interface Candidate {
   manualScoreBy?: string;
   manualScoreDate?: Date;
   effectiveScore?: number;
+  aiSummary?: string;
+  aiRecommendation?: string;
+  matchedSkills?: string;
+  missingSkills?: string;
+  needsHumanReview?: boolean;
+  humanReviewReason?: string;
   jobOfferId: number;
   jobOfferTitle: string;
   jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';

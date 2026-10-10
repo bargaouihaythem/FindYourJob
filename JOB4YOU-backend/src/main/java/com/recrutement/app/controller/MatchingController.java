@@ -33,6 +33,12 @@ public class MatchingController {
     @Autowired
     private MatchingService matchingService;
 
+    @Autowired
+    private com.recrutement.app.service.AiScoringService aiScoringService;
+
+    @Autowired
+    private com.recrutement.app.repository.JobOfferRepository jobOfferRepository;
+
     @PostMapping("/upload-cv")
     @Operation(summary = "Upload d'un CV et suggestion des offres actives les plus adaptées")
     public ResponseEntity<?> uploadCvAndSuggest(
@@ -55,6 +61,60 @@ public class MatchingController {
             return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new MessageResponse("Erreur lors de l'analyse du CV: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/evaluate-gold-set")
+    @Operation(summary = "Évaluation d'un CV du Gold Set par rapport à une offre cible (Remarque 1 & 3)")
+    public ResponseEntity<?> evaluateGoldSetProfile(
+            @RequestParam("cv") MultipartFile cvFile,
+            @RequestParam("jobOfferId") Long jobOfferId) {
+        try {
+            validateFile(cvFile);
+
+            com.recrutement.app.entity.JobOffer jobOffer = jobOfferRepository.findById(jobOfferId)
+                    .orElseThrow(() -> new IllegalArgumentException("Offre non trouvée : " + jobOfferId));
+
+            String text = cvTextExtractionService.extractText(
+                    cvFile.getInputStream(), cvFile.getContentType(), cvFile.getOriginalFilename());
+
+            // Construction d'un candidat de test éphémère
+            com.recrutement.app.entity.Candidate tempCandidate = new com.recrutement.app.entity.Candidate();
+            tempCandidate.setFirstName("GoldSet");
+            tempCandidate.setLastName("Candidate");
+            tempCandidate.setJobOffer(jobOffer);
+
+            com.recrutement.app.entity.CV tempCv = new com.recrutement.app.entity.CV();
+            tempCv.setOriginalFilename(cvFile.getOriginalFilename());
+            tempCv.setExtractedText(text);
+            tempCandidate.setCv(tempCv);
+
+            com.recrutement.app.service.AiScoringService.AiScoreResult result =
+                    aiScoringService.computeScore(tempCandidate, jobOffer);
+
+            java.util.Map<String, Object> response = new java.util.LinkedHashMap<>();
+            response.put("jobOfferId", jobOffer.getId());
+            response.put("jobOfferTitle", jobOffer.getTitle());
+            response.put("finalScore", result.finalScore);
+            response.put("technicalScore", result.technicalScore);
+            response.put("communicationScore", result.communicationScore);
+            response.put("seniorityMatchScore", result.seniorityMatchScore);
+            response.put("source", result.source);
+            response.put("matchedSkills", result.matchedSkills);
+            response.put("missingSkills", result.missingSkills);
+            response.put("detailedJustification", result.detailedJustification);
+            response.put("needsHumanReview", result.needsHumanReview);
+            response.put("humanReviewReason", result.humanReviewReason);
+            response.put("recommendation", result.recommendation);
+            response.put("decisionThreshold50", result.finalScore >= 50);
+            response.put("decisionThreshold60", result.finalScore >= 60);
+            response.put("decisionThreshold70", result.finalScore >= 70);
+
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new MessageResponse("Erreur évaluation : " + e.getMessage()));
         }
     }
 

@@ -1,0 +1,243 @@
+[
+  {
+    "id": "GOLD_01",
+    "filename": "CV_01_Dev_Java_Senior_Pertinent.pdf",
+    "candidateName": "Alexandre Mercier",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Langages & Frameworks": "Java 17, Spring Boot, Spring Security, Hibernate, JPA, Maven",
+      "Bases de données & Caching": "PostgreSQL, MongoDB, Redis, SQL",
+      "DevOps & Conteneurisation": "Docker, Kubernetes, AWS, Jenkins, Git",
+      "Méthodologie": "Agile Scrum, TDD, Clean Architecture, REST API"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_02",
+    "filename": "CV_02_Dev_Java_Mid_Pertinent.pdf",
+    "candidateName": "Camille Bernard",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Backend": "Java 17, Spring Boot, Spring Data JPA, REST API, Maven",
+      "Données": "PostgreSQL, Redis, Liquibase",
+      "Outils & Déploiement": "Docker, Git, GitLab CI, Linux",
+      "Qualité": "JUnit 5, Mockito, SonarQube"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_03",
+    "filename": "CV_03_Dev_Fullstack_Angular_Java_Pertinent.pdf",
+    "candidateName": "Julien Rouve",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Backend": "Java, Spring Boot, Spring Security, Maven, Hibernate",
+      "Frontend": "Angular 16, TypeScript, RxJS, HTML5, SCSS",
+      "Bases de données": "PostgreSQL, MongoDB, Redis",
+      "Cloud & Outils": "Docker, GCP, Kubernetes basique, Git"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_04",
+    "filename": "CV_04_Dev_PHP_Symfony_Non_Pertinent.pdf",
+    "candidateName": "Guillaume Delorme",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Langages & Web": "PHP 8, Symfony 6, Twig, JavaScript, HTML5, CSS3",
+      "Bases de données": "MySQL, MariaDB",
+      "Serveurs & Outils": "Apache, Nginx, Composer, Git, CPanel"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_05",
+    "filename": "CV_05_DevOps_Senior_Cloud_Pertinent.pdf",
+    "candidateName": "Sébastien Vasseur",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Cloud": "AWS (EKS, EC2, S3, IAM, VPC), Azure",
+      "Conteneurs & Orchestration": "Kubernetes, Docker, Helm",
+      "Infrastructure as Code & Config": "Terraform, Ansible",
+      "CI/CD & Automatisation": "Jenkins, GitLab CI, GitHub Actions, Bash, Python",
+      "Observabilité": "Prometheus, Grafana, Alertmanager"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_06",
+    "filename": "CV_06_Ingenieur_Cloud_Azure_Docker_Pertinent.pdf",
+    "candidateName": "Nadia Khemir",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Cloud": "Azure, AWS, Linux",
+      "Outils DevOps": "Docker, Kubernetes, Terraform, Ansible, Jenkins",
+      "Monitoring & Scripting": "Prometheus, Grafana, Python, Bash, Shell"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_07",
+    "filename": "CV_07_Admin_Sys_Linux_Non_Pertinent.pdf",
+    "candidateName": "Thierry Gauthier",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Systèmes": "Windows Server 2019, Active Directory, Debian Linux basique",
+      "Réseaux": "VLAN, Switch Cisco, Routeurs, VPN, DNS local",
+      "Bureautique": "Office 365, Support utilisateurs N1/N2"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_08",
+    "filename": "CV_08_Graphiste_UI_Non_Pertinent.pdf",
+    "candidateName": "Éléonore Faure",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Création visuelle": "Adobe Photoshop, Illustrator, InDesign, Figma, Canva",
+      "Communication": "Print, Web design, Typographie, Retouche photo"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_09",
+    "filename": "CV_09_Consultant_SIRH_Paie_Pertinent.pdf",
+    "candidateName": "Marc Lemaire",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Domaine Métier": "SIRH, Paie, Gestion des Temps & Activités (GTA), Recrutement",
+      "Analyse & Conception": "Analyse fonctionnelle, Business Analysis, Spécifications détaillées, UML",
+      "Méthodologie & Outils": "Agile Scrum, Jira, Confluence, Recette applicative, SQL basique"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_10",
+    "filename": "CV_10_Business_Analyst_Agile_Pertinent.pdf",
+    "candidateName": "Sophie Moreau",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Analyse Métier": "Analyse fonctionnelle, Business Analysis, Spécifications, UML, BPMN",
+      "Méthodologie": "Agile, Scrum, Recette, Tests d'acceptation",
+      "Outils de gestion": "Jira, Confluence, Miro, Excel avancé"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_11",
+    "filename": "CV_11_Comptable_General_Non_Pertinent.pdf",
+    "candidateName": "Valérie Dubois",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Comptabilité": "Comptabilité générale, Rapprochement bancaire, Déclarations TVA, Clôture mensuelle",
+      "Logiciels comptables": "Sage 100, Ciel Compta, Excel (TCD)",
+      "Fiscalité": "Liasses fiscales, Bilan, Compte de résultat"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_12",
+    "filename": "CV_12_Data_Scientist_Python_Non_Pertinent.pdf",
+    "candidateName": "Karim Belhadj",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Data & IA": "Python, PyTorch, TensorFlow, OpenCV, Scikit-learn, Pandas, NumPy",
+      "Mathématiques": "Algèbre linéaire, Optimisation convexe, Statistiques bayésiennes",
+      "Outils": "Jupyter, CUDA, Git, Linux"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_13",
+    "filename": "CV_13_Dev_Junior_CPP_Java_Borderline_Non_Pertinent.pdf",
+    "candidateName": "Lucas Pires",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Langages": "C++, C, Java SE basique",
+      "Outils": "Git, Linux, GCC, Make, Eclipse"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_14",
+    "filename": "CV_14_Dev_Java_Junior_Spring_Borderline_Pertinent.pdf",
+    "candidateName": "Manon Girard",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Backend": "Java 17, Spring Boot, Maven, REST API",
+      "Bases de données": "PostgreSQL, SQL",
+      "Outils": "Git, Docker (notions), IntelliJ"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_15",
+    "filename": "CV_15_Tech_Support_Linux_Borderline_Non_Pertinent.pdf",
+    "candidateName": "Romain Mercier",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Systèmes": "Linux Ubuntu, Debian, Bash, Notions Docker",
+      "Support": "Gestion des incidents, Helpdesk, Ticketing GLPI, Git basique"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_16",
+    "filename": "CV_16_QA_Recette_Agile_Borderline_Pertinent.pdf",
+    "candidateName": "Inès Benali",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Gestion & Qualité": "Recette fonctionnelle, Analyse fonctionnelle, Cahier de tests, Agile, Scrum",
+      "Outils": "Jira, Confluence, Xray, Trello, SQL basique"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  }
+]

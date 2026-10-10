@@ -82,6 +82,19 @@ public class Candidate {
     @Column(name = "ai_score_source")
     private String aiScoreSource;
 
+    // ── Remarque 2 & 3 : Explicabilité (XAI) & Human-in-the-Loop ──
+    @Column(name = "matched_skills", columnDefinition = "TEXT")
+    private String matchedSkills;
+
+    @Column(name = "missing_skills", columnDefinition = "TEXT")
+    private String missingSkills;
+
+    @Column(name = "needs_human_review")
+    private Boolean needsHumanReview = false;
+
+    @Column(name = "human_review_reason", columnDefinition = "TEXT")
+    private String humanReviewReason;
+
     // ── Correction manuelle du score IA par le RH ──
     @Column(name = "manual_score")
     private Integer manualScore;
