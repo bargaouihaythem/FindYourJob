@@ -720,4 +720,267 @@ class CandidateServiceTest {
                     .isInstanceOf(AccessDeniedException.class);
         }
     }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Double niveau de décision : le manager émet un avis (ACCEPTED /
+    // MANAGER_REJECTED), le RH seul contre-signe la décision finale
+    // (HIRED / REJECTED) et déclenche l'e-mail au candidat.
+    // ────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("Avis manager → validation finale RH")
+    class TwoLevelDecisionTests {
+
+        private static final Long MANAGER_ID = 100L;
+
+        private void authenticateAs(String username, Role.ERole... roles) {
+            List<org.springframework.security.core.GrantedAuthority> authorities = java.util.Arrays.stream(roles)
+                    .map(r -> new org.springframework.security.core.authority.SimpleGrantedAuthority(
+                            "ROLE_" + r.name().replace("ROLE_", "")))
+                    .collect(java.util.stream.Collectors.toList());
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(username, "password", authorities));
+        }
+
+        private User makeUser(Long id, String username, String email, Role.ERole role) {
+            User user = new User();
+            user.setId(id);
+            user.setUsername(username);
+            user.setEmail(email);
+            user.setRoles(Set.of(new Role(role)));
+            return user;
+        }
+
+        private User managerInScope() {
+            return makeUser(MANAGER_ID, "manager_cs", "manager.cs@company.com", Role.ERole.ROLE_MANAGER);
+        }
+
+        private User hrUser() {
+            return makeUser(200L, "rh_user", "rh@company.com", Role.ERole.ROLE_HR);
+        }
+
+        /** Dossier rattaché à une offre dont le manager « cs » est le destinataire naturel. */
+        private Candidate candidateOwnedByManager(Long id, CandidateStatus status) {
+            Candidate candidate = makeCandidate(id, status);
+            JobOffer jobOffer = new JobOffer();
+            jobOffer.setId(1L);
+            jobOffer.setTitle("Développeur Java");
+            jobOffer.setManagerEmail("manager.cs@company.com");
+            candidate.setJobOffer(jobOffer);
+            return candidate;
+        }
+
+        private void givenManager() {
+            authenticateAs("manager_cs", Role.ERole.ROLE_MANAGER);
+            when(userRepository.findByUsername("manager_cs")).thenReturn(Optional.of(managerInScope()));
+        }
+
+        private void givenHr() {
+            authenticateAs("rh_user", Role.ERole.ROLE_HR);
+            when(userRepository.findByUsername("rh_user")).thenReturn(Optional.of(hrUser()));
+        }
+
+        // ── Garde-fous du point d'entrée générique de statut ─────────────
+
+        @Test
+        @DisplayName("un manager ne peut pas écrire HIRED via le changement de statut générique")
+        void managerCannotWriteHiredOnGenericStatusEndpoint() {
+            Candidate candidate = candidateOwnedByManager(70L, CandidateStatus.ACCEPTED);
+            givenManager();
+            when(candidateRepository.findById(70L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(70L, CandidateStatus.HIRED))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("validation finale");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un manager ne peut écrire que son avis : PHONE_SCREENING lui est refusé")
+        void managerCannotDriveThePipeline() {
+            Candidate candidate = candidateOwnedByManager(71L, CandidateStatus.CV_REVIEWED);
+            givenManager();
+            when(candidateRepository.findById(71L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(71L, CandidateStatus.PHONE_SCREENING))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("Un manager ne peut enregistrer que son avis");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        // ── Avis manager : notification RH, aucune notification candidat ─
+
+        @Test
+        @DisplayName("un avis favorable notifie le RH et pas le candidat")
+        void favourableAvisNotifiesHrOnly() {
+            Candidate candidate = candidateOwnedByManager(72L, CandidateStatus.PHONE_SCREENING);
+            givenManager();
+            when(candidateRepository.findById(72L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(userRepository.findByRoleName(Role.ERole.ROLE_HR)).thenReturn(List.of(hrUser()));
+
+            candidateService.updateCandidateStatus(72L, CandidateStatus.ACCEPTED);
+
+            verify(notificationService).sendManagerDecisionToHr(
+                    argThat(c -> c.getStatus() == CandidateStatus.ACCEPTED),
+                    eq(CandidateStatus.ACCEPTED), any(User.class), eq(List.of("rh@company.com")));
+            verify(n8nService, never()).triggerAgent3FinalDecision(
+                    any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("un refus proposé par le manager devient MANAGER_REJECTED et notifie le RH")
+        void managerRefusalBecomesProposition() {
+            Candidate candidate = candidateOwnedByManager(73L, CandidateStatus.TECHNICAL_TEST);
+            givenManager();
+            when(candidateRepository.findById(73L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(userRepository.findByRoleName(Role.ERole.ROLE_HR)).thenReturn(List.of(hrUser()));
+
+            candidateService.updateCandidateStatus(73L, CandidateStatus.REJECTED, "Expérience insuffisante");
+
+            verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.MANAGER_REJECTED));
+            verify(notificationService).sendManagerDecisionToHr(
+                    any(), eq(CandidateStatus.MANAGER_REJECTED), any(User.class), eq(List.of("rh@company.com")));
+            verify(n8nService, never()).triggerAgent3FinalDecision(
+                    any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("le refus d'un manager exige un motif")
+        void managerRefusalRequiresReason() {
+            Candidate candidate = candidateOwnedByManager(74L, CandidateStatus.TECHNICAL_TEST);
+            givenManager();
+            when(candidateRepository.findById(74L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(74L, CandidateStatus.REJECTED, " "))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("motif");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("le RH qui refuse directement sans avis manager acte un refus final et notifie le candidat")
+        void hrDirectRefusalIsFinal() {
+            Candidate candidate = candidateOwnedByManager(75L, CandidateStatus.CV_REVIEWED);
+            givenHr();
+            when(candidateRepository.findById(75L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(75L, CandidateStatus.REJECTED, "Profil non conforme au poste");
+
+            verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.REJECTED));
+            verify(notificationService).sendFinalRejection(any(Candidate.class));
+            verify(notificationService, never()).sendManagerDecisionToHr(any(), any(), any(), any());
+        }
+
+        // ── hrFinalValidation() ─────────────────────────────────────────
+
+        @Test
+        @DisplayName("un manager ne peut pas valider lui-même la décision finale")
+        void managerCannotCounterSignHisOwnAvis() {
+            Candidate candidate = candidateOwnedByManager(76L, CandidateStatus.ACCEPTED);
+            givenManager();
+            when(candidateRepository.findById(76L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(
+                    76L, CandidateStatus.HIRED, LocalDateTime.now().plusDays(7), null))
+                    .isInstanceOf(AccessDeniedException.class);
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("HIRED exige la date de présentation des documents")
+        void hiringRequiresPresentationDate() {
+            Candidate candidate = candidateOwnedByManager(77L, CandidateStatus.ACCEPTED);
+            givenHr();
+            when(candidateRepository.findById(77L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(77L, CandidateStatus.HIRED, null, null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("date de présentation");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("impossible de valider une embauche sur un avis de refus")
+        void cannotHireOnRejectionAvis() {
+            Candidate candidate = candidateOwnedByManager(78L, CandidateStatus.MANAGER_REJECTED);
+            givenHr();
+            when(candidateRepository.findById(78L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(
+                    78L, CandidateStatus.HIRED, LocalDateTime.now().plusDays(7), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("proposé un refus");
+        }
+
+        @Test
+        @DisplayName("un refus final exige un motif")
+        void finalRefusalRequiresReason() {
+            Candidate candidate = candidateOwnedByManager(79L, CandidateStatus.ACCEPTED);
+            givenHr();
+            when(candidateRepository.findById(79L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(
+                    79L, CandidateStatus.REJECTED, null, "   "))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("motif");
+        }
+
+        @Test
+        @DisplayName("refuse la validation finale d'un dossier sans avis manager en attente")
+        void refusesValidationWithoutPendingAvis() {
+            Candidate candidate = candidateOwnedByManager(80L, CandidateStatus.TECHNICAL_TEST);
+            givenHr();
+            when(candidateRepository.findById(80L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(
+                    80L, CandidateStatus.HIRED, LocalDateTime.now().plusDays(7), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Aucun avis de manager");
+        }
+
+        @Test
+        @DisplayName("validation d'un avis favorable : HIRED + date + convocation")
+        void hiresAndSendsConvocation() {
+            Candidate candidate = candidateOwnedByManager(81L, CandidateStatus.ACCEPTED);
+            LocalDateTime presentation = LocalDateTime.now().plusDays(10).withNano(0);
+            givenHr();
+            when(candidateRepository.findById(81L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            CandidateResponse response = candidateService.hrFinalValidation(
+                    81L, CandidateStatus.HIRED, presentation, null);
+
+            assertThat(response.getStatus()).isEqualTo(CandidateStatus.HIRED);
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.HIRED && presentation.equals(c.getPresentationDate())));
+            verify(notificationService).sendHiringConvocation(any(Candidate.class));
+            verify(auditLogService).log(eq("CANDIDATE"), eq(81L), eq("FINAL_VALIDATION"),
+                    eq(CandidateStatus.ACCEPTED), eq(CandidateStatus.HIRED));
+        }
+
+        @Test
+        @DisplayName("validation d'un refus proposé : REJECTED + motif + e-mail candidat")
+        void confirmsRefusalAndNotifiesCandidate() {
+            Candidate candidate = candidateOwnedByManager(82L, CandidateStatus.MANAGER_REJECTED);
+            givenHr();
+            when(candidateRepository.findById(82L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.hrFinalValidation(82L, CandidateStatus.REJECTED, null, "Poste pourvu en interne");
+
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.REJECTED
+                            && "Poste pourvu en interne".equals(c.getStatusReason())));
+            verify(notificationService).sendFinalRejection(any(Candidate.class));
+            verify(notificationService, never()).sendHiringConvocation(any());
+        }
+    }
 }

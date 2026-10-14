@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avis manager en attente de validation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #0d6efd;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 5px 5px;
+        }
+        .case-info {
+            background-color: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-left: 4px solid #0d6efd;
+            border-radius: 5px;
+        }
+        .case-info table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .case-info td {
+            padding: 6px 0;
+            vertical-align: top;
+        }
+        .case-info td.label {
+            width: 38%;
+            color: #6c757d;
+            font-weight: bold;
+        }
+        .action-required {
+            background-color: #fff3cd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1 th:text="${decisionLabel}">Avis favorable</h1>
+        <p>En attente de votre validation finale</p>
+    </div>
+
+    <div class="content">
+        <p>Bonjour,</p>
+
+        <p>Un manager a rendu un avis sur le dossier suivant. La décision finale vous revient :
+           le candidat n'est informé qu'après votre contre-signature.</p>
+
+        <div class="case-info">
+            <table>
+                <tr>
+                    <td class="label">Candidat</td>
+                    <td><strong th:text="${candidateName}">Nom du candidat</strong>
+                        <span th:if="${candidateEmail}" th:text="' — ' + ${candidateEmail}"></span></td>
+                </tr>
+                <tr>
+                    <td class="label">Offre</td>
+                    <td th:text="${jobOfferTitle}">Titre de l'offre</td>
+                </tr>
+                <tr>
+                    <td class="label">Avis rendu par</td>
+                    <td th:text="${decidedBy}">Nom du manager</td>
+                </tr>
+                <tr th:if="${reason != null and !#strings.isEmpty(reason)}">
+                    <td class="label">Motif enregistré</td>
+                    <td th:text="${reason}">Motif</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="action-required">
+            <h4>À faire :</h4>
+            <p th:text="${nextStep}">Validez l'embauche ou renversez cet avis.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Cet e-mail a été envoyé automatiquement. Merci de ne pas répondre directement à cet e-mail.</p>
+        <p>© 2026 JOB4YOU — Plateforme Intelligente de Recrutement. Tous droits réservés.</p>
+    </div>
+</body>
+</html>

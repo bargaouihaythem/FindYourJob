@@ -44,7 +44,8 @@ class AiScoringServiceTest {
         ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightCommunication", 0.2);
         ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightSeniority", 0.3);
 
-        aiScoringService = new AiScoringService(cohereClient, scoringWeightProfileService);
+        aiScoringService = new AiScoringService(cohereClient, scoringWeightProfileService,
+                new SkillNormalizationService());
     }
 
     private Candidate candidateWithCoverLetter(String coverLetter, String requiredSkills) {
@@ -179,7 +180,7 @@ class AiScoringServiceTest {
         }
 
         @Test
-        @DisplayName("computeTechnicalScore : 70 (neutre) si l'offre ne précise aucune compétence requise")
+        @DisplayName("computeTechnicalScore : adhérence pleine (100) si l'offre ne précise aucune compétence requise")
         void shouldReturnNeutralScoreWhenNoRequiredSkills() {
             Candidate candidate = candidateWithCoverLetter("Peu importe le contenu", "");
             when(cohereClient.scoreCandidate(anyString(), anyString(), anyString(), any()))
@@ -187,7 +188,9 @@ class AiScoringServiceTest {
 
             AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
 
-            assertThat(result.technicalScore).isEqualTo(70);
+            // SkillNormalizationService : rate = requiredSet.isEmpty() ? 1.0 — aucune exigence
+            // listée ne peut être manquante, l'offre n'est donc pas pénalisante.
+            assertThat(result.technicalScore).isEqualTo(100);
         }
     }
 }

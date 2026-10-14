@@ -59,6 +59,14 @@ public class Candidate {
     @Column(name = "status_changed_at")
     private LocalDateTime statusChangedAt;
 
+    /**
+     * Date de présentation des documents communiquée au candidat quand le RH valide
+     * l'avis favorable du manager (statut HIRED). Renseigner cette date fait partie
+     * de la validation finale ; elle reste nulle tant que la décision n'est pas tranchée.
+     */
+    @Column(name = "presentation_date")
+    private LocalDateTime presentationDate;
+
     @Column(name = "ai_score")
     private Integer aiScore;
 
@@ -137,6 +145,11 @@ public class Candidate {
     }
 
     // Enum pour le statut des candidats
+    /**
+     * Deux niveaux de décision : le manager émet un avis (ACCEPTED / MANAGER_REJECTED),
+     * le RH le contresigne et seul ce second niveau déclenche l'e-mail au candidat
+     * (HIRED / REJECTED). Les avis ne sont donc pas des états terminaux.
+     */
     public enum CandidateStatus {
         APPLIED,              // Candidature soumise
         CV_REVIEWED,          // CV examiné par RH
@@ -144,12 +157,12 @@ public class Candidate {
         TECHNICAL_TEST,       // Test technique
         INTERVIEW,            // Entretien
         FINAL_INTERVIEW,      // Entretien final
-        ACCEPTED,             // Accepté (pré-embauche)
-        REJECTED,             // Rejeté (générique — rétrocompatibilité)
+        ACCEPTED,             // Avis favorable du manager — en attente de validation RH
+        REJECTED,             // Refus final validé par le RH
         AUTO_REJECTED,        // Rejeté automatiquement par l'IA (score < seuil)
-        MANAGER_REJECTED,     // Rejeté manuellement par le manager/RH
+        MANAGER_REJECTED,     // Refus proposé par le manager — en attente de validation RH
         INTERVIEW_SCHEDULED,  // Entretien planifié (candidat ACCEPTED → agenda confirmé)
-        HIRED,                // Embauché — décision finale positive post-entretien
+        HIRED,                // Embauché — validation finale RH, déclenche la convocation
         WITHDRAWN             // Candidature retirée
     }
 

@@ -187,6 +187,7 @@ export interface Candidate {
   statusReason?: string;
   statusChangedBy?: string;
   statusChangedAt?: Date;
+  presentationDate?: Date;
   aiScore?: number;
   aiScoreTechnical?: number;
   aiScoreCommunication?: number;

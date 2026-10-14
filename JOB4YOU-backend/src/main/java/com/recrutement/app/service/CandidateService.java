@@ -322,17 +322,26 @@ public class CandidateService {
 
         assertCurrentUserCanActOn(candidate);
 
-        // REJECTED générique envoyé par le frontend → MANAGER_REJECTED (décision humaine)
+        // Un manager « pur » (rôle MANAGER sans RH/Admin) ne pilote pas le pipeline : son
+        // périmètre d'écriture est la seule décision finale (ACCEPTED / MANAGER_REJECTED).
+        User actingManager = getCurrentNonPrivilegedManager();
+
+        // REJECTED envoyé par le frontend :
+        //  - porteur = manager « pur »  → MANAGER_REJECTED (refus proposé, à contre-signer)
+        //  - porteur = RH/Admin         → REJECTED (décision finale : le RH est l'autorité)
         // AUTO_REJECTED est réservé au flux IA via saveAiScore()
-        Candidate.CandidateStatus effectiveStatus = (status == Candidate.CandidateStatus.REJECTED)
+        Candidate.CandidateStatus effectiveStatus = (status == Candidate.CandidateStatus.REJECTED
+                && actingManager != null)
                 ? Candidate.CandidateStatus.MANAGER_REJECTED
                 : status;
 
         Candidate.CandidateStatus previousStatus = candidate.getStatus();
         assertValidTransition(previousStatus, effectiveStatus);
+        assertStatusEditableByActor(actingManager, effectiveStatus);
 
         String effectiveReason = reason != null ? reason.trim() : "";
-        if (effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED && effectiveReason.isBlank()) {
+        if ((effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
+                || effectiveStatus == Candidate.CandidateStatus.REJECTED) && effectiveReason.isBlank()) {
             throw new IllegalArgumentException("Un motif est obligatoire pour un rejet manuel");
         }
         if (effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED && effectiveReason.isBlank()) {
@@ -351,6 +360,28 @@ public class CandidateService {
 
         if (previousStatus != effectiveStatus) {
             auditLogService.log("CANDIDATE", updatedCandidate.getId(), "STATUS_CHANGE", previousStatus, effectiveStatus);
+        }
+
+        // Avis rendu par un manager : le RH doit le contre-signer. Il en est informé par
+        // e-mail (acceptation comme refus), car il n'était destinataire d'aucune
+        // notification dans le flux candidat.
+        boolean awaitingHrValidation = actingManager != null && previousStatus != effectiveStatus
+                && (effectiveStatus == Candidate.CandidateStatus.ACCEPTED
+                    || effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED);
+        if (awaitingHrValidation) {
+            List<String> hrEmails = resolveHrEmails(updatedCandidate.getJobOffer());
+            if (!hrEmails.isEmpty()) {
+                notificationService.sendManagerDecisionToHr(
+                        updatedCandidate, effectiveStatus, actingManager, hrEmails);
+            }
+        }
+
+        // Refus acté directement par le RH, sans avis manager à contre-signer (mauvais CV,
+        // entretien téléphonique concluant) : c'est une décision finale, le candidat est
+        // informé avec le même e-mail que le refus validé.
+        if (actingManager == null && previousStatus != effectiveStatus
+                && effectiveStatus == Candidate.CandidateStatus.REJECTED) {
+            notificationService.sendFinalRejection(updatedCandidate);
         }
 
         // CV validé par le RH → le CANDIDAT est informé que son profil est présélectionné
@@ -379,15 +410,13 @@ public class CandidateService {
             notificationService.sendPhoneScreeningValidatedNotification(updatedCandidate);
         }
 
-        // Agent 3 — Décision finale → email au candidat
-        // AUTO_REJECTED    = rejeté par l'IA (score < seuil)
-        // MANAGER_REJECTED = rejeté manuellement par le manager/RH
-        // ACCEPTED         = accepté (pré-embauche)
-        // HIRED            = embauché (confirmation finale post-entretien)
-        if (effectiveStatus == Candidate.CandidateStatus.ACCEPTED
-                || effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
-                || effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
-                || effectiveStatus == Candidate.CandidateStatus.HIRED
+        // Agent 3 — e-mail au candidat pour les décisions qui ne passent pas par le
+        // contreseing RH :
+        // AUTO_REJECTED = rejeté par l'IA (le RH peut encore corriger le score)
+        // WITHDRAWN     = retrait du candidat lui-même
+        // Les avis du manager (ACCEPTED / MANAGER_REJECTED) ne notifient PAS le candidat :
+        // il est prévenu par la validation finale du RH (voir hrFinalValidation()).
+        if (effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
                 || effectiveStatus == Candidate.CandidateStatus.WITHDRAWN) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
@@ -476,6 +505,7 @@ public class CandidateService {
                 // jugé mauvais peut en revanche être refusé ou retiré sans passer par cette étape.
                 allowed = to == Candidate.CandidateStatus.PHONE_SCREENING
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN
                         // Correction manuelle du score IA à la baisse (< seuil) par le RH
                         || to == Candidate.CandidateStatus.AUTO_REJECTED;
@@ -489,28 +519,43 @@ public class CandidateService {
                 allowed = to == Candidate.CandidateStatus.TECHNICAL_TEST
                         || to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case TECHNICAL_TEST:
                 allowed = to == Candidate.CandidateStatus.INTERVIEW
                         || to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case INTERVIEW:
                 allowed = to == Candidate.CandidateStatus.FINAL_INTERVIEW
                         || to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case FINAL_INTERVIEW:
                 allowed = to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case ACCEPTED:
+                // Avis favorable du manager : le RH le contresigne (HIRED) ou le renverse
+                // (REJECTED). INTERVIEW_SCHEDULED matérialise l'agenda confirmé après avis.
                 allowed = to == Candidate.CandidateStatus.INTERVIEW_SCHEDULED
                         || to == Candidate.CandidateStatus.HIRED
+                        || to == Candidate.CandidateStatus.REJECTED
+                        || to == Candidate.CandidateStatus.WITHDRAWN;
+                break;
+            case MANAGER_REJECTED:
+                // Refus proposé par le manager : le RH le confirme (REJECTED, e-mail au
+                // candidat) ou le renverse en remettant le dossier dans le pipeline.
+                allowed = to == Candidate.CandidateStatus.REJECTED
+                        || to == Candidate.CandidateStatus.CV_REVIEWED
+                        || to == Candidate.CandidateStatus.PHONE_SCREENING
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case INTERVIEW_SCHEDULED:
@@ -518,7 +563,7 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             default:
-                // AUTO_REJECTED, MANAGER_REJECTED, REJECTED (hérité), HIRED, WITHDRAWN : états terminaux
+                // REJECTED, AUTO_REJECTED, HIRED, WITHDRAWN : états terminaux
                 allowed = false;
         }
         if (!allowed) {
@@ -592,6 +637,50 @@ public class CandidateService {
         boolean isManager = currentUser.getRoles().stream()
                 .anyMatch(r -> r.getName() == Role.ERole.ROLE_MANAGER);
         return isManager ? currentUser : null;
+    }
+
+    /**
+     * Restreint les statuts écrits par le point d'entrée générique de statut.
+     * HIRED est une décision finale : elle ne s'écrit que par hrFinalValidation(), qui
+     * exige un avis manager en attente et porte la date de présentation des documents.
+     * Sans ce contrôle, la machine à états autoriserait ACCEPTED → HIRED à un manager,
+     * transition que son interface ne lui propose pas.
+     * Un manager « pur » ne pilote par ailleurs pas le pipeline : son périmètre est
+     * l'avis (ACCEPTED / MANAGER_REJECTED).
+     */
+    private void assertStatusEditableByActor(User actingManager, Candidate.CandidateStatus status) {
+        if (status == Candidate.CandidateStatus.HIRED) {
+            throw new AccessDeniedException(
+                    "L'embauche passe par la validation finale du RH, qui exige la date de présentation des documents");
+        }
+        if (actingManager == null) {
+            return;
+        }
+        if (status != Candidate.CandidateStatus.ACCEPTED
+                && status != Candidate.CandidateStatus.MANAGER_REJECTED) {
+            throw new AccessDeniedException(
+                    "Un manager ne peut enregistrer que son avis (acceptation ou refus propositionnel) ; "
+                            + "le statut " + status + " relève du RH");
+        }
+    }
+
+    /**
+     * Destinataires RH d'une notification métier : l'auteur de l'offre s'il est compte RH,
+     * à défaut l'ensemble des comptes disposant du rôle RH.
+     */
+    private List<String> resolveHrEmails(JobOffer jobOffer) {
+        User offerAuthor = jobOffer != null ? jobOffer.getCreatedBy() : null;
+        if (offerAuthor != null && offerAuthor.getEmail() != null
+                && !offerAuthor.getEmail().isBlank()
+                && offerAuthor.getRoles() != null
+                && offerAuthor.getRoles().stream().anyMatch(r -> r.getName() == Role.ERole.ROLE_HR)) {
+            return List.of(offerAuthor.getEmail());
+        }
+        return userRepository.findByRoleName(Role.ERole.ROLE_HR).stream()
+                .map(User::getEmail)
+                .filter(email -> email != null && !email.isBlank())
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     /** Un candidat est dans le périmètre d'un manager si son offre lui est directement rattachée
@@ -798,6 +887,74 @@ public class CandidateService {
         }
 
         return updateCandidateStatus(id, decision, reason);
+    }
+
+    /**
+     * Contre-signature RH de l'avis rendu par le manager. Seule cette méthode produit les
+     * deux décisions finales (HIRED / REJECTED) et donc le seul e-mail de réponse au
+     * candidat ; elle exige la date de présentation des documents en cas d'embauche et un
+     * motif en cas de refus.
+     */
+    @Transactional
+    public CandidateResponse hrFinalValidation(Long id, Candidate.CandidateStatus finalDecision,
+                                               LocalDateTime presentationDate, String reason) {
+        if (finalDecision != Candidate.CandidateStatus.HIRED
+                && finalDecision != Candidate.CandidateStatus.REJECTED) {
+            throw new IllegalArgumentException("Validation finale invalide : doit être HIRED ou REJECTED");
+        }
+
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        assertCurrentUserCanActOn(candidate);
+        // Contrôle redondant avec @PreAuthorize du contrôleur : la décision finale ne doit
+        // jamais être écrite par un compte purement manager.
+        if (getCurrentNonPrivilegedManager() != null) {
+            throw new AccessDeniedException("La validation finale relève du RH");
+        }
+
+        Candidate.CandidateStatus previousStatus = candidate.getStatus();
+        boolean favourableAvis = previousStatus == Candidate.CandidateStatus.ACCEPTED
+                || previousStatus == Candidate.CandidateStatus.INTERVIEW_SCHEDULED;
+        boolean rejectionAvis = previousStatus == Candidate.CandidateStatus.MANAGER_REJECTED;
+        if (!favourableAvis && !rejectionAvis) {
+            throw new IllegalArgumentException(
+                    "Aucun avis de manager en attente de validation sur ce dossier (statut : " + previousStatus + ")");
+        }
+        if (finalDecision == Candidate.CandidateStatus.HIRED && !favourableAvis) {
+            throw new IllegalArgumentException(
+                    "Le manager a proposé un refus : seul le refus final peut être validé sur ce dossier");
+        }
+        if (finalDecision == Candidate.CandidateStatus.HIRED && presentationDate == null) {
+            throw new IllegalArgumentException(
+                    "La date de présentation des documents est obligatoire pour valider l'embauche");
+        }
+
+        String effectiveReason = reason != null ? reason.trim() : "";
+        if (finalDecision == Candidate.CandidateStatus.REJECTED && effectiveReason.isBlank()) {
+            throw new IllegalArgumentException("Un motif est obligatoire pour un refus final");
+        }
+
+        candidate.setStatus(finalDecision);
+        if (!effectiveReason.isBlank()) {
+            candidate.setStatusReason(effectiveReason);
+        }
+        if (finalDecision == Candidate.CandidateStatus.HIRED) {
+            candidate.setPresentationDate(presentationDate);
+        }
+        candidate.setStatusChangedBy(currentActor());
+        candidate.setStatusChangedAt(LocalDateTime.now());
+        candidate.setLastUpdated(LocalDateTime.now());
+
+        Candidate validated = candidateRepository.save(candidate);
+        auditLogService.log("CANDIDATE", validated.getId(), "FINAL_VALIDATION", previousStatus, finalDecision);
+
+        if (finalDecision == Candidate.CandidateStatus.HIRED) {
+            notificationService.sendHiringConvocation(validated);
+        } else {
+            notificationService.sendFinalRejection(validated);
+        }
+
+        return new CandidateResponse(validated);
     }
 
     /**

@@ -55,15 +55,28 @@ export class CandidateService {
   }
 
   /**
-   * Décision du manager sur un dossier déjà validé par le RH (ACCEPTED ou REJECTED).
+   * Avis du manager sur un dossier déjà validé par le RH (ACCEPTED ou REJECTED).
    * Le backend vérifie que le dossier est bien au périmètre du manager et déjà
-   * validé (statut >= CV_REVIEWED) avant d'appliquer la décision.
+   * validé (statut >= CV_REVIEWED). L'avis n'est pas la décision finale : il est
+   * contre-signé par le RH via finalValidation(), qui seul notifie le candidat.
    */
   managerDecision(id: number, decision: 'ACCEPTED' | 'REJECTED', reason?: string): Observable<Candidate> {
     const headers = this.authService.getAuthHeaders();
     let params = new HttpParams().set('decision', decision);
     if (reason?.trim()) params = params.set('reason', reason.trim());
     return this.http.patch<Candidate>(`${this.apiUrl}/${id}/manager-decision`, null, { params, headers });
+  }
+
+  /**
+   * Validation finale RH d'un avis manager : HIRED (date de présentation des documents
+   * obligatoire) ou REJECTED (motif obligatoire). Réservé au RH/Admin.
+   */
+  finalValidation(id: number, decision: 'HIRED' | 'REJECTED', presentationDate?: string, reason?: string): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    let params = new HttpParams().set('decision', decision);
+    if (presentationDate) params = params.set('presentationDate', presentationDate);
+    if (reason?.trim()) params = params.set('reason', reason.trim());
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/final-validation`, null, { params, headers });
   }
 
   withdrawApplication(id: number, reason?: string): Observable<Candidate> {

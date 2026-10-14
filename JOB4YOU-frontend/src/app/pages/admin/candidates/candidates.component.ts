@@ -66,15 +66,27 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   openEmailDropdownId: number | null = null;
 
   // Visibilité de la liste : par défaut seuls les dossiers actifs (non clôturés) sont affichés.
-  // 'rejected'  → uniquement REJECTED/AUTO_REJECTED/MANAGER_REJECTED
+  // 'rejected'  → uniquement REJECTED/AUTO_REJECTED
   // 'withdrawn' → uniquement WITHDRAWN (candidatures retirées, distinctes des rejets)
   // 'hired'     → uniquement HIRED (un candidat embauché n'est pas un candidat rejeté !)
-  visibilityFilter: 'active' | 'rejected' | 'withdrawn' | 'hired' = 'active';
+  // 'awaiting'  → dossiers portant un avis manager en attente du contreseing RH
+  visibilityFilter: 'active' | 'rejected' | 'withdrawn' | 'hired' | 'awaiting' = 'active';
 
   // Auto-refresh
   private pollSubscription: Subscription | null = null;
-  private readonly POLL_INTERVAL_MS = 30_000;
+  private readonly POLL_INTERVAL_MS = 12_000;
   isRefreshing = false;
+
+  /** Statut connu de chaque dossier à la dernière synchro : permet de détecter, entre
+   *  deux rafraîchissements, les avis enregistrés par un manager sur un autre poste. */
+  private lastSeenStatuses = new Map<number, string>();
+
+  // Validation finale de la décision du manager (RH/Admin)
+  showFinalValidationModal = false;
+  finalValidationCandidate: Candidate | undefined;
+  finalValidationDecision: 'HIRED' | 'REJECTED' = 'HIRED';
+  finalValidationForm: FormGroup;
+  savingFinalValidation = false;
 
   /**
    * Vue Manager : true si l'utilisateur connecté est MANAGER.
@@ -114,6 +126,11 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
     this.scoreOverrideForm = this.fb.group({
       manualScore: [null, [Validators.required, Validators.min(0), Validators.max(100)]],
+      reason: ['', [Validators.required, Validators.minLength(5)]]
+    });
+
+    this.finalValidationForm = this.fb.group({
+      presentationDate: ['', [Validators.required]],
       reason: ['', [Validators.required, Validators.minLength(5)]]
     });
   }
@@ -208,14 +225,52 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
     fetch$.subscribe({
       next: (candidates: Candidate[]) => {
+        if (!this.isManagerView) this.detectManagerDecisions(candidates);
         this.candidates = candidates;
         this.totalCandidates = candidates.length;
         this.totalPages = Math.ceil(this.totalCandidates / this.pageSize);
         this.applyFilters();
+        this.rememberStatuses(candidates);
         this.isRefreshing = false;
       },
       error: () => { this.isRefreshing = false; }
     });
+  }
+
+  private rememberStatuses(candidates: Candidate[]): void {
+    candidates.forEach(c => this.lastSeenStatuses.set(c.id, c.status));
+  }
+
+  /**
+   * Feedback temps réel côté RH : un manager qui enregistre son avis sur un autre
+   * poste n'ouvre pas une page chez le RH. On compare donc le statut de chaque dossier
+   * avec celui vu à la synchro précédente et on alerte dès qu'un avis manager apparaît.
+   * Les statuts posés par le RH lui-même sont écrits dans le snapshot au moment de
+   * son action, ce qui évite qu'il reçoive un toast pour sa propre décision.
+   */
+  private detectManagerDecisions(candidates: Candidate[]): void {
+    candidates.forEach(candidate => {
+      const previous = this.lastSeenStatuses.get(candidate.id);
+      if (!previous || previous === candidate.status) return;
+      const manager = candidate.statusChangedBy || 'Le manager';
+      if (candidate.status === 'ACCEPTED') {
+        this.toastrNotification.showInfo(
+          `${manager} a émis un avis favorable pour ${candidate.firstName} ${candidate.lastName} ` +
+          `(${candidate.jobOfferTitle}). En attente de votre validation finale.`,
+          'Avis manager — décision finale à valider');
+      } else if (candidate.status === 'MANAGER_REJECTED') {
+        const reason = candidate.statusReason ? ` Motif : ${candidate.statusReason}` : '';
+        this.toastrNotification.showWarning(
+          `${manager} propose de refuser ${candidate.firstName} ${candidate.lastName} ` +
+          `(${candidate.jobOfferTitle}).${reason}`,
+          'Refus proposé par le manager');
+      }
+    });
+  }
+
+  /** Mémorise le statut juste posé par l'utilisateur courant (pour ne pas s'auto-notifier). */
+  private rememberStatus(candidateId: number, status: string): void {
+    this.lastSeenStatuses.set(candidateId, status);
   }
 
   loadCandidates(): void {
@@ -234,6 +289,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         this.totalCandidates = candidates.length;
         this.totalPages = Math.ceil(this.totalCandidates / this.pageSize);
         this.applyFilters();
+        this.rememberStatuses(candidates);
         this.loading = false;
       },
       error: (error: any) => {
@@ -273,10 +329,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       const matchesStatus = !status || candidate.status === status;
       const matchesJobOffer = !jobOffer || candidate.jobOfferId?.toString() === jobOffer;
 
-      const isRejectedFamily = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED'
-        || candidate.status === 'MANAGER_REJECTED';
+      // ACCEPTED et MANAGER_REJECTED sont des avis manager : le dossier reste actif
+      // (il attend la validation finale du RH), ce n'est pas un dossier clôturé.
+      const isRejectedFamily = candidate.status === 'REJECTED' || candidate.status === 'AUTO_REJECTED';
       const isWithdrawn = candidate.status === 'WITHDRAWN';
       const isHired = candidate.status === 'HIRED';
+      const isAwaiting = this.isAwaitingHrValidation(candidate.status);
 
       let matchesVisibility: boolean;
       if (this.visibilityFilter === 'rejected') {
@@ -285,6 +343,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         matchesVisibility = isWithdrawn;
       } else if (this.visibilityFilter === 'hired') {
         matchesVisibility = isHired;
+      } else if (this.visibilityFilter === 'awaiting') {
+        matchesVisibility = isAwaiting;
       } else {
         matchesVisibility = !isRejectedFamily && !isWithdrawn && !isHired;
       }
@@ -311,11 +371,26 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
+  toggleShowAwaiting(): void {
+    this.visibilityFilter = this.visibilityFilter === 'awaiting' ? 'active' : 'awaiting';
+    this.applyFilters();
+  }
+
   getRejectedCount(): number {
     return this.candidates.filter(c =>
-      c.status === 'REJECTED' || c.status === 'AUTO_REJECTED' ||
-      c.status === 'MANAGER_REJECTED'
+      c.status === 'REJECTED' || c.status === 'AUTO_REJECTED'
     ).length;
+  }
+
+  /** Dossiers portant un avis manager (favorable ou refus proposé) en attente du contreseing RH. */
+  getAwaitingValidationCount(): number {
+    return this.candidates.filter(c =>
+      c.status === 'ACCEPTED' || c.status === 'MANAGER_REJECTED' || c.status === 'INTERVIEW_SCHEDULED'
+    ).length;
+  }
+
+  isAwaitingHrValidation(status: string): boolean {
+    return status === 'ACCEPTED' || status === 'MANAGER_REJECTED' || status === 'INTERVIEW_SCHEDULED';
   }
 
   getWithdrawnCount(): number {
@@ -326,12 +401,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     return this.candidates.filter(c => c.status === 'HIRED').length;
   }
 
-  /** Statuts finaux — plus aucune modification possible */
+  /** Statuts finaux — plus aucune modification possible.
+   *  ACCEPTED / MANAGER_REJECTED / INTERVIEW_SCHEDULED n'en font plus partie : ce sont
+   *  des avis en attente du contreseing RH, la liste doit donc rester actionnable. */
   isStatusLocked(status: string): boolean {
-    return status === 'ACCEPTED' || status === 'REJECTED' ||
-           status === 'AUTO_REJECTED' || status === 'MANAGER_REJECTED' ||
-           status === 'INTERVIEW_SCHEDULED' || status === 'HIRED' ||
-           status === 'WITHDRAWN';
+    return status === 'REJECTED' || status === 'AUTO_REJECTED' ||
+           status === 'HIRED' || status === 'WITHDRAWN';
   }
 
   sortCandidates(): void {
@@ -632,6 +707,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         const t = this.statusChangeToast(backendStatus, candidate);
         this.toastrNotification.showSuccess(t.message, t.title);
         candidate.status = newStatus as Candidate['status'];
+        this.rememberStatus(candidate.id, backendStatus);
         // Réappliquer les filtres pour que la liste se mette à jour immédiatement,
         // sans rechargement de page : un candidat passé en « Candidature retirée »
         // (ou tout statut sortant de la vue active) disparaît aussitôt et le total
@@ -680,14 +756,17 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   /**
    * Transitions de statut autorisées depuis le statut courant, côté RH/Admin.
    * Reflète la machine à états du chapitre 3 : progression linéaire des étapes
-   * d'évaluation, décision finale (Accepter/Refuser) possible dès la validation RH,
-   * et retrait toujours possible tant que le dossier n'est pas dans un état terminal.
-   * kind : 'status' → updateCandidateStatus ; 'accept'/'reject' → managerDecision.
+   * d'évaluation, et contreseing des avis managers (ACCEPTED / MANAGER_REJECTED /
+   * INTERVIEW_SCHEDULED) via la validation finale.
+   * kind : 'status' → updateCandidateStatus ; 'accept'/'reject' → managerDecision ;
+   *        'final-hire'/'final-reject' → finalValidation (endpoint dédié RH).
    */
-  getAvailableTransitions(status: string): { key: string; label: string; icon: string; kind: 'status' | 'accept' | 'reject' }[] {
+  getAvailableTransitions(status: string): { key: string; label: string; icon: string; kind: 'status' | 'accept' | 'reject' | 'final-hire' | 'final-reject' }[] {
     const step = (key: string, label: string, icon: string) => ({ key, label, icon, kind: 'status' as const });
-    const accept = { key: 'ACCEPT', label: 'Accepté', icon: 'fas fa-user-check text-success', kind: 'accept' as const };
-    const reject = { key: 'REJECT', label: 'Rejeté', icon: 'fas fa-user-times text-danger', kind: 'reject' as const };
+    const accept = { key: 'ACCEPT', label: 'Émettre un avis favorable', icon: 'fas fa-user-check text-success', kind: 'accept' as const };
+    const reject = { key: 'REJECT', label: 'Refuser', icon: 'fas fa-user-times text-danger', kind: 'reject' as const };
+    const hire = { key: 'HIRED', label: "Valider l'embauche", icon: 'fas fa-file-signature text-success', kind: 'final-hire' as const };
+    const confirmReject = { key: 'REJECTED', label: 'Confirmer le refus', icon: 'fas fa-user-times text-danger', kind: 'final-reject' as const };
     const withdraw = step('WITHDRAWN', 'Candidature retirée', 'fas fa-user-minus text-secondary');
     switch (status) {
       case 'APPLIED':
@@ -705,15 +784,28 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         return [step('FINAL_INTERVIEW', 'Entretien final', 'fas fa-handshake text-primary'), accept, reject, withdraw];
       case 'FINAL_INTERVIEW':
         return [accept, reject, withdraw];
+      case 'ACCEPTED':
+        // Avis favorable du manager : le RH contresigne (embauche) ou tranche en refus.
+        return [hire, confirmReject, withdraw];
+      case 'MANAGER_REJECTED':
+        // Refus proposé par le manager : le RH le confirme ou remet le dossier dans le pipeline.
+        return [confirmReject,
+                step('CV_REVIEWED', 'Ramener dans le pipeline (CV examiné)', 'fas fa-undo text-info'),
+                step('PHONE_SCREENING', 'Ramener en entretien téléphonique', 'fas fa-phone text-warning'),
+                withdraw];
+      case 'INTERVIEW_SCHEDULED':
+        return [hire, confirmReject, withdraw];
       default:
         return [];
     }
   }
 
   /** Applique la transition choisie dans la liste contextuelle. */
-  onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' }): void {
+  onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' | 'final-hire' | 'final-reject' }): void {
     if (t.kind === 'accept') { this.acceptCandidate(candidate); }
     else if (t.kind === 'reject') { this.rejectCandidate(candidate); }
+    else if (t.kind === 'final-hire') { this.openFinalValidation(candidate, 'HIRED'); }
+    else if (t.kind === 'final-reject') { this.openFinalValidation(candidate, 'REJECTED'); }
     else { this.updateCandidateStatus(candidate, t.key); }
   }
 
@@ -743,14 +835,21 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       case 'INTERVIEW_SCHEDULED':
         return { title: 'Entretien planifié', message: 'Entretien planifié pour ce candidat.' };
       case 'ACCEPTED':
-        return { title: 'Candidat accepté', message: 'Candidature acceptée. Le candidat en est notifié par e-mail.' };
+        return {
+          title: 'Avis favorable enregistré',
+          message: "Le RH est informé : la décision finale (embauche) lui revient et l'e-mail de convocation n'est envoyé qu'après sa validation."
+        };
       case 'MANAGER_REJECTED':
+        return {
+          title: 'Refus proposé',
+          message: 'Le RH est informé de votre proposition de refus et valide (ou renverse) cette décision.'
+        };
       case 'REJECTED':
-        return { title: 'Candidat refusé', message: 'Candidature refusée. Le candidat en est notifié par e-mail.' };
+        return { title: 'Refus final', message: 'Candidature refusée. Le candidat en est notifié par e-mail.' };
       case 'AUTO_REJECTED':
         return { title: 'Rejet automatique', message: 'Candidat rejeté (score IA insuffisant).' };
       case 'HIRED':
-        return { title: 'Candidat embauché', message: 'Candidat embauché. Félicitations !' };
+        return { title: 'Embauche validée', message: 'Candidat embauché. Le candidat reçoit sa convocation.' };
       case 'WITHDRAWN':
         return { title: 'Candidature retirée', message: 'La candidature a été marquée comme retirée.' };
       case 'APPLIED':
@@ -761,15 +860,28 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Décision dédiée du manager (dossier déjà validé par le RH).
-   * Utilise l'endpoint /manager-decision, restreint à ACCEPTED/REJECTED,
-   * distinct du dropdown de statut générique réservé au RH/Admin.
+   * Avis du manager (dossier déjà validé par le RH). L'acceptation suppose l'entretien
+   * téléphonique RH, le refus reste possible dès la lecture du CV.
+   * L'avis n'est pas la décision finale : il part en validation RH.
    */
+  canManagerAccept(candidate: Candidate): boolean {
+    return ['PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
+      .includes(candidate.status);
+  }
+
+  canManagerReject(candidate: Candidate): boolean {
+    return ['CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
+      .includes(candidate.status);
+  }
+
   acceptCandidate(candidate: Candidate): void {
     this.candidateService.managerDecision(candidate.id, 'ACCEPTED').subscribe({
       next: () => {
-        this.toastrNotification.showSuccess('Candidature acceptée avec succès !', 'Candidat accepté');
+        this.toastrNotification.showSuccess(
+          'Avis favorable enregistré. Le RH est informé et valide la décision finale.',
+          'Avis transmis au RH');
         candidate.status = 'ACCEPTED' as Candidate['status'];
+        this.rememberStatus(candidate.id, 'ACCEPTED');
         this.applyFilters();
         this.openStatusDropdownId = null;
       },
@@ -783,15 +895,25 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   rejectCandidate(candidate: Candidate): void {
-    const reason = window.prompt('Motif obligatoire du rejet :');
+    const reason = window.prompt('Motif obligatoire du refus :');
     if (!reason?.trim()) {
-      this.toastrNotification.showCandidateError('Le motif du rejet est obligatoire');
+      this.toastrNotification.showCandidateError('Le motif du refus est obligatoire');
       return;
     }
     this.candidateService.managerDecision(candidate.id, 'REJECTED', reason.trim()).subscribe({
-      next: () => {
-        this.toastrNotification.showSuccess('Candidature refusée.', 'Candidat refusé');
-        candidate.status = 'MANAGER_REJECTED' as Candidate['status'];
+      next: (updated: Candidate) => {
+        if (this.isManagerView) {
+          this.toastrNotification.showSuccess(
+            'Refus proposé enregistré. Le RH est informé et valide la décision finale.',
+            'Avis transmis au RH');
+        } else {
+          this.toastrNotification.showSuccess(
+            'Candidature refusée. Le candidat en est notifié par e-mail.',
+            'Refus final');
+        }
+        const status = (updated?.status || (this.isManagerView ? 'MANAGER_REJECTED' : 'REJECTED')) as Candidate['status'];
+        candidate.status = status;
+        this.rememberStatus(candidate.id, status);
         this.applyFilters();
         this.openStatusDropdownId = null;
       },
@@ -800,6 +922,87 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         const message = error?.error?.message || 'Erreur lors du refus du candidat';
         this.toastrNotification.showCandidateError(message);
         this.openStatusDropdownId = null;
+      }
+    });
+  }
+
+  /**
+   * Contre-signature RH de l'avis du manager : seule cette action produit une décision
+   * finale (HIRED / REJECTED) et l'e-mail correspondant au candidat.
+   */
+  openFinalValidation(candidate: Candidate, decision: 'HIRED' | 'REJECTED'): void {
+    this.finalValidationCandidate = candidate;
+    this.finalValidationDecision = decision;
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 7);
+    defaultDate.setHours(9, 0, 0, 0);
+    this.finalValidationForm.reset({
+      presentationDate: decision === 'HIRED' ? this.toDateTimeLocal(defaultDate) : '',
+      reason: candidate.statusReason || ''
+    });
+    this.finalValidationForm.get('presentationDate')!
+      .setValidators(decision === 'HIRED' ? [Validators.required] : []);
+    this.finalValidationForm.get('reason')!
+      .setValidators(decision === 'REJECTED' ? [Validators.required, Validators.minLength(5)] : []);
+    this.finalValidationForm.updateValueAndValidity();
+    this.showFinalValidationModal = true;
+    this.openStatusDropdownId = null;
+  }
+
+  closeFinalValidation(): void {
+    this.showFinalValidationModal = false;
+    this.finalValidationCandidate = undefined;
+    this.savingFinalValidation = false;
+  }
+
+  get nowDateTimeLocal(): string {
+    return this.toDateTimeLocal(new Date());
+  }
+
+  private toDateTimeLocal(date: Date): string {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+      + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  submitFinalValidation(): void {
+    if (!this.finalValidationCandidate || this.finalValidationForm.invalid) {
+      this.finalValidationForm.markAllAsTouched();
+      return;
+    }
+    const candidate = this.finalValidationCandidate;
+    const decision = this.finalValidationDecision;
+    const rawDate = this.finalValidationForm.value.presentationDate;
+    const reason = (this.finalValidationForm.value.reason || '').trim();
+
+    this.savingFinalValidation = true;
+    // Le champ datetime-local fournit déjà un format ISO local (2026-10-20T09:00)
+    // directement parsable en LocalDateTime côté Spring — pas de conversion Fuseau.
+    this.candidateService.finalValidation(
+      candidate.id,
+      decision,
+      decision === 'HIRED' ? rawDate : undefined,
+      decision === 'REJECTED' ? reason : undefined
+    ).subscribe({
+      next: (updated: Candidate) => {
+        const status = (updated?.status || decision) as Candidate['status'];
+        candidate.status = status;
+        this.rememberStatus(candidate.id, status);
+        this.savingFinalValidation = false;
+        this.showFinalValidationModal = false;
+        this.finalValidationCandidate = undefined;
+        this.applyFilters();
+        this.toastrNotification.showSuccess(
+          decision === 'HIRED'
+            ? 'Embauche validée. Le candidat reçoit sa convocation avec la date de présentation des documents.'
+            : 'Refus final validé. Le candidat en est notifié par e-mail.',
+          decision === 'HIRED' ? 'Décision finale validée' : 'Refus final validé');
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la validation finale:', error);
+        this.savingFinalValidation = false;
+        const message = error?.error?.message || 'Erreur lors de la validation finale.';
+        this.toastrNotification.showError(message, 'Validation impossible');
       }
     });
   }
@@ -854,6 +1057,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       case 'FINAL_INTERVIEW':
         return 'badge bg-primary';
       case 'ACCEPTED':
+        // Avis à contre-signer : la couleur « action requise » plutôt que le vert final.
+        return 'badge bg-warning text-dark';
       case 'HIRED':
         return 'badge bg-success';
       case 'INTERVIEW_SCHEDULED':
@@ -1054,12 +1259,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       'TECHNICAL_TEST': 'Test technique',
       'INTERVIEW': 'Entretien',
       'FINAL_INTERVIEW': 'Entretien final',
-      'ACCEPTED': 'Accepté',
-      'INTERVIEW_SCHEDULED': 'Entretien planifié',
-      'HIRED': 'Embauché',
+      'ACCEPTED': 'Avis favorable — à valider',
+      'INTERVIEW_SCHEDULED': 'Entretien planifié — à valider',
+      'HIRED': 'Embauché (validé RH)',
       'REJECTED': 'Rejeté',
       'AUTO_REJECTED': 'Rejeté (IA)',
-      'MANAGER_REJECTED': 'Rejeté (manager)',
+      'MANAGER_REJECTED': 'Refus proposé — à valider',
       'WITHDRAWN': 'Candidature retirée'
     };
     return statusLabels[status] || status;

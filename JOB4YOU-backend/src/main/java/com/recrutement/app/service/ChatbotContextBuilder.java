@@ -32,11 +32,13 @@ public class ChatbotContextBuilder {
             Map.entry(Candidate.CandidateStatus.INTERVIEW, "Entretien en cours"),
             Map.entry(Candidate.CandidateStatus.INTERVIEW_SCHEDULED, "Entretien programmé"),
             Map.entry(Candidate.CandidateStatus.FINAL_INTERVIEW, "Entretien final en cours"),
-            Map.entry(Candidate.CandidateStatus.ACCEPTED, "Candidature acceptée"),
+            // Avis du manager en attente de contre-signature RH : le candidat ne doit pas
+            // lire une décision définitive à ce stade.
+            Map.entry(Candidate.CandidateStatus.ACCEPTED, "Dossier en cours de validation par le RH"),
             Map.entry(Candidate.CandidateStatus.HIRED, "Recruté(e)"),
             Map.entry(Candidate.CandidateStatus.REJECTED, "Candidature non retenue"),
             Map.entry(Candidate.CandidateStatus.AUTO_REJECTED, "Candidature non retenue"),
-            Map.entry(Candidate.CandidateStatus.MANAGER_REJECTED, "Candidature non retenue"),
+            Map.entry(Candidate.CandidateStatus.MANAGER_REJECTED, "Dossier en cours de validation par le RH"),
             Map.entry(Candidate.CandidateStatus.WITHDRAWN, "Candidature retirée")
     );
 

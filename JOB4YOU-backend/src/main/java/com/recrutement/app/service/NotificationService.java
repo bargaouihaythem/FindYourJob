@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -240,6 +241,90 @@ public class NotificationService {
             "emails/phone-screening-validated",
             variables
         );
+    }
+
+    /**
+     * Informe le RH qu'un manager a rendu un avis sur un dossier, pour contre-signature.
+     * L'avis favorable comme la proposition de refus sont notifiés : le RH ne doit pas
+     * découvrir une décision en ouvrant la liste par hasard.
+     */
+    public void sendManagerDecisionToHr(Candidate candidate, Candidate.CandidateStatus decision,
+                                         User manager, List<String> hrEmails) {
+        JobOffer jobOffer = candidate.getJobOffer();
+        boolean favourable = decision == Candidate.CandidateStatus.ACCEPTED;
+        String candidateName = candidate.getFirstName() + " " + candidate.getLastName();
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("candidateName", candidateName);
+        variables.put("candidateEmail", candidate.getEmail());
+        variables.put("jobOfferTitle", jobOffer != null ? jobOffer.getTitle() : "candidature sans offre identifiée");
+        variables.put("decisionLabel", favourable ? "Avis favorable" : "Proposition de refus");
+        variables.put("decidedBy", displayName(manager));
+        variables.put("reason", candidate.getStatusReason() == null ? "" : candidate.getStatusReason());
+        variables.put("nextStep", favourable
+                ? "Validez l'embauche en précisant la date de présentation des documents, ou renversez cet avis."
+                : "Confirmez le refus (le candidat sera alors informé) ou remettez le dossier dans le pipeline.");
+
+        String subject = (favourable ? "Avis favorable à valider — " : "Refus proposé à valider — ")
+                + candidateName + " / " + (jobOffer != null ? jobOffer.getTitle() : "candidature");
+        for (String hrEmail : hrEmails) {
+            emailService.sendTemplateEmail(hrEmail, subject, "emails/manager-decision-hr", variables);
+        }
+    }
+
+    /**
+     * E-mail final au candidat quand le RH contre-signe l'avis favorable : confirmation
+     * d'embauche et convocation à la présentation des documents.
+     */
+    public void sendHiringConvocation(Candidate candidate) {
+        JobOffer jobOffer = candidate.getJobOffer();
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("candidateName", candidate.getFirstName() + " " + candidate.getLastName());
+        variables.put("jobOfferTitle", jobOffer != null ? jobOffer.getTitle() : "votre candidature");
+        variables.put("presentationDate", formatFrenchDateTime(candidate.getPresentationDate()));
+
+        emailService.sendTemplateEmail(
+            candidate.getEmail(),
+            "Votre candidature est retenue — présentation des documents",
+            "emails/hiring-convocation",
+            variables
+        );
+    }
+
+    /**
+     * E-mail final au candidat quand le RH confirme un refus. Le motif enregistré reste
+     * interne (journal d'audit et vue RH) : il n'est pas recopié au candidat.
+     */
+    public void sendFinalRejection(Candidate candidate) {
+        JobOffer jobOffer = candidate.getJobOffer();
+
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("candidateName", candidate.getFirstName() + " " + candidate.getLastName());
+        variables.put("jobOfferTitle", jobOffer != null ? jobOffer.getTitle() : "votre candidature");
+
+        emailService.sendTemplateEmail(
+            candidate.getEmail(),
+            "Réponse à votre candidature",
+            "emails/final-rejection",
+            variables
+        );
+    }
+
+    private String displayName(User user) {
+        if (user == null) {
+            return "un manager";
+        }
+        String full = ((user.getFirstName() == null ? "" : user.getFirstName() + " ")
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return full.isEmpty() ? user.getUsername() : full;
+    }
+
+    private String formatFrenchDateTime(java.time.LocalDateTime date) {
+        if (date == null) {
+            return "";
+        }
+        return DateTimeFormatter.ofPattern("EEEE d MMMM yyyy 'à' HH:mm", java.util.Locale.FRENCH).format(date);
     }
 
     /**

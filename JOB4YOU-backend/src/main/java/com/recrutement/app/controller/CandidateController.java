@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 
@@ -230,6 +232,21 @@ public class CandidateController {
                     ? candidateService.managerDecision(id, decision)
                     : candidateService.managerDecision(id, decision, reason);
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/{id}/final-validation")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Validation finale RH d'un avis manager", description = "HIRED (date de présentation des documents obligatoire) ou REJECTED (motif obligatoire). Seul ce point d'entrée notifie le candidat de la décision finale.")
+    public ResponseEntity<?> finalValidation(
+            @PathVariable Long id,
+            @RequestParam Candidate.CandidateStatus decision,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime presentationDate,
+            @RequestParam(required = false) String reason) {
+        try {
+            return ResponseEntity.ok(candidateService.hrFinalValidation(id, decision, presentationDate, reason));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
         }

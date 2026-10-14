@@ -17,7 +17,7 @@
           <span *ngIf="isRefreshing" class="text-muted small">
             <i class="fas fa-sync-alt fa-spin me-1"></i>Mise à jour…
           </span>
-          <span *ngIf="!isRefreshing" class="text-muted small" title="Rafraîchissement automatique toutes les 30s">
+          <span *ngIf="!isRefreshing" class="text-muted small" title="Rafraîchissement automatique toutes les 12s">
             <i class="fas fa-circle text-success me-1" style="font-size:0.5em;vertical-align:middle"></i>Live
           </span>
         </div>
@@ -26,6 +26,14 @@
         <button class="btn btn-outline-secondary me-2" (click)="exportCandidates()">
           <i class="fas fa-download me-2"></i>
           Exporter
+        </button>
+        <button *ngIf="!isManagerView" class="btn me-2"
+                [class]="visibilityFilter === 'awaiting' ? 'btn-warning' : 'btn-outline-warning'"
+                (click)="toggleShowAwaiting()"
+                [title]="visibilityFilter === 'awaiting' ? 'Revenir aux dossiers actifs' : 'Afficher les avis managers à contre-signer'">
+          <i class="fas fa-file-signature me-2"></i>
+          <span *ngIf="visibilityFilter !== 'awaiting'">À valider ({{ getAwaitingValidationCount() }})</span>
+          <span *ngIf="visibilityFilter === 'awaiting'">Masquer à valider</span>
         </button>
         <button class="btn me-2"
                 [class]="visibilityFilter === 'rejected' ? 'btn-danger' : 'btn-outline-danger'"
@@ -87,12 +95,12 @@
             <option value="TECHNICAL_TEST">Test technique</option>
             <option value="INTERVIEW">Entretien</option>
             <option value="FINAL_INTERVIEW">Entretien final</option>
-            <option value="ACCEPTED">Accepté</option>
-            <option value="INTERVIEW_SCHEDULED">Entretien planifié</option>
-            <option value="HIRED">Embauché</option>
-            <option value="REJECTED">Rejeté (générique)</option>
+            <option value="ACCEPTED">Avis favorable (à valider)</option>
+            <option value="INTERVIEW_SCHEDULED">Entretien planifié (à valider)</option>
+            <option value="HIRED">Embauché (validé RH)</option>
+            <option value="REJECTED">Rejeté (décision finale)</option>
             <option value="AUTO_REJECTED">Rejeté (IA)</option>
-            <option value="MANAGER_REJECTED">Rejeté (manager)</option>
+            <option value="MANAGER_REJECTED">Refus proposé (à valider)</option>
             <option value="WITHDRAWN">Candidature retirée</option>
           </select>
         </div>
@@ -199,19 +207,23 @@
                   <!-- Statut final : badge non-cliquable -->
                   <span *ngIf="isStatusLocked(candidate.status)"
                         [class]="getStatusBadgeClass(candidate.status)"
-                        title="Décision finale IA — non modifiable">
+                        [title]="candidate.status === 'AUTO_REJECTED' ? 'Décision finale (IA) — non modifiable' : 'Décision finale — non modifiable'">
                     {{ getStatusText(candidate.status) }}
                     <i class="fas fa-lock ms-1" style="font-size:0.7em"></i>
                   </span>
-                  <!-- MANAGER (dossier déjà validé par RH, non encore décidé) : boutons dédiés Accepter/Refuser -->
+                  <!-- MANAGER : avis uniquement — la décision finale appartient au RH -->
                   <div *ngIf="!isStatusLocked(candidate.status) && isManagerView" class="d-flex align-items-center gap-2 flex-wrap">
                     <span [class]="getStatusBadgeClass(candidate.status)">{{ getStatusText(candidate.status) }}</span>
                     <div class="btn-group btn-group-sm" role="group">
-                      <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)" title="Accepter la candidature">
-                        <i class="fas fa-check me-1"></i>Accepter
+                      <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)"
+                              [disabled]="!canManagerAccept(candidate)"
+                              title="Émettre un avis favorable — transmis au RH pour validation finale">
+                        <i class="fas fa-check me-1"></i>Avis favorable
                       </button>
-                      <button class="btn btn-outline-danger" (click)="rejectCandidate(candidate)" title="Refuser la candidature">
-                        <i class="fas fa-times me-1"></i>Refuser
+                      <button class="btn btn-outline-danger" (click)="rejectCandidate(candidate)"
+                              [disabled]="!canManagerReject(candidate)"
+                              title="Proposer un refus — transmis au RH pour validation finale">
+                        <i class="fas fa-times me-1"></i>Refus proposé
                       </button>
                     </div>
                   </div>
@@ -230,7 +242,9 @@
                       style="position: absolute; top: 100%; left: 0; z-index: 1050; min-width: 180px;">
                     <li *ngFor="let t of getAvailableTransitions(candidate.status)">
                       <a class="dropdown-item" (click)="onTransition(candidate, t); $event.stopPropagation()"
-                         [title]="t.kind !== 'status' ? 'Décision finale — le dossier doit déjà être validé par le RH' : ''">
+                         [title]="t.kind === 'final-hire' ? 'Contre-signer l\'avis du manager — date de présentation des documents demandée'
+                                 : t.kind === 'final-reject' ? 'Confirmer le refus — motif demandé, e-mail d\'envoi au candidat'
+                                 : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH' : ''">
                         <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
                       </a>
                     </li>
@@ -434,21 +448,14 @@
           <div class="row">
             <div class="col-md-6 mb-3">
               <label class="form-label">Statut</label>
-              <select class="form-select" formControlName="status">
-                <option value="APPLIED">Candidature soumise</option>
-                <option value="CV_REVIEWED">CV examiné</option>
-                <option value="PHONE_SCREENING">Entretien téléphonique</option>
-                <option value="TECHNICAL_TEST">Test technique</option>
-                <option value="INTERVIEW">Entretien</option>
-                <option value="FINAL_INTERVIEW">Entretien final</option>
-                <option value="ACCEPTED">Accepté</option>
-                <option value="INTERVIEW_SCHEDULED">Entretien planifié</option>
-                <option value="HIRED">Embauché</option>
-                <option value="REJECTED">Rejeté (générique)</option>
-                <option value="AUTO_REJECTED">Rejeté (IA)</option>
-                <option value="MANAGER_REJECTED">Rejeté (manager)</option>
-                <option value="WITHDRAWN">Candidature retirée</option>
-              </select>
+              <div>
+                <span [class]="getStatusBadgeClass(selectedCandidate?.status || 'APPLIED')">
+                  {{ getStatusText(candidateForm.get('status')?.value || 'APPLIED') }}
+                </span>
+              </div>
+              <small class="text-muted d-block mt-1">
+                Non modifiable ici : utilisez les actions de statut (avis manager ou validation finale RH).
+              </small>
             </div>
             <div class="col-md-6 mb-3">
               <label class="form-label">Offre d'emploi</label>
@@ -579,17 +586,31 @@
               <p>
                 <span class="badge"
                       [ngClass]="{
-                        'bg-success': selectedCandidate.status === 'ACCEPTED' || selectedCandidate.status === 'HIRED',
-                        'bg-info': selectedCandidate.status === 'CV_REVIEWED' || selectedCandidate.status === 'INTERVIEW_SCHEDULED',
-                        'bg-warning': selectedCandidate.status === 'PHONE_SCREENING' || selectedCandidate.status === 'TECHNICAL_TEST',
-                        'bg-secondary': selectedCandidate.status === 'INTERVIEW' || selectedCandidate.status === 'FINAL_INTERVIEW',
+                        'bg-success': selectedCandidate.status === 'HIRED',
+                        'bg-warning': selectedCandidate.status === 'ACCEPTED' || selectedCandidate.status === 'INTERVIEW_SCHEDULED' || selectedCandidate.status === 'MANAGER_REJECTED',
+                        'bg-info': selectedCandidate.status === 'CV_REVIEWED',
+                        'bg-secondary': selectedCandidate.status === 'PHONE_SCREENING' || selectedCandidate.status === 'TECHNICAL_TEST' || selectedCandidate.status === 'INTERVIEW' || selectedCandidate.status === 'FINAL_INTERVIEW',
                         'bg-primary': selectedCandidate.status === 'APPLIED',
-                        'bg-danger': selectedCandidate.status === 'REJECTED' || selectedCandidate.status === 'AUTO_REJECTED' || selectedCandidate.status === 'MANAGER_REJECTED',
+                        'bg-danger': selectedCandidate.status === 'REJECTED' || selectedCandidate.status === 'AUTO_REJECTED',
                         'bg-dark': selectedCandidate.status === 'WITHDRAWN'
                       }">
                   {{ getStatusLabel(selectedCandidate.status) }}
                 </span>
               </p>
+            </div>
+            <div class="mb-3" *ngIf="selectedCandidate.statusChangedBy">
+              <label class="form-label text-muted">Dernière décision</label>
+              <p class="mb-0 small fw-bold">{{ selectedCandidate.statusChangedBy }}</p>
+              <p class="small text-muted mb-0" *ngIf="selectedCandidate.statusChangedAt">
+                {{ formatDate(selectedCandidate.statusChangedAt) }}
+              </p>
+              <p class="small text-muted mb-0" *ngIf="selectedCandidate.statusReason">
+                Motif : {{ selectedCandidate.statusReason }}
+              </p>
+            </div>
+            <div class="mb-3" *ngIf="selectedCandidate.presentationDate">
+              <label class="form-label text-muted">Présentation des documents</label>
+              <p class="fw-bold mb-0">{{ formatDate(selectedCandidate.presentationDate) }}</p>
             </div>
             <div class="mb-3">
               <label class="form-label text-muted">Date de candidature</label>
@@ -820,6 +841,79 @@
   </div>
 </div>
 
+<!-- Validation finale RH d'un avis manager -->
+<div *ngIf="showFinalValidationModal && finalValidationCandidate" class="modal fade show d-block" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header" [class]="finalValidationDecision === 'HIRED' ? 'bg-success text-white' : 'bg-danger text-white'">
+        <h5 class="modal-title">
+          <i class="fas fa-file-signature me-2"></i>
+          {{ finalValidationDecision === 'HIRED' ? "Valider l'embauche" : 'Confirmer le refus' }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeFinalValidation()"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          Dossier de <strong>{{ finalValidationCandidate.firstName }} {{ finalValidationCandidate.lastName }}</strong>
+          — {{ finalValidationCandidate.jobOfferTitle }}<br>
+          <span class="text-muted small">
+            Avis du manager : {{ getStatusLabel(finalValidationCandidate.status) }}
+            <ng-container *ngIf="finalValidationCandidate.statusChangedBy">
+              ({{ finalValidationCandidate.statusChangedBy }})
+            </ng-container>
+          </span>
+        </p>
+        <p *ngIf="finalValidationCandidate.statusReason && finalValidationDecision === 'REJECTED'"
+           class="alert alert-light border small mb-3">
+          Motif proposé : {{ finalValidationCandidate.statusReason }}
+        </p>
+
+        <form [formGroup]="finalValidationForm">
+          <div class="mb-3" *ngIf="finalValidationDecision === 'HIRED'">
+            <label class="form-label">Date de présentation des documents <span class="text-danger">*</span></label>
+            <input type="datetime-local" class="form-control" formControlName="presentationDate"
+                   [min]="nowDateTimeLocal">
+            <div class="form-text">
+              Cette date est reprise dans l'e-mail de convocation envoyé au candidat.
+            </div>
+            <div *ngIf="finalValidationForm.get('presentationDate')?.invalid && finalValidationForm.get('presentationDate')?.touched"
+                 class="text-danger small mt-1">
+              La date de présentation des documents est obligatoire.
+            </div>
+          </div>
+
+          <div class="mb-3" *ngIf="finalValidationDecision === 'REJECTED'">
+            <label class="form-label">Motif du refus final <span class="text-danger">*</span></label>
+            <textarea class="form-control" rows="3" formControlName="reason"
+                      placeholder="Motif interne (conservé dans le dossier, non transmis au candidat)"></textarea>
+            <div *ngIf="finalValidationForm.get('reason')?.invalid && finalValidationForm.get('reason')?.touched"
+                 class="text-danger small mt-1">
+              Un motif d'au moins 5 caractères est obligatoire.
+            </div>
+          </div>
+        </form>
+
+        <div class="alert alert-info small mb-0">
+          <i class="fas fa-envelope me-1"></i>
+          {{ finalValidationDecision === 'HIRED'
+              ? "Le candidat reçoit la convocation avec la liste des documents à présenter."
+              : 'Le candidat reçoit l\'e-mail de refus final.' }}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="closeFinalValidation()">Annuler</button>
+        <button type="button"
+                [class]="finalValidationDecision === 'HIRED' ? 'btn btn-success' : 'btn btn-danger'"
+                [disabled]="savingFinalValidation || finalValidationForm.invalid"
+                (click)="submitFinalValidation()">
+          <span *ngIf="savingFinalValidation" class="spinner-border spinner-border-sm me-2"></span>
+          {{ finalValidationDecision === 'HIRED' ? 'Valider et convoquer' : 'Confirmer et notifier' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Composant Email -->
 <app-email-composer 
   [candidate]="selectedCandidate" 
@@ -829,5 +923,5 @@
 </app-email-composer>
 
 <!-- Modal Backdrop -->
-<div *ngIf="showCandidateModal || showDeleteModal || showDetailsModal" class="modal-backdrop fade show"></div>
+<div *ngIf="showCandidateModal || showDeleteModal || showDetailsModal || showFinalValidationModal" class="modal-backdrop fade show"></div>
 

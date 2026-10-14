@@ -23,7 +23,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Boolean existsByEmail(String email);
 
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName")
-    List<User> findByRoleName(@Param("roleName") String roleName);
+    List<User> findByRoleName(@Param("roleName") Role.ERole roleName);
 
     @Query("SELECT u FROM User u JOIN u.roles r WHERE r.name = :roleName AND u.jobFamily = :jobFamily")
     List<User> findManagersByJobFamily(@Param("jobFamily") JobOffer.JobFamily jobFamily, @Param("roleName") Role.ERole roleName);
