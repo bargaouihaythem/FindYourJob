@@ -373,15 +373,50 @@
               <div *ngIf="jobOfferForm.get('managerEmail')?.invalid && jobOfferForm.get('managerEmail')?.touched" class="text-danger small">
                 Adresse email invalide
               </div>
-              <small class="text-muted">Utilisé uniquement si aucun manager n'est assigné à la famille de métier de cette offre (voir Administration &gt; Utilisateurs)</small>
+              <small class="text-muted">Filet de secours : lu seulement si aucun manager recruteur n'est désigné
+                et que ni le département ni la famille de métier de l'offre ne compte de manager.</small>
             </div>
             <div class="col-md-6 mb-3">
               <label for="departmentId" class="form-label">Département</label>
-              <select class="form-select" id="departmentId" formControlName="departmentId">
+              <select class="form-select" id="departmentId" formControlName="departmentId"
+                      (change)="onDepartmentChange()">
                 <option value="">-- Aucun --</option>
                 <option *ngFor="let dept of departments" [value]="dept.id">{{ dept.name }} ({{ dept.code }})</option>
               </select>
-              <small class="text-muted">Les managers de ce département verront aussi cette offre</small>
+              <small class="text-muted">Sans manager recruteur désigné ci-dessous, les dossiers de cette offre
+                sont transmis aux managers de ce département.</small>
+
+              <div *ngIf="departmentProposals.length" class="alert alert-info py-2 mt-2 mb-0">
+                <div class="small fw-semibold mb-1">Département proposé pour cette offre non rattachée :</div>
+                <button *ngFor="let p of departmentProposals" type="button" class="btn btn-sm btn-outline-primary me-1 mb-1"
+                        (click)="applyDepartmentProposal(p)"
+                        [title]="'Termes reconnus : ' + p.matchedTerms.join(', ')">
+                  {{ p.departmentName }}
+                </button>
+                <div class="small text-muted mt-1">Rien ne s'applique seul : vous confirmez le rattachement.</div>
+              </div>
+            </div>
+
+            <div class="col-12 mb-3">
+              <label for="hiringManagerId" class="form-label">Manager recruteur</label>
+              <select class="form-select" id="hiringManagerId" formControlName="hiringManagerId"
+                      (change)="onRoutingInputsChange()">
+                <option value="">-- Aucun (routage par département / famille de métier) --</option>
+                <option *ngFor="let m of managerOptions" [value]="m.id">
+                  {{ m.fullName }} ({{ m.email }}{{ m.departmentName ? ' — ' + m.departmentName : '' }})
+                </option>
+              </select>
+              <div *ngIf="managerDepartmentMismatch()" class="form-text">
+                <div class="form-check mt-1">
+                  <input class="form-check-input" type="checkbox" id="allowMismatch" formControlName="allowManagerDepartmentMismatch">
+                  <label class="form-check-label small" for="allowMismatch">
+                    Assumer ce manager hors du département de l'offre (choix tracé dans le journal d'audit)
+                  </label>
+                </div>
+              </div>
+              <small class="text-muted d-block mt-1" *ngIf="routingHint()">
+                <i class="fas fa-route me-1"></i>{{ routingHint() }}
+              </small>
             </div>
           </div>
         </form>

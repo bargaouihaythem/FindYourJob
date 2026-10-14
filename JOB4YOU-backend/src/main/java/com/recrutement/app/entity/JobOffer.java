@@ -61,6 +61,16 @@ public class JobOffer {
     @JoinColumn(name = "department_id")
     private Department department;
 
+    /**
+     * Manager destinataire désigné par le RH. Prioritaire sur la résolution par
+     * département ou famille de métier : c'est la réponse à « qui doit recevoir ce
+     * dossier ? » posée une seule fois, à la création de l'offre, par un humain.
+     * Nullable pour rester compatible avec les offres déjà publiées.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hiring_manager_id")
+    private User hiringManager;
+
     @Enumerated(EnumType.STRING)
     private JobStatus status = JobStatus.ACTIVE;
 

@@ -4,7 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { DepartmentService } from '../../../services/department.service';
-import { JobOffer, JobOfferRequest, Department } from '../../../models/interfaces';
+import { DepartmentProposal, JobOffer, JobOfferRequest, Department, ManagerOption, RoutingPreview } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 @Component({
@@ -43,6 +43,12 @@ export class JobOffersAdminComponent implements OnInit {
 
   departments: Department[] = [];
 
+  // Routage : managers désignables, destination résolue par le backend et
+  // départements proposés pour une offre non rattachée (le RH confirme).
+  managerOptions: ManagerOption[] = [];
+  routingPreview: RoutingPreview | null = null;
+  departmentProposals: DepartmentProposal[] = [];
+
   constructor(
     private jobOfferService: JobOfferService,
     private departmentService: DepartmentService,
@@ -69,7 +75,10 @@ export class JobOffersAdminComponent implements OnInit {
       status: ['ACTIVE', [Validators.required]],
       deadline: ['', [Validators.required]],
       managerEmail: ['', [Validators.email]],
-      departmentId: ['']
+      departmentId: [''],
+      hiringManagerId: [''],
+      // Lâché tant que le RH n'a pas coché la case : transmission conditionnelle dans saveJobOffer()
+      allowManagerDepartmentMismatch: ['']
     });
   }
 
@@ -209,11 +218,17 @@ export class JobOffersAdminComponent implements OnInit {
         status: jobOffer.status || 'ACTIVE',
         deadline: jobOffer.deadline ? jobOffer.deadline.substring(0, 16) : '', // pour input type="datetime-local"
         managerEmail: jobOffer.managerEmail || '',
-        departmentId: jobOffer.departmentId || ''
+        departmentId: jobOffer.departmentId || '',
+        hiringManagerId: jobOffer.hiringManagerId || ''
       });
+      this.loadManagerOptions(jobOffer.departmentId);
+      this.loadRoutingInfo();
     } else {
       this.jobOfferForm.reset();
       this.jobOfferForm.patchValue({ contractType: 'CDI', status: 'ACTIVE', jobFamily: 'OTHER', seniorityLevel: 'MID' });
+      this.routingPreview = null;
+      this.departmentProposals = [];
+      this.loadManagerOptions(null);
     }
     this.showJobOfferModal = true;
   }
@@ -221,7 +236,88 @@ export class JobOffersAdminComponent implements OnInit {
   closeJobOfferModal(): void {
     this.showJobOfferModal = false;
     this.selectedJobOffer = null;
+    this.routingPreview = null;
+    this.departmentProposals = [];
     this.jobOfferForm.reset();
+  }
+
+  /** Managers désignables, ceux du département choisi en tête (ordre renvoyé par le backend). */
+  loadManagerOptions(departmentId: any): void {
+    this.jobOfferService.getAssignableManagers(departmentId ? Number(departmentId) : null).subscribe({
+      next: (options: ManagerOption[]) => this.managerOptions = options,
+      error: () => this.managerOptions = []
+    });
+  }
+
+  loadRoutingInfo(): void {
+    const offer = this.selectedJobOffer;
+    if (!offer) {
+      this.routingPreview = null;
+      this.departmentProposals = [];
+      return;
+    }
+    this.jobOfferService.getRoutingPreview(offer.id).subscribe({
+      next: (preview: RoutingPreview) => this.routingPreview = preview,
+      error: () => this.routingPreview = null
+    });
+    if (offer.departmentId) {
+      this.departmentProposals = [];
+    } else {
+      this.jobOfferService.getDepartmentProposals(offer.id).subscribe({
+        next: (proposals: DepartmentProposal[]) => this.departmentProposals = proposals,
+        error: () => this.departmentProposals = []
+      });
+    }
+  }
+
+  onDepartmentChange(): void {
+    this.loadManagerOptions(this.jobOfferForm.get('departmentId')?.value);
+    // Le département n'est plus vide : les propositions n'ont plus d'objet.
+    this.departmentProposals = [];
+  }
+
+  onRoutingInputsChange(): void {
+    this.loadRoutingInfo();
+  }
+
+  /** Le RH confirme la proposition : rien ne s'applique sans ce clic. */
+  applyDepartmentProposal(proposal: DepartmentProposal): void {
+    this.jobOfferForm.patchValue({ departmentId: proposal.departmentId });
+    this.departmentProposals = [];
+    this.onDepartmentChange();
+  }
+
+  managerDepartmentMismatch(): boolean {
+    const managerId = Number(this.jobOfferForm.get('hiringManagerId')?.value || 0);
+    const departmentId = Number(this.jobOfferForm.get('departmentId')?.value || 0);
+    if (!managerId || !departmentId) return false;
+    const manager = this.managerOptions.find(m => m.id === managerId);
+    return !!manager?.departmentId && manager.departmentId !== departmentId;
+  }
+
+  /** Où partiront les dossiers de cette offre, annoncé avant l'enregistrement. */
+  routingHint(): string {
+    const managerId = Number(this.jobOfferForm.get('hiringManagerId')?.value || 0);
+    if (managerId) {
+      const manager = this.managerOptions.find(m => m.id === managerId);
+      return manager
+        ? `Destination après enregistrement : ${manager.fullName} (manager recruteur désigné)`
+        : '';
+    }
+    const departmentId = Number(this.jobOfferForm.get('departmentId')?.value || 0);
+    if (departmentId) {
+      const department = this.departments.find(d => d.id === departmentId);
+      const names = this.managerOptions
+        .filter(m => m.departmentId === departmentId)
+        .map(m => m.fullName);
+      return names.length
+        ? `Destination après enregistrement : ${names.join(', ')} (managers de ${department?.name ?? 'ce département'})`
+        : `Le département ${department?.name ?? ''} ne compte aucun manager : désignez un manager recruteur, sinon la transmission sera refusée.`;
+    }
+    if (this.routingPreview?.managers?.length) {
+      return `Destination actuelle : ${this.routingPreview.managers.map(m => m.fullName).join(', ')}`;
+    }
+    return 'Sans département ni manager recruteur, les dossiers partent aux managers de la famille de métier de l\'offre.';
   }
 
   saveJobOffer(): void {
@@ -232,6 +328,14 @@ export class JobOffersAdminComponent implements OnInit {
         jobOfferData.deadline = new Date(jobOfferData.deadline);
       }
       jobOfferData.departmentId = jobOfferData.departmentId ? Number(jobOfferData.departmentId) : null;
+      jobOfferData.hiringManagerId = jobOfferData.hiringManagerId ? Number(jobOfferData.hiringManagerId) : null;
+      // Le dépassement de département n'est envoyé que si le RH l'a expressément coché :
+      // sans la case, le backend refuse un manager hors du département de l'offre.
+      if (jobOfferData.allowManagerDepartmentMismatch === true) {
+        jobOfferData.allowManagerDepartmentMismatch = true;
+      } else {
+        delete jobOfferData.allowManagerDepartmentMismatch;
+      }
       if (this.selectedJobOffer) {
         // Mise à jour
         this.jobOfferService.updateJobOffer(this.selectedJobOffer.id, jobOfferData).subscribe({
@@ -242,7 +346,7 @@ export class JobOffersAdminComponent implements OnInit {
           },
           error: (error: any) => {
             console.error('Erreur lors de la mise à jour de l\'offre:', error);
-            this.toastrNotification.showJobOfferError('Erreur lors de la mise à jour de l\'offre');
+            this.toastrNotification.showJobOfferError(this.backendError(error, 'Erreur lors de la mise à jour de l\'offre'));
           }
         });
       } else {
@@ -255,13 +359,18 @@ export class JobOffersAdminComponent implements OnInit {
           },
           error: (error: any) => {
             console.error('Erreur lors de la création de l\'offre:', error);
-            this.toastrNotification.showJobOfferError('Erreur lors de la création de l\'offre');
+            this.toastrNotification.showJobOfferError(this.backendError(error, 'Erreur lors de la création de l\'offre'));
           }
         });
       }
     } else {
       this.toastrNotification.showValidationError('Veuillez remplir tous les champs obligatoires');
     }
+  }
+
+  /** Le backend explique un refus (rôle, département) : on affiche son message, pas un texte générique. */
+  private backendError(error: any, fallback: string): string {
+    return error?.error?.message || fallback;
   }
 
   openDeleteModal(jobOffer: JobOffer): void {

@@ -20,6 +20,9 @@ public class AccessControlService {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private ManagerScopeService managerScopeService;
+
     /**
      * Vérifie qu'un candidat simple ne consulte que ses propres candidatures.
      * Les rôles internes disposent d'un contrôle métier séparé selon leur périmètre.
@@ -54,8 +57,9 @@ public class AccessControlService {
 
     /**
      * Autorise l'accès aux métadonnées ou au fichier d'un candidat précis.
-     * Un candidat ne peut accéder qu'à son propre dossier ; un manager doit
-     * appartenir au périmètre de l'offre ; RH/Admin disposent d'un accès global.
+     * Un candidat ne peut accéder qu'à son propre dossier ; un manager doit en être
+     * destinataire (ManagerScopeService, même règle que la visibilité et l'aiguillage) ;
+     * RH/Admin disposent d'un accès global.
      */
     public void assertCanAccessCandidate(Candidate candidate) {
         if (candidate == null) {
@@ -74,10 +78,10 @@ public class AccessControlService {
         }
 
         if (hasRole(currentUser, Role.ERole.ROLE_MANAGER)) {
-            if (isInManagerScope(candidate.getJobOffer(), currentUser)) {
+            if (managerScopeService.isRecipient(candidate, currentUser)) {
                 return;
             }
-            throw new AccessDeniedException("Le candidat ne fait pas partie de votre périmètre");
+            throw new AccessDeniedException("Ce dossier ne vous a pas été transmis");
         }
 
         boolean technicalReader = hasRole(currentUser, Role.ERole.ROLE_TEAM_LEAD)
@@ -122,18 +126,5 @@ public class AccessControlService {
         return jobOffer != null && jobOffer.getDepartment() != null
                 && user.getDepartment() != null
                 && jobOffer.getDepartment().getId().equals(user.getDepartment().getId());
-    }
-
-    private boolean isInManagerScope(JobOffer jobOffer, User manager) {
-        boolean ownsByEmail = jobOffer != null && jobOffer.getManagerEmail() != null
-                && manager.getEmail() != null
-                && jobOffer.getManagerEmail().equalsIgnoreCase(manager.getEmail());
-        boolean ownsByDepartment = jobOffer != null && jobOffer.getDepartment() != null
-                && manager.getDepartment() != null
-                && jobOffer.getDepartment().getId().equals(manager.getDepartment().getId());
-        boolean ownsByJobFamily = jobOffer != null && jobOffer.getJobFamily() != null
-                && manager.getJobFamily() != null
-                && jobOffer.getJobFamily() == manager.getJobFamily();
-        return ownsByEmail || ownsByDepartment || ownsByJobFamily;
     }
 }

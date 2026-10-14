@@ -159,16 +159,43 @@ public class N8nService {
     // ================================================================
 
     /**
-     * Appel ASYNCHRONE déclenché quand un RH valide un dossier (statut CV_REVIEWED).
-     * n8n notifie le manager avec le dossier complet.
+     * Appel ASYNCHRONE déclenché quand le dossier est transmis au manager, c'est-à-dire
+     * au passage en évaluation technique (statut TECHNICAL_TEST). Un appel par manager
+     * destinataire : n8n notifie ce manager avec le dossier complet.
      */
     @Async
     public void triggerAgent3HrValidation(Long candidateId, String email, String firstName, String lastName,
                                           String jobOfferTitle, String cvUrl, String status,
                                           String managerEmail, String updatedBy) {
+        sendAgent3(candidateId, email, firstName, lastName, jobOfferTitle, cvUrl, status, managerEmail,
+                updatedBy, 0);
+    }
+
+    /**
+     * Relance d'une notification déjà routée. La clé d'outbox porte un suffixe
+     * « :retry-N » : comme elle n'a jamais été vue, enqueue() ne la déduplique pas
+     * et l'événement repart — sans sinon, le renvoi d'un dossier déjà notifié
+     * resterait silencieusement ignoré.
+     *
+     * Volontairement synchrone : l'inscription en base est immédiate, ce qui permet
+     * au RH d'obtenir l'état réel dans la réponse de son clic. L'envoi réseau reste,
+     * lui, porté par le dispatcheur de l'outbox.
+     *
+     * @return la clé d'outbox créée, null si le webhook Agent 3 n'est pas configuré
+     */
+    public String retryAgent3HrValidation(Long candidateId, String email, String firstName, String lastName,
+                                          String jobOfferTitle, String cvUrl, String status,
+                                          String managerEmail, String updatedBy, int retry) {
+        return sendAgent3(candidateId, email, firstName, lastName, jobOfferTitle, cvUrl, status, managerEmail,
+                updatedBy, retry);
+    }
+
+    private String sendAgent3(Long candidateId, String email, String firstName, String lastName,
+                              String jobOfferTitle, String cvUrl, String status,
+                              String managerEmail, String updatedBy, int retry) {
         if (isBlank(agent3Webhook)) {
             log.warn("[N8N Agent3] Webhook non configuré — saisir n8n.webhook.agent3 dans application.properties");
-            return;
+            return null;
         }
 
         Map<String, Object> payload = new HashMap<>();
@@ -183,8 +210,23 @@ public class N8nService {
         payload.put("updatedBy", updatedBy);
         payload.put("managerEmail", managerEmail);
 
-        enqueueOrSend(candidateId + ":DOSSIER_VALIDE_RH:" + status, agent3Webhook,
-                "Agent 3 (RH → Manager)", payload);
+        // La clé d'outbox est unique et enqueue() ignore une clé déjà PENDING/SENT :
+        // elle doit donc porter le destinataire, sinon le 2e manager d'un même
+        // département n'est jamais notifié.
+        String eventKey = agent3RoutingKey(candidateId, status, managerEmail, retry);
+        enqueueOrSend(eventKey, agent3Webhook, "Agent 3 (RH → Manager)", payload);
+        return eventKey;
+    }
+
+    /** Clé d'outbox d'une transmission : dossier | événement | statut | destinataire | relance. */
+    public static String agent3RoutingKey(Long candidateId, String status, String managerEmail, int retry) {
+        String base = candidateId + ":DOSSIER_VALIDE_RH:" + status + ":" + managerEmail;
+        return retry > 0 ? base + ":retry-" + retry : base;
+    }
+
+    /** Préfixe commun à toutes les transmissions d'un dossier, pour la lecture de l'outbox. */
+    public static String agent3RoutingKeyPrefix(Long candidateId) {
+        return candidateId + ":DOSSIER_VALIDE_RH:";
     }
 
     /**

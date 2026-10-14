@@ -77,6 +77,15 @@ public class N8nOutboxService {
         }
     }
 
+    /**
+     * Événements de notification déjà enregistrés pour ce dossier (lecture RH) :
+     * toutes les tentatives initiales et relances, dans l'ordre chronologique.
+     */
+    public List<N8nOutboxEvent> findRoutingEvents(Long candidateId) {
+        return repository.findByEventKeyStartingWithOrderByCreatedAtAsc(
+                N8nService.agent3RoutingKeyPrefix(candidateId));
+    }
+
     @Scheduled(fixedDelayString = "${n8n.outbox.poll-ms:5000}")
     @Transactional
     public void dispatchPendingEvents() {

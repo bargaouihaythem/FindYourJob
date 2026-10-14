@@ -116,6 +116,28 @@ public class Candidate {
     @Column(name = "manual_score_date")
     private LocalDateTime manualScoreDate;
 
+    // ── Routage vers le manager destinataire, gelé à la transmission du dossier ──
+    /**
+     * Manager principal destinataire du dossier. Figé au passage en TECHNICAL_TEST :
+     * la visibilité du manager ne dépend plus alors d'attributs mutables de l'offre
+     * (département, famille de métier) ou du compte utilisateur.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "routed_to_manager_id")
+    private User routedToManager;
+
+    /** Tous les destinataires effectivement notifiés, séparés par des virgules. */
+    @Column(name = "routed_manager_emails", columnDefinition = "TEXT")
+    private String routedManagerEmails;
+
+    @Column(name = "routed_at")
+    private LocalDateTime routedAt;
+
+    /** Comment la destination a été résolue (cf. RoutingBasis). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "routing_basis", length = 20)
+    private RoutingBasis routingBasis;
+
     // Relation avec l'offre d'emploi (nullable pour permettre les candidats sans offre spécifique, comme pour l'amélioration de CV)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_offer_id", nullable = true)

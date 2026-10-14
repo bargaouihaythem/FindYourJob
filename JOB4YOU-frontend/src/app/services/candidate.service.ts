@@ -2,7 +2,7 @@ import { environment } from "../../environments/environment";
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Candidate } from '../models/interfaces';
+import { Candidate, RoutingPreview, RoutingStatus } from '../models/interfaces';
 import { AuthService } from './auth';
 
 @Injectable({
@@ -119,5 +119,34 @@ export class CandidateService {
   exportCandidatePdf(id: number): Observable<Blob> {
     const headers = this.authService.getAuthHeaders();
     return this.http.get(`${this.apiUrl}/${id}/export/pdf`, { headers, responseType: 'blob' });
+  }
+
+  /**
+   * Où partira le dossier si le RH confirme la transmission : destinataires résolus
+   * par ManagerRoutingService (ou destination déjà figée sur le dossier). Lecture
+   * seule, aucun envoi.
+   */
+  getRoutingPreview(id: number): Observable<RoutingPreview> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<RoutingPreview>(`${this.apiUrl}/${id}/routing-preview`, { headers });
+  }
+
+  /**
+   * Trace RH de la transmission : destinataires figés sur le dossier et, pour chacun,
+   * l'état de la notification dans l'outbox n8n. « SENT » = webhook n8n ayant accepté
+   * l'événement ; la remise dans la boîte du manager n'est pas tracée ici.
+   */
+  getRoutingStatus(id: number): Observable<RoutingStatus> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.get<RoutingStatus>(`${this.apiUrl}/${id}/routing-status`, { headers });
+  }
+
+  /**
+   * Relance la notification des destinataires déjà figés — utile quand un envoi est
+   * passé en FAILED ou est resté en file. La destination, elle, ne change pas.
+   */
+  rerouteNotification(id: number): Observable<RoutingStatus> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<RoutingStatus>(`${this.apiUrl}/${id}/reroute-notification`, null, { headers });
   }
 }

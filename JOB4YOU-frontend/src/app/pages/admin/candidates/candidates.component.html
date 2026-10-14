@@ -214,7 +214,12 @@
                   <!-- MANAGER : avis uniquement — la décision finale appartient au RH -->
                   <div *ngIf="!isStatusLocked(candidate.status) && isManagerView" class="d-flex align-items-center gap-2 flex-wrap">
                     <span [class]="getStatusBadgeClass(candidate.status)">{{ getStatusText(candidate.status) }}</span>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <!-- Avis déjà posé : la balle est dans le camp du RH, plus rien à cliquer ici -->
+                    <span *ngIf="managerAdviceNote(candidate) as advice" class="small text-muted"
+                          [title]="advice">
+                      <i class="fas fa-hourglass-half me-1"></i>{{ advice }}
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group" *ngIf="!managerAdviceNote(candidate)">
                       <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)"
                               [disabled]="!canManagerAccept(candidate)"
                               title="Émettre un avis favorable — transmis au RH pour validation finale">
@@ -248,11 +253,23 @@
                         <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
                       </a>
                     </li>
+                    <li *ngIf="routingHint(candidate.id) as hint">
+                      <span class="dropdown-item-text small"
+                            [class.text-danger]="hint.startsWith('Aucun')"
+                            style="border-top: 1px solid #e9ecef;">{{ hint }}</span>
+                    </li>
                     <li *ngIf="getAvailableTransitions(candidate.status).length === 0">
                       <span class="dropdown-item-text text-muted small">Aucune transition possible</span>
                     </li>
                   </ul>
                 </div>
+                <ng-container *ngIf="!isManagerView">
+                  <div *ngIf="transmittedToLabel(candidate) as transmittedTo"
+                       class="small text-muted mt-1"
+                       title="Destination figée sur le dossier : elle ne change plus même si l'offre est modifiée après coup">
+                    <i class="fas fa-paper-plane me-1"></i>{{ transmittedTo }}
+                  </div>
+                </ng-container>
               </td>
               <!-- Score IA (Agent 1 n8n) -->
               <td class="text-center">
@@ -642,6 +659,78 @@
                 <i class="fas fa-file-pdf me-2"></i>
                 Exporter le dossier (PDF)
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transmission au manager : ce que le RH peut relire après coup -->
+        <div class="row mt-4" *ngIf="isHrOrAdmin()">
+          <div class="col-12">
+            <div class="card border-0 rounded-3" style="background: #eff6ff; border: 1px solid #bfdbfe !important;">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-2 gap-2">
+                  <i class="fas fa-paper-plane text-primary me-2"></i>
+                  <h6 class="mb-0 text-primary">Transmission au(x) manager(s)</h6>
+                  <button *ngIf="canRerouteNotification" class="btn btn-sm btn-outline-primary ms-auto text-nowrap"
+                          (click)="rerouteNotification()">
+                    <i class="fas fa-rotate me-1"></i>
+                    Relancer la notification
+                  </button>
+                  <span *ngIf="rerouting" class="ms-auto small text-primary">Relance en cours…</span>
+                </div>
+
+                <p class="small text-muted mb-0" *ngIf="routingStatusLoading">
+                  Traçabilité en cours de lecture…
+                </p>
+
+                <ng-container *ngIf="routingStatus && !routingStatusLoading">
+                  <p class="small text-muted mb-0" *ngIf="!routingStatus.transmitted">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Dossier non encore transmis à un manager. La destination sera figée au
+                    passage en évaluation technique.
+                  </p>
+
+                  <ng-container *ngIf="routingStatus.transmitted">
+                    <p class="small mb-2">
+                      <span class="fw-bold">Transmis le {{ formatDate(routingStatus.routedAt!) }}</span>
+                      <span class="text-muted ms-2" *ngIf="routingStatus.routingBasisLabel">
+                        via {{ routingStatus.routingBasisLabel }}
+                      </span>
+                    </p>
+                    <div class="d-flex justify-content-between align-items-start py-2 border-top gap-3"
+                         *ngFor="let r of routingStatus.recipients">
+                      <div style="min-width: 0;">
+                        <div class="fw-bold small">{{ r.fullName }}</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">{{ r.email }}</div>
+                        <div class="text-muted" style="font-size: 0.78rem;">
+                          <span *ngIf="r.sentAt">Accepté par n8n le {{ formatDate(r.sentAt) }}</span>
+                          <span *ngIf="!r.sentAt && r.notificationStatus === 'PENDING' && r.nextAttemptAt">
+                            Nouvelle tentative {{ formatDate(r.nextAttemptAt) }}
+                          </span>
+                          <span *ngIf="r.attempts"> — {{ r.attempts }} tentative(s)</span>
+                          <span *ngIf="r.retries"> — {{ r.retries }} relance(s) RH</span>
+                        </div>
+                        <div class="text-danger" style="font-size: 0.78rem;" *ngIf="r.lastError">
+                          {{ r.lastError }}
+                        </div>
+                      </div>
+                      <span class="badge" [ngClass]="notificationStatusBadge(r)">
+                        {{ notificationStatusLabel(r) }}
+                      </span>
+                    </div>
+                    <p class="small text-muted mb-0 mt-2">
+                      <i class="fas fa-circle-info me-1"></i>
+                      « Notifié » garantit que l'événement a été remis à n8n, pas que le manager a
+                      ouvert l'e-mail. La destination, elle, ne bouge plus : relancer la notification
+                      ne change pas les destinataires.
+                    </p>
+                  </ng-container>
+                </ng-container>
+
+                <p class="small text-danger mb-0" *ngIf="!routingStatus && !routingStatusLoading">
+                  Traçabilité indisponible : réessayez, ou vérifiez la table des événements n8n.
+                </p>
+              </div>
             </div>
           </div>
         </div>

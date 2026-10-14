@@ -3,9 +3,12 @@ package com.recrutement.app.service;
 import com.recrutement.app.dto.ApplicationRequest;
 import com.recrutement.app.dto.CandidateRequest;
 import com.recrutement.app.dto.CandidateResponse;
+import com.recrutement.app.dto.RoutingStatusResponse;
 import com.recrutement.app.entity.CV;
 import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.JobOffer;
+import com.recrutement.app.entity.N8nOutboxEvent;
+import com.recrutement.app.entity.RoutingBasis;
 import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.exception.ResourceNotFoundException;
@@ -62,10 +65,16 @@ public class CandidateService {
     private ManagerRoutingService managerRoutingService;
 
     @Autowired
+    private ManagerScopeService managerScopeService;
+
+    @Autowired
     private AuditLogService auditLogService;
 
     @Autowired
     private AccessControlService accessControlService;
+
+    @Autowired
+    private N8nOutboxService n8nOutboxService;
 
     /**
      * Soumet une candidature avec CV
@@ -176,6 +185,204 @@ public class CandidateService {
     }
 
     /**
+     * Où le dossier part s'il est transmis maintenant : destinataires et niveau de la
+     * chaîne qui les a trouvés. Un dossier déjà transmis garde sa destination gelée,
+     * l'aperçu montre donc les vrais destinataires et non une nouvelle résolution.
+     * Pure lecture : aucune notification, aucun envoi.
+     */
+    public ManagerRoutingService.RoutingResult routingPreview(Long id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(candidate);
+
+        if (candidate.getRoutedManagerEmails() != null && !candidate.getRoutedManagerEmails().isBlank()) {
+            List<ManagerRoutingService.RoutedManager> frozen = java.util.Arrays
+                    .stream(candidate.getRoutedManagerEmails().split(","))
+                    .map(String::trim)
+                    .filter(email -> !email.isEmpty())
+                    .map(email -> userRepository.findByEmail(email)
+                            .map(ManagerRoutingService.RoutedManager::of)
+                            .orElseGet(() -> new ManagerRoutingService.RoutedManager(null, email, email)))
+                    .collect(Collectors.toList());
+            return new ManagerRoutingService.RoutingResult(frozen, candidate.getRoutingBasis());
+        }
+        return managerRoutingService.resolve(candidate.getJobOffer());
+    }
+
+    /**
+     * Trace RH d'une transmission : destinataires gelés, critère d'aiguillage, et pour
+     * chacun l'état de la notification dans l'outbox (PENDING / SENT / FAILED, nombre
+     * de tentatives, erreur éventuelle, relances déjà demandées).
+     *
+     * « SENT » signifie que le webhook n8n a accepté l'événement. La plateforme ne
+     * trace pas l'ouverture de l'e-mail ni sa remise dans la boîte du manager : c'est
+     * la frontière de ce qui est vérifiable ici, et le texte du bloc RH doit le dire.
+     */
+    @Transactional(readOnly = true)
+    public RoutingStatusResponse routingStatus(Long id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        accessControlService.assertCanAccessCandidate(candidate);
+        return buildRoutingStatus(candidate);
+    }
+
+    private RoutingStatusResponse buildRoutingStatus(Candidate candidate) {
+        Map<String, List<N8nOutboxEvent>> eventsByEmail = routingEventsByRecipient(candidate.getId());
+
+        List<RoutingStatusResponse.RecipientNotification> recipients = new java.util.ArrayList<>();
+        for (String email : frozenRoutingEmails(candidate)) {
+            N8nOutboxEvent latest = null;
+            int retries = 0;
+            for (N8nOutboxEvent event : eventsByEmail.getOrDefault(email, List.of())) {
+                if (eventKeyRetry(event.getEventKey()) > 0) {
+                    retries++;
+                }
+                if (latest == null || !event.getCreatedAt().isBefore(latest.getCreatedAt())) {
+                    latest = event;
+                }
+            }
+            RoutingStatusResponse.RecipientNotification recipient =
+                    new RoutingStatusResponse.RecipientNotification();
+            recipient.setEmail(email);
+            recipient.setFullName(userRepository.findByEmail(email)
+                    .map(ManagerRoutingService.RoutedManager::of)
+                    .map(ManagerRoutingService.RoutedManager::fullName)
+                    .orElse(email));
+            recipient.setRetries(retries);
+            if (latest == null) {
+                recipient.setNotificationStatus("NOT_ENQUEUED");
+                recipient.setAttempts(0);
+            } else {
+                recipient.setNotificationStatus(latest.getStatus().name());
+                recipient.setAttempts(latest.getAttempts());
+                recipient.setSentAt(latest.getSentAt());
+                recipient.setNextAttemptAt(latest.getNextAttemptAt());
+                recipient.setLastError(latest.getLastError());
+            }
+            recipients.add(recipient);
+        }
+
+        RoutingBasis basis = candidate.getRoutingBasis();
+        return new RoutingStatusResponse(candidate.getId(), candidate.getStatus().name(),
+                candidate.getRoutedAt(), basis == null ? null : basis.name(),
+                basis == null ? null : ROUTING_BASIS_LABELS.getOrDefault(basis, basis.name()),
+                !recipients.isEmpty(), recipients);
+    }
+
+    /**
+     * Relance la notification des destinataires **gelés** du dossier. Le RH peut ainsi
+     * corriger une échec de notification sans repasser par la machine à états, et sans
+     * risquer de modifier la destination.
+     *
+     * La relance passe par une clé d'outbox inédite (« :retry-N ») : renvoyer la clé
+     * d'origine serait ignoré en silence par la déduplication, ce qui donnerait au RH
+     * un bouton qui ne fait rien.
+     */
+    @Transactional
+    public RoutingStatusResponse rerouteNotification(Long id) {
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+
+        List<String> emails = frozenRoutingEmails(candidate);
+        if (emails.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Aucune transmission à relancer : ce dossier n'a pas encore été transmis à un manager.");
+        }
+
+        String offerTitle = candidate.getJobOffer() != null
+                ? candidate.getJobOffer().getTitle() : "Candidature générale";
+        String cvUrl = candidate.getCv() != null ? candidate.getCv().getFileUrl() : null;
+
+        Map<String, List<N8nOutboxEvent>> eventsByEmail = routingEventsByRecipient(candidate.getId());
+        List<String> relaunched = new java.util.ArrayList<>();
+        List<String> notEnqueued = new java.util.ArrayList<>();
+        for (String email : emails) {
+            List<N8nOutboxEvent> events = eventsByEmail.getOrDefault(email, List.of());
+            // On repart du statut métier enregistré à la transmission, pas du statut
+            // actuel : sinon la relance créerait un événement pour un autre instantané.
+            String statusAtSend = events.isEmpty() ? candidate.getStatus().name()
+                    : eventKeyStatus(events.get(events.size() - 1).getEventKey());
+            int nextRetry = 0;
+            for (N8nOutboxEvent event : events) {
+                nextRetry = Math.max(nextRetry, eventKeyRetry(event.getEventKey()));
+            }
+            String key = n8nService.retryAgent3HrValidation(candidate.getId(), candidate.getEmail(),
+                    candidate.getFirstName(), candidate.getLastName(), offerTitle, cvUrl,
+                    statusAtSend, email, "RH relance", nextRetry + 1);
+            if (key != null) {
+                relaunched.add(email);
+            } else {
+                notEnqueued.add(email);
+            }
+        }
+
+        auditLogService.log("CANDIDATE", candidate.getId(), "ROUTING_RETRY",
+                "Transmis le " + ROUTED_AT_FORMAT.format(candidate.getRoutedAt()),
+                relaunched.isEmpty()
+                        ? "Aucune relance possible : le webhook Agent 3 n'est pas configuré "
+                          + "(n8n.webhook.agent3 dans application.properties)"
+                        : "Relance manuelle notifiée à : " + String.join(", ", relaunched));
+
+        return buildRoutingStatus(candidate);
+    }
+
+    /** Destinataires figés sur le dossier, dans l'ordre de la transmission. */
+    private List<String> frozenRoutingEmails(Candidate candidate) {
+        String stored = candidate.getRoutedManagerEmails();
+        if (stored == null || stored.isBlank()) {
+            return List.of();
+        }
+        return java.util.Arrays.stream(stored.split(","))
+                .map(String::trim)
+                .filter(email -> !email.isEmpty())
+                .collect(Collectors.toList());
+    }
+
+    /** Événements de l'outbox de ce dossier, regroupés par destinataire. */
+    private Map<String, List<N8nOutboxEvent>> routingEventsByRecipient(Long candidateId) {
+        Map<String, List<N8nOutboxEvent>> byEmail = new java.util.LinkedHashMap<>();
+        for (N8nOutboxEvent event : n8nOutboxService.findRoutingEvents(candidateId)) {
+            String email = eventKeyEmail(event.getEventKey());
+            if (email != null) {
+                byEmail.computeIfAbsent(email, k -> new java.util.ArrayList<>()).add(event);
+            }
+        }
+        return byEmail;
+    }
+
+    /** « 69:DOSSIER_VALIDE_RH:TECHNICAL_TEST:manager@x.com:retry-2 » → l'adresse. */
+    private static String eventKeyEmail(String eventKey) {
+        String[] parts = eventKeyParts(eventKey);
+        return parts != null && parts.length >= 2 ? parts[1] : null;
+    }
+
+    private static String eventKeyStatus(String eventKey) {
+        String[] parts = eventKeyParts(eventKey);
+        return parts != null && parts.length >= 1 ? parts[0] : null;
+    }
+
+    private static int eventKeyRetry(String eventKey) {
+        String[] parts = eventKeyParts(eventKey);
+        if (parts == null || parts.length < 3 || !parts[2].startsWith("retry-")) {
+            return 0;
+        }
+        try {
+            return Integer.parseInt(parts[2].substring("retry-".length()));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    /** [statut, destinataire, relance] après le préfixe commun, null si la clé n'est pas une transmission. */
+    private static String[] eventKeyParts(String eventKey) {
+        if (eventKey == null || !eventKey.contains(":DOSSIER_VALIDE_RH:")) {
+            return null;
+        }
+        int start = eventKey.indexOf(":DOSSIER_VALIDE_RH:") + ":DOSSIER_VALIDE_RH:".length();
+        return eventKey.substring(start).split(":", 3);
+    }
+
+    /**
      * Met à jour un candidat
      */
     @Transactional
@@ -262,9 +469,10 @@ public class CandidateService {
      * Statuts exclus : APPLIED, CV_REVIEWED, PHONE_SCREENING (encore côté RH),
      *                  ainsi que REJECTED / WITHDRAWN.
      *
-     * Scope : un utilisateur avec UNIQUEMENT le rôle MANAGER ne voit que les
-     * candidatures des offres dont il est le manager (managerEmail) ou de son
-     * département. RH/Admin (même s'ils cumulent le rôle MANAGER) voient tout.
+     * Scope : un utilisateur avec UNIQUEMENT le rôle MANAGER ne voit que les dossiers
+     * qui lui sont destinataires — la liste gelée à la transmission, sinon la résolution
+     * actuelle de son offre (ManagerScopeService). RH/Admin (même s'ils cumulent le rôle
+     * MANAGER) voient tout.
      */
     public List<CandidateResponse> getValidatedCandidatesForManager(String username) {
         List<Candidate.CandidateStatus> validatedStatuses = List.of(
@@ -283,10 +491,10 @@ public class CandidateService {
             // RH/Admin (ou appel système) : vue complète, non filtrée
             candidates = candidateRepository.findByStatusIn(validatedStatuses);
         } else {
-            // MANAGER seul : scope à ses offres (email), son département, ou sa famille de métier assignée
-            Long departmentId = currentUser.getDepartment() != null ? currentUser.getDepartment().getId() : null;
-            candidates = candidateRepository.findByStatusInAndJobOfferManagerEmailOrDepartment(
-                    validatedStatuses, currentUser.getEmail(), departmentId, currentUser.getJobFamily());
+            // MANAGER seul : uniquement les dossiers dont il est destinataire
+            candidates = candidateRepository.findByStatusIn(validatedStatuses).stream()
+                    .filter(c -> managerScopeService.isRecipient(c, currentUser))
+                    .collect(Collectors.toList());
         }
 
         return candidates.stream()
@@ -391,13 +599,14 @@ public class CandidateService {
         if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
-            List<String> resolvedManagerEmails = managerRoutingService.resolveManagerEmails(updatedCandidate.getJobOffer());
-            String refManagerEmail = !resolvedManagerEmails.isEmpty()
-                ? resolvedManagerEmails.get(0) : System.getenv().getOrDefault("DEFAULT_MANAGER_EMAIL", "manager@example.com");
+            // Simple référence pour l'e-mail du candidat : le manager n'est PAS
+            // notifié ici. On n'invente aucune adresse de repli.
+            ManagerRoutingService.RoutedManager reference =
+                    managerRoutingService.resolve(updatedCandidate.getJobOffer()).primary();
             n8nService.triggerAgent2CvSelected(
                 updatedCandidate.getId(), updatedCandidate.getEmail(),
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                offreTitre, refManagerEmail
+                offreTitre, reference != null ? reference.email() : null
             );
         }
 
@@ -458,19 +667,39 @@ public class CandidateService {
      *   si l'interface ne le lui montre jamais.
      */
     /**
-     * Transmet le dossier complet du candidat au(x) manager(s) de son département pour
-     * l'évaluation technique (Agent 3 : un e-mail par manager destinataire). Déclenché au
-     * passage en TECHNICAL_TEST, que la transition provienne de la fiche candidat ou de la
-     * planification d'un entretien technique — d'où sa visibilité publique.
+     * Transmet le dossier complet du candidat au(x) manager(s) destinataire(s) pour
+     * l'évaluation technique (Agent 3 : un e-mail par manager). Déclenché au passage
+     * en TECHNICAL_TEST.
+     *
+     * Deux garanties :
+     * - la destination est résolue par la chaîne structurelle (ManagerRoutingService) ;
+     *   si elle ne résout rien, la transmission est BLOQUÉE (400) et tracée, au lieu
+     *   d'envoyer le dossier à une adresse de repli inventée ;
+     * - la liste des destinataires est gelée sur la candidature. Le périmètre de
+     *   lecture et d'écriture (ManagerScopeService) repose ensuite sur cette liste,
+     *   donc changer le département de l'offre après coup ne dépossède pas le manager
+     *   qui a reçu le dossier.
      */
-    public void notifyManagersForTechnicalEvaluation(Candidate candidate) {
+    private void notifyManagersForTechnicalEvaluation(Candidate candidate) {
         String offreTitre = candidate.getJobOffer() != null
             ? candidate.getJobOffer().getTitle() : "Candidature générale";
         String cvUrl = candidate.getCv() != null ? candidate.getCv().getFileUrl() : null;
-        List<String> resolved = managerRoutingService.resolveManagerEmails(candidate.getJobOffer());
-        List<String> managerEmails = !resolved.isEmpty()
-            ? resolved : List.of(System.getenv().getOrDefault("DEFAULT_MANAGER_EMAIL", "manager@example.com"));
-        for (String managerEmail : managerEmails) {
+
+        ManagerRoutingService.RoutingResult routing =
+                managerRoutingService.resolve(candidate.getJobOffer());
+        if (!routing.isResolved()) {
+            auditLogService.log("CANDIDATE", candidate.getId(), "ROUTING_FAILED",
+                    candidate.getStatus().name(),
+                    "Aucun manager destinataire : rattachez l'offre à un manager ou à un département contenant un manager");
+            throw new IllegalArgumentException(
+                    "Impossible de transmettre ce dossier : l'offre « " + offreTitre
+                            + " » n'a aucun manager destinataire. Désignez le manager recruteur sur l'offre "
+                            + "ou rattachez-la à un département qui compte au moins un manager.");
+        }
+
+        freezeRouting(candidate, routing);
+
+        for (String managerEmail : routing.emails()) {
             n8nService.triggerAgent3HrValidation(
                 candidate.getId(), candidate.getEmail(),
                 candidate.getFirstName(), candidate.getLastName(),
@@ -478,6 +707,47 @@ public class CandidateService {
             );
         }
     }
+
+    /** Gèle la destination sur le dossier, avant l'envoi asynchrone pour que la
+     *  transaction contienne la décision même si un envoi n8n échoue ensuite. */
+    private void freezeRouting(Candidate candidate, ManagerRoutingService.RoutingResult routing) {
+        String previous = candidate.getRoutedManagerEmails();
+        candidate.setRoutedManagerEmails(String.join(",", routing.emails()));
+        candidate.setRoutingBasis(routing.basis());
+        candidate.setRoutedAt(LocalDateTime.now());
+        ManagerRoutingService.RoutedManager primary = routing.primary();
+        if (primary != null && primary.id() != null) {
+            candidate.setRoutedToManager(userRepository.findById(primary.id()).orElse(null));
+        } else {
+            candidate.setRoutedToManager(null);
+        }
+        candidateRepository.save(candidate);
+
+        // Tracée ici et pas seulement dans la liste du manager : le RH doit pouvoir
+        // relire, même après coup, à qui le dossier a été transmis et sur quel critère.
+        auditLogService.log("CANDIDATE", candidate.getId(), "ROUTING",
+                (previous == null || previous.isBlank()) ? "NON TRANSMIS" : previous,
+                routingDescription(routing));
+    }
+
+    /** « Sofen Trabelsi <sofen@…> [via le manager désigné de l'offre] », lisible dans l'audit. */
+    private String routingDescription(ManagerRoutingService.RoutingResult routing) {
+        String recipients = routing.managers().stream()
+                .map(m -> m.fullName() + " <" + m.email() + ">")
+                .collect(Collectors.joining(", "));
+        return recipients + " [via " + ROUTING_BASIS_LABELS.getOrDefault(
+                routing.basis(), routing.basis().name()) + "]";
+    }
+
+    /** Format lisible dans l'audit, pas l'horodatage brut de la base. */
+    private static final java.time.format.DateTimeFormatter ROUTED_AT_FORMAT =
+            java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+    private static final Map<RoutingBasis, String> ROUTING_BASIS_LABELS = Map.of(            RoutingBasis.OFFER_MANAGER, "le manager désigné sur l'offre",
+            RoutingBasis.DEPARTMENT, "le département de l'offre",
+            RoutingBasis.JOB_FAMILY, "la famille métier de l'offre",
+            RoutingBasis.LEGACY_EMAIL, "l'ancien champ e-mail de l'offre",
+            RoutingBasis.UNRESOLVED, "aucun critère résolu");
 
     /**
      * Vérifie que la transition de statut demandée respecte la machine à états du
@@ -598,14 +868,18 @@ public class CandidateService {
                 ? authentication.getName() : "SYSTEM";
     }
 
+    /** Un manager « pur » ne voit et n'instruit que les dossiers dont il est destinataire :
+     *  la visibilité est exactement l'aiguillage (ManagerScopeService), ni plus large ni
+     *  ailleurs. Empêche un compte manager d'agir sur un dossier hors périmètre par un appel
+     *  API direct, même si l'interface ne le lui montre jamais. */
     private void assertCurrentUserCanActOn(Candidate candidate) {
         User nonPrivilegedManager = getCurrentNonPrivilegedManager();
         if (nonPrivilegedManager == null) {
             return;
         }
-        if (!isInManagerScope(candidate.getJobOffer(), nonPrivilegedManager)) {
+        if (!managerScopeService.isRecipient(candidate, nonPrivilegedManager)) {
             throw new AccessDeniedException(
-                    "Vous n'êtes pas autorisé à agir sur ce candidat : il ne fait pas partie de votre périmètre (offre/département)");
+                    "Vous n'êtes pas autorisé à agir sur ce candidat : il ne vous a pas été transmis");
         }
     }
 
@@ -683,31 +957,19 @@ public class CandidateService {
                 .collect(Collectors.toList());
     }
 
-    /** Un candidat est dans le périmètre d'un manager si son offre lui est directement rattachée
-     *  (managerEmail), ou partage son département, ou partage sa famille de métier. */
-    private boolean isInManagerScope(JobOffer jobOffer, User manager) {
-        boolean ownsByEmail = jobOffer != null && jobOffer.getManagerEmail() != null
-                && jobOffer.getManagerEmail().equalsIgnoreCase(manager.getEmail());
-        boolean ownsByDepartment = jobOffer != null && jobOffer.getDepartment() != null
-                && manager.getDepartment() != null
-                && jobOffer.getDepartment().getId().equals(manager.getDepartment().getId());
-        boolean ownsByJobFamily = jobOffer != null && jobOffer.getJobFamily() != null
-                && manager.getJobFamily() != null
-                && jobOffer.getJobFamily() == manager.getJobFamily();
-        return ownsByEmail || ownsByDepartment || ownsByJobFamily;
-    }
-
-    /** Filtre une liste de candidats au périmètre du manager courant si l'appelant est un
-     *  manager non privilégié ; la renvoie inchangée pour RH/Admin/système (comportement
-     *  identique à avant pour ces rôles). Centralise le filtrage de lecture appliqué par
-     *  toutes les méthodes de listing/recherche de candidats accessibles au rôle MANAGER. */
+    /** Filtre une liste de candidats aux dossiers dont le manager courant est destinataire
+     *  si l'appelant est un manager non privilégié ; la renvoie inchangée pour RH/Admin/
+     *  système (comportement identique à avant pour ces rôles). Centralise le filtrage de
+     *  lecture appliqué par toutes les méthodes de listing/recherche de candidats
+     *  accessibles au rôle MANAGER. La règle est celle de ManagerScopeService : un manager
+     *  voit les dossiers qu'il doit instruire, pas ceux de sa famille de métier. */
     private List<Candidate> scopeToCurrentManager(List<Candidate> candidates) {
         User nonPrivilegedManager = getCurrentNonPrivilegedManager();
         if (nonPrivilegedManager == null) {
             return candidates;
         }
         return candidates.stream()
-                .filter(c -> isInManagerScope(c.getJobOffer(), nonPrivilegedManager))
+                .filter(c -> managerScopeService.isRecipient(c, nonPrivilegedManager))
                 .collect(Collectors.toList());
     }
 

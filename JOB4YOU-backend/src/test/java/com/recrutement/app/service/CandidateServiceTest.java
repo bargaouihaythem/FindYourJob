@@ -7,6 +7,7 @@ import com.recrutement.app.entity.Candidate.CandidateStatus;
 import com.recrutement.app.entity.Department;
 import com.recrutement.app.entity.JobOffer;
 import com.recrutement.app.entity.Role;
+import com.recrutement.app.entity.RoutingBasis;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.repository.CVRepository;
 import com.recrutement.app.repository.CandidateRepository;
@@ -20,11 +21,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -57,10 +60,21 @@ class CandidateServiceTest {
     @Mock AuditLogService     auditLogService;
     @Mock CvTextExtractionService cvTextExtractionService;
     @Mock UserRepository      userRepository;
-    @Mock ManagerRoutingService managerRoutingService;
+    /**
+     * La chaîne d'aiguillage est réelle (Repository simulé) : c'est elle qui décide qui
+     * voit quoi. La simuler laisserait les tests de périmètre sans objet.
+     */
+    @Spy ManagerRoutingService managerRoutingService = new ManagerRoutingService();
+    @Spy ManagerScopeService   managerScopeService   = new ManagerScopeService();
 
     @InjectMocks
     CandidateService candidateService;
+
+    @BeforeEach
+    void wireRoutingChain() {
+        ReflectionTestUtils.setField(managerRoutingService, "userRepository", userRepository);
+        ReflectionTestUtils.setField(managerScopeService, "managerRoutingService", managerRoutingService);
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -82,6 +96,24 @@ class CandidateServiceTest {
         c.setApplicationDate(LocalDateTime.now());
         c.setLastUpdated(LocalDateTime.now());
         return c;
+    }
+
+    private Candidate candidateOnOffer(Long id, CandidateStatus status, String managerEmail, Department department) {
+        Candidate candidate = makeCandidate(id, status);
+        JobOffer jobOffer = new JobOffer();
+        jobOffer.setId(1L);
+        jobOffer.setManagerEmail(managerEmail);
+        jobOffer.setDepartment(department);
+        candidate.setJobOffer(jobOffer);
+        return candidate;
+    }
+
+    /** Dossier déjà transmis : la destination est gelée sur la candidature. */
+    private Candidate routedTo(Candidate candidate, String... managerEmails) {
+        candidate.setRoutedManagerEmails(String.join(",", managerEmails));
+        candidate.setRoutingBasis(RoutingBasis.DEPARTMENT);
+        candidate.setRoutedAt(LocalDateTime.now());
+        return candidate;
     }
 
     // ────────────────────────────────────────────────────────────────────
@@ -144,24 +176,30 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("un manager (non privilégié) interroge le repository scopé avec sa famille de métier")
-        void shouldQueryScopedRepositoryWithJobFamilyForManager() {
+        @DisplayName("un manager (non privilégié) n'obtient que les dossiers dont il est destinataire")
+        void shouldReturnOnlyDossiersRoutedToTheManager() {
+            Department devops = new Department("DevOps", "DEVOPS");
+            devops.setId(2L);
+
+            Candidate forHim = routedTo(
+                    candidateOnOffer(70L, CandidateStatus.TECHNICAL_TEST, "manager.cs@company.com", null),
+                    "manager.cs@company.com");
+            Candidate forSomeoneElse = routedTo(
+                    candidateOnOffer(71L, CandidateStatus.TECHNICAL_TEST, "autre@company.com", devops),
+                    "manager.devops@company.com");
+
             User manager = new User();
             manager.setUsername("manager_cs");
             manager.setEmail("manager.cs@company.com");
-            manager.setJobFamily(JobOffer.JobFamily.CS);
-            Role managerRole = new Role(Role.ERole.ROLE_MANAGER);
-            manager.setRoles(Set.of(managerRole));
+            manager.setRoles(Set.of(new Role(Role.ERole.ROLE_MANAGER)));
 
             when(userRepository.findByUsername("manager_cs")).thenReturn(Optional.of(manager));
-            when(candidateRepository.findByStatusInAndJobOfferManagerEmailOrDepartment(
-                    anyList(), eq("manager.cs@company.com"), isNull(), eq(JobOffer.JobFamily.CS)))
-                    .thenReturn(List.of());
+            when(candidateRepository.findByStatusIn(anyList()))
+                    .thenReturn(List.of(forHim, forSomeoneElse));
 
-            candidateService.getValidatedCandidatesForManager("manager_cs");
+            List<CandidateResponse> result = candidateService.getValidatedCandidatesForManager("manager_cs");
 
-            verify(candidateRepository).findByStatusInAndJobOfferManagerEmailOrDepartment(
-                    anyList(), eq("manager.cs@company.com"), isNull(), eq(JobOffer.JobFamily.CS));
+            assertThat(result).extracting("id").containsExactly(70L);
         }
     }
 
@@ -190,18 +228,47 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("TECHNICAL_TEST transmet le dossier au manager (Agent 3)")
+        @DisplayName("TECHNICAL_TEST transmet le dossier au manager résolu et gèle la destination")
         void shouldNotifyManagerWhenTechnicalTest() {
-            Candidate candidate = makeCandidate(15L, CandidateStatus.PHONE_SCREENING);
+            Candidate candidate = candidateOnOffer(15L, CandidateStatus.PHONE_SCREENING,
+                    "manager.cs@company.com", null);
+            candidate.getJobOffer().setTitle("Développeur Java");
             when(candidateRepository.findById(15L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             candidateService.updateCandidateStatus(15L, CandidateStatus.TECHNICAL_TEST);
 
-            verify(n8nService).triggerAgent3HrValidation(eq(15L), anyString(), anyString(), anyString(), anyString(),
-                    nullable(String.class), anyString(), any(), any());
+            verify(n8nService).triggerAgent3HrValidation(eq(15L), anyString(), anyString(), anyString(),
+                    eq("Développeur Java"),
+                    nullable(String.class), eq("TECHNICAL_TEST"), eq("manager.cs@company.com"), eq("RH"));
             // Le candidat est également informé que son entretien téléphonique est validé.
             verify(notificationService).sendPhoneScreeningValidatedNotification(candidate);
+            // Destination gelée sur le dossier : c'est elle qui fera foi ensuite.
+            assertThat(candidate.getRoutedManagerEmails()).isEqualTo("manager.cs@company.com");
+            assertThat(candidate.getRoutingBasis()).isEqualTo(RoutingBasis.LEGACY_EMAIL);
+            assertThat(candidate.getRoutedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("TECHNICAL_TEST sans manager destinataire bloque : aucune adresse inventée")
+        void shouldRefuseTechnicalTestWhenNoManagerResolvable() {
+            // Offre sans manager désigné, sans département peuplé, sans famille ni e-mail libre
+            Candidate candidate = candidateOnOffer(16L, CandidateStatus.PHONE_SCREENING, null, null);
+            Department empty = new Department("HRAccess", "HRACCESS");
+            empty.setId(9L);
+            candidate.getJobOffer().setDepartment(empty);
+            when(candidateRepository.findById(16L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(userRepository.findManagersByDepartment(9L, Role.ERole.ROLE_MANAGER))
+                    .thenReturn(List.of());
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(16L, CandidateStatus.TECHNICAL_TEST))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("aucun manager destinataire");
+
+            verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(),
+                    any(), any(), any(), any());
+            verify(auditLogService).log(eq("CANDIDATE"), eq(16L), eq("ROUTING_FAILED"), any(), any());
         }
 
         @Test
@@ -579,6 +646,8 @@ class CandidateServiceTest {
 
             authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
             when(userRepository.findByUsername("manager_rd")).thenReturn(Optional.of(manager));
+            when(userRepository.findManagersByDepartment(1L, Role.ERole.ROLE_MANAGER))
+                    .thenReturn(List.of(manager));
             when(candidateRepository.findById(51L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -587,7 +656,7 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("un manager peut agir sur un candidat via sa famille de métier assignée (routage automatique)")
+        @DisplayName("un manager peut agir sur un candidat dont l'offre est résolue vers lui par la famille de métier")
         void shouldAllowManagerOwningTheJobOfferByJobFamily() {
             Candidate candidate = candidateWithOfferJobFamily(54L, JobOffer.JobFamily.CS);
             candidate.setStatus(CandidateStatus.PHONE_SCREENING);
@@ -596,11 +665,38 @@ class CandidateServiceTest {
 
             authenticateAs("manager_cs", Role.ERole.ROLE_MANAGER);
             when(userRepository.findByUsername("manager_cs")).thenReturn(Optional.of(manager));
+            when(userRepository.findManagersByJobFamily(JobOffer.JobFamily.CS, Role.ERole.ROLE_MANAGER))
+                    .thenReturn(List.of(manager));
             when(candidateRepository.findById(54L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
             assertThatCode(() -> candidateService.updateCandidateStatus(54L, CandidateStatus.ACCEPTED))
                     .doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("un manager d'un autre département ne voit pas les dossiers d'un département qui a déjà ses managers, même si la famille de métier correspond")
+        void shouldNotSeeDossiersOfAnotherDepartmentDespiteSameJobFamily() {
+            Department rd = new Department("Recherche & Développement", "R&D");
+            rd.setId(1L);
+            Department qa = new Department("Quality Assurance", "QA");
+            qa.setId(2L);
+
+            Candidate candidate = candidateWithOffer(56L, "rd.lead@company.com", rd);
+            candidate.getJobOffer().setJobFamily(JobOffer.JobFamily.RSD);
+            User qaManager = makeManagerUser("manager_qa", "manager.qa@company.com", qa);
+            qaManager.setJobFamily(JobOffer.JobFamily.RSD);
+
+            authenticateAs("manager_qa", Role.ERole.ROLE_MANAGER);
+            when(userRepository.findByUsername("manager_qa")).thenReturn(Optional.of(qaManager));
+            when(userRepository.findManagersByDepartment(1L, Role.ERole.ROLE_MANAGER))
+                    .thenReturn(List.of(makeManagerUser("manager_rd", "manager.rd@company.com", rd)));
+            when(candidateRepository.findById(56L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(56L, CandidateStatus.ACCEPTED))
+                    .isInstanceOf(AccessDeniedException.class);
+
+            verify(candidateRepository, never()).save(any());
         }
 
         @Test

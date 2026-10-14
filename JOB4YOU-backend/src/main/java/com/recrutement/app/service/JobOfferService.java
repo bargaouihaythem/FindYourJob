@@ -2,8 +2,10 @@ package com.recrutement.app.service;
 
 import com.recrutement.app.dto.JobOfferRequest;
 import com.recrutement.app.dto.JobOfferResponse;
+import com.recrutement.app.dto.ManagerOptionResponse;
 import com.recrutement.app.entity.Department;
 import com.recrutement.app.entity.JobOffer;
+import com.recrutement.app.entity.Role;
 import com.recrutement.app.entity.User;
 import com.recrutement.app.exception.ResourceNotFoundException;
 import com.recrutement.app.repository.DepartmentRepository;
@@ -31,6 +33,15 @@ public class JobOfferService {
     @Autowired
     private DepartmentRepository departmentRepository;
 
+    @Autowired
+    private ManagerRoutingService managerRoutingService;
+
+    @Autowired
+    private AuditLogService auditLogService;
+
+    @Autowired
+    private DepartmentProposalService departmentProposalService;
+
     /**
      * Crée une nouvelle offre d'emploi
      */
@@ -46,6 +57,7 @@ public class JobOfferService {
         jobOffer.setUpdatedAt(LocalDateTime.now());
 
         JobOffer savedJobOffer = jobOfferRepository.save(jobOffer);
+        auditManagerDepartmentOverride(savedJobOffer);
         return new JobOfferResponse(savedJobOffer);
     }
 
@@ -87,6 +99,7 @@ public class JobOfferService {
         jobOffer.setUpdatedAt(LocalDateTime.now());
 
         JobOffer updatedJobOffer = jobOfferRepository.save(jobOffer);
+        auditManagerDepartmentOverride(updatedJobOffer);
         return new JobOfferResponse(updatedJobOffer);
     }
 
@@ -251,6 +264,98 @@ public class JobOfferService {
         } else if (jobOffer.getStatus() == null) {
             jobOffer.setStatus(JobOffer.JobStatus.ACTIVE);
         }
+
+        applyHiringManager(request, jobOffer);
+    }
+
+    /**
+     * Le manager recruteur est une décision du RH, pas une déduction. On vérifie que le
+     * compte existe et porte le rôle MANAGER : sinon l'aiguillage passerait silencieusement
+     * au niveau suivant et le dossier partirait ailleurs que voulu. Un manager hors du
+     * département de l'offre n'est admis que si le RH l'assume explicitement
+     * (allowManagerDepartmentMismatch), et le choix est alors tracé dans le journal d'audit.
+     */
+    private void applyHiringManager(JobOfferRequest request, JobOffer jobOffer) {
+        if (request.getHiringManagerId() == null) {
+            jobOffer.setHiringManager(null);
+            return;
+        }
+        User manager = userRepository.findById(request.getHiringManagerId())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Manager recruteur non trouvé avec l'ID: " + request.getHiringManagerId()));
+        boolean isManager = manager.getRoles() != null && manager.getRoles().stream()
+                .anyMatch(r -> r.getName() == Role.ERole.ROLE_MANAGER);
+        if (!isManager) {
+            throw new IllegalArgumentException(
+                    "Le manager recruteur désigné doit disposer du rôle MANAGER");
+        }
+        boolean bothDepartments = jobOffer.getDepartment() != null && manager.getDepartment() != null;
+        boolean sameDepartment = bothDepartments
+                && jobOffer.getDepartment().getId().equals(manager.getDepartment().getId());
+        if (bothDepartments && !sameDepartment
+                && !Boolean.TRUE.equals(request.getAllowManagerDepartmentMismatch())) {
+            throw new IllegalArgumentException("Le manager recruteur « " + manager.getUsername()
+                    + " » n'appartient pas au département de l'offre ("
+                    + jobOffer.getDepartment().getName()
+                    + "). Validez explicitement le dépassement pour outrepasser ce contrôle.");
+        }
+        jobOffer.setHiringManager(manager);
+    }
+
+    /** Trace un manager recruteur sciemment placé hors du département de l'offre. */
+    private void auditManagerDepartmentOverride(JobOffer jobOffer) {
+        User manager = jobOffer.getHiringManager();
+        if (manager == null || jobOffer.getDepartment() == null || manager.getDepartment() == null) {
+            return;
+        }
+        if (jobOffer.getDepartment().getId().equals(manager.getDepartment().getId())) {
+            return;
+        }
+        auditLogService.log("JOB_OFFER", jobOffer.getId(), "MANAGER_DEPARTMENT_OVERRIDE",
+                jobOffer.getDepartment().getName(), manager.getEmail());
+    }
+
+    /**
+     * Où partiraient les dossiers de cette offre si le RH les transmettait maintenant :
+     * destinataires résolus et niveau de la chaîne qui les a trouvés. Affiché au RH avant
+     * qu'il ne confirme une transmission, jamais piloté par le score IA.
+     */
+    public ManagerRoutingService.RoutingResult routingPreview(Long jobOfferId) {
+        JobOffer jobOffer = jobOfferRepository.findById(jobOfferId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job offer not found with id: " + jobOfferId));
+        return managerRoutingService.resolve(jobOffer);
+    }
+
+    /**
+     * Managers désignables comme recruteurs dans le formulaire d'offre : tous les comptes
+     * MANAGER, ceux du département choisi en tête de liste. Le RH garde la main — la liste
+     * est une aide, jamais un choix automatique.
+     */
+    public List<ManagerOptionResponse> getAssignableManagers(Long departmentId) {
+        List<ManagerOptionResponse> all = userRepository.findByRoleName(Role.ERole.ROLE_MANAGER).stream()
+                .filter(manager -> manager.getEmail() != null && !manager.getEmail().isBlank())
+                .map(ManagerOptionResponse::new)
+                .collect(Collectors.toList());
+        if (departmentId == null) {
+            return all;
+        }
+        List<ManagerOptionResponse> ordered = all.stream()
+                .filter(manager -> departmentId.equals(manager.getDepartmentId()))
+                .collect(Collectors.toList());
+        all.stream()
+                .filter(manager -> !departmentId.equals(manager.getDepartmentId()))
+                .forEach(ordered::add);
+        return ordered;
+    }
+
+    /**
+     * Départements proposés pour une offre qui n'en a pas encore, à partir de son intitulé
+     * et de ses compétences. Le RH confirme : aucune de ces propositions ne s'applique seule.
+     */
+    public List<DepartmentProposalService.Proposal> suggestDepartments(Long jobOfferId) {
+        JobOffer jobOffer = jobOfferRepository.findById(jobOfferId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job offer not found with id: " + jobOfferId));
+        return departmentProposalService.propose(jobOffer.getTitle(), jobOffer.getRequiredSkills());
     }
 }
 

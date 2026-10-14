@@ -372,6 +372,9 @@ export class DashboardComponent implements OnInit {
       case 'STATUS_CHANGE': return 'fas fa-arrow-right-arrow-left';
       case 'SCORE_OVERRIDE': return 'fas fa-robot';
       case 'INTERVIEW_SCHEDULED': return 'fas fa-calendar-check';
+      case 'ROUTING': return 'fas fa-paper-plane';
+      case 'ROUTING_RETRY': return 'fas fa-rotate';
+      case 'ROUTING_FAILED': return 'fas fa-triangle-exclamation';
       default: return 'fas fa-info-circle';
     }
   }
@@ -381,6 +384,9 @@ export class DashboardComponent implements OnInit {
       case 'STATUS_CHANGE': return 'text-primary';
       case 'SCORE_OVERRIDE': return 'text-warning';
       case 'INTERVIEW_SCHEDULED': return 'text-info';
+      case 'ROUTING': return 'text-success';
+      case 'ROUTING_RETRY': return 'text-info';
+      case 'ROUTING_FAILED': return 'text-danger';
       default: return 'text-secondary';
     }
   }
@@ -390,6 +396,9 @@ export class DashboardComponent implements OnInit {
       case 'STATUS_CHANGE': return 'Changement de statut';
       case 'SCORE_OVERRIDE': return 'Correction du score IA';
       case 'INTERVIEW_SCHEDULED': return 'Entretien planifié';
+      case 'ROUTING': return 'Transmission au(x) manager(s)';
+      case 'ROUTING_RETRY': return 'Relance de la notification manager';
+      case 'ROUTING_FAILED': return 'Transmission impossible';
       default: return action;
     }
   }

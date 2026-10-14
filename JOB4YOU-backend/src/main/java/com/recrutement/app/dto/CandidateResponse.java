@@ -1,6 +1,8 @@
 package com.recrutement.app.dto;
 
 import com.recrutement.app.entity.Candidate;
+import com.recrutement.app.entity.RoutingBasis;
+import com.recrutement.app.entity.User;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -52,6 +54,12 @@ public class CandidateResponse {
     private Boolean needsHumanReview;
     private String humanReviewReason;
 
+    /** Destination du dossier : gelée à la transmission au manager, jamais déduite du score IA. */
+    private String routedManagerName;
+    private String routedManagerEmails;
+    private LocalDateTime routedAt;
+    private RoutingBasis routingBasis;
+
     // Constructeur pour mapper depuis l'entité Candidate
     public CandidateResponse(Candidate candidate) {
         this.id = candidate.getId();
@@ -93,6 +101,18 @@ public class CandidateResponse {
         this.missingSkills = candidate.getMissingSkills();
         this.needsHumanReview = candidate.getNeedsHumanReview();
         this.humanReviewReason = candidate.getHumanReviewReason();
+        this.routedManagerEmails = candidate.getRoutedManagerEmails();
+        this.routedAt = candidate.getRoutedAt();
+        this.routingBasis = candidate.getRoutingBasis();
+        User routedTo = candidate.getRoutedToManager();
+        if (routedTo != null) {
+            String name = (routedTo.getFirstName() == null ? "" : routedTo.getFirstName())
+                    + " " + (routedTo.getLastName() == null ? "" : routedTo.getLastName());
+            this.routedManagerName = name.trim().isEmpty() ? routedTo.getUsername() : name.trim();
+        } else if (candidate.getRoutedManagerEmails() != null
+                && !candidate.getRoutedManagerEmails().isBlank()) {
+            this.routedManagerName = candidate.getRoutedManagerEmails().split(",")[0].trim();
+        }
     }
 }
 

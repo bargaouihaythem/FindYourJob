@@ -1,7 +1,6 @@
 package com.recrutement.app.repository;
 
 import com.recrutement.app.entity.Candidate;
-import com.recrutement.app.entity.JobOffer;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -65,29 +64,5 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
      */
     @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer WHERE c.status IN :statuses")
     List<Candidate> findByStatusIn(@Param("statuses") List<Candidate.CandidateStatus> statuses);
-
-    /**
-     * Vue Manager scopée : dossiers validés (statuts fournis) dont l'offre est
-     * rattachée au manager connecté, soit directement (managerEmail), soit via
-     * son département (department.id).
-     *
-     * Isolation stricte par département : le DÉPARTEMENT fait autorité. Dès qu'une
-     * offre porte un département, seul le manager de CE département (ou celui saisi
-     * explicitement en managerEmail) la voit — un CV DevOps n'est visible que par le
-     * manager DevOps, un CV QA que par le manager QA, etc. La famille de métier
-     * (jobFamily) ne sert de repli QUE pour les offres SANS département (compat.
-     * offres historiques), et jamais pour élargir la visibilité d'une offre déjà
-     * rattachée à un département. Cohérent avec ManagerRoutingService.resolveManagerEmails.
-     */
-    @Query("SELECT c FROM Candidate c LEFT JOIN FETCH c.cv LEFT JOIN FETCH c.jobOffer jo " +
-           "WHERE c.status IN :statuses " +
-           "AND (jo.managerEmail = :managerEmail " +
-           "     OR (:departmentId IS NOT NULL AND jo.department.id = :departmentId) " +
-           "     OR (jo.department IS NULL AND :jobFamily IS NOT NULL AND jo.jobFamily = :jobFamily))")
-    List<Candidate> findByStatusInAndJobOfferManagerEmailOrDepartment(
-            @Param("statuses") List<Candidate.CandidateStatus> statuses,
-            @Param("managerEmail") String managerEmail,
-            @Param("departmentId") Long departmentId,
-            @Param("jobFamily") JobOffer.JobFamily jobFamily);
 }
 

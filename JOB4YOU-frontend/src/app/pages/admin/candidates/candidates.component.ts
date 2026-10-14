@@ -11,7 +11,7 @@ import { FeedbackService } from '../../../services/feedback.service';
 import { NotificationService, FeedbackNotificationRequest } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { InternalNotesComponent } from '../../../components/internal-notes/internal-notes.component';
-import { Candidate, JobOffer } from '../../../models/interfaces';
+import { Candidate, JobOffer, RoutingPreview, RoutingRecipientStatus, RoutingStatus } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 import { AuthService } from '../../../services/auth';
 
@@ -61,6 +61,22 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   
   // Status dropdown management
   openStatusDropdownId: number | null = null;
+
+  /**
+   * Aperçu du routage (GET /candidates/{id}/routing-preview) : destinataires réels
+   * du dossier si le RH confirme la transmission. Vidé à chaque rechargement de la
+   * liste, sinon un ancien aperçu afficherait une destination périmée.
+   */
+  private routingPreviews: Record<number, RoutingPreview> = {};
+  routingPreviewLoading: number | null = null;
+
+  /**
+   * Trace de la transmission dans la fiche RH (GET /candidates/{id}/routing-status) :
+   * destinataires figés + état de notification de chacun dans l'outbox n8n.
+   */
+  routingStatus: RoutingStatus | null = null;
+  routingStatusLoading = false;
+  rerouting = false;
 
   // Email dropdown management
   openEmailDropdownId: number | null = null;
@@ -286,6 +302,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     fetch$.subscribe({
       next: (candidates: Candidate[]) => {
         this.candidates = candidates;
+        this.routingPreviews = {};
         this.totalCandidates = candidates.length;
         this.totalPages = Math.ceil(this.totalCandidates / this.pageSize);
         this.applyFilters();
@@ -474,7 +491,53 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   // Status dropdown methods
   toggleStatusDropdown(candidateId: number, currentStatus: string): void {
     if (this.isStatusLocked(currentStatus)) return;
-    this.openStatusDropdownId = this.openStatusDropdownId === candidateId ? null : candidateId;
+    const opening = this.openStatusDropdownId !== candidateId;
+    this.openStatusDropdownId = opening ? candidateId : null;
+    // Le RH doit savoir où le dossier va avant de confirmer l'aiguillage.
+    if (opening && currentStatus === 'PHONE_SCREENING') {
+      this.loadRoutingPreview(candidateId);
+    }
+  }
+
+  loadRoutingPreview(candidateId: number): void {
+    if (this.routingPreviews[candidateId]) return;
+    this.routingPreviewLoading = candidateId;
+    this.candidateService.getRoutingPreview(candidateId).subscribe({
+      next: (preview: RoutingPreview) => {
+        this.routingPreviews[candidateId] = preview;
+        this.routingPreviewLoading = null;
+      },
+      error: () => {
+        // L'aperçu est une aide : son indisponibilité n'empêche pas la transmission,
+        // qui reste contrôlée côté serveur.
+        this.routingPreviewLoading = null;
+      }
+    });
+  }
+
+  /** Nom lisible des managers destinataires, tel que résolu par le backend. */
+  routingHint(candidateId: number): string | null {
+    if (this.routingPreviewLoading === candidateId) return 'Destinataires en cours de calcul…';
+    const preview = this.routingPreviews[candidateId];
+    if (!preview) return null;
+    if (!preview.managers || preview.managers.length === 0) {
+      return 'Aucun manager destinataire : l\'offre n\'est rattachée à aucun manager.';
+    }
+    return `Destinataires : ${preview.managers.map(m => m.fullName).join(', ')}`;
+  }
+
+  /** Destinataires figés sur le dossier après transmission ; à défaut, l'aperçu. */
+  private routedNames(candidate: Candidate, preview?: RoutingPreview): string {
+    const frozen = candidate?.routedManagerEmails
+      ? candidate.routedManagerEmails.split(',').map(e => e.trim()).filter(e => !!e)
+      : [];
+    if (frozen.length) {
+      const byEmail = new Map((preview?.managers ?? []).map(m => [m.email.toLowerCase(), m.fullName]));
+      return frozen.map(email => byEmail.get(email.toLowerCase()) ?? email).join(', ');
+    }
+    if (candidate?.routedManagerName) return candidate.routedManagerName;
+    const names = (preview?.managers ?? []).map(m => m.fullName);
+    return names.length ? names.join(', ') : '';
   }
 
   isStatusDropdownOpen(candidateId: number): boolean {
@@ -495,12 +558,99 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     this.selectedCandidate = candidate;
     this.showDetailsModal = true;
     this.showScoreOverrideForm = false;
+    this.loadRoutingStatus(candidate.id);
+  }
+
+  /**
+   * Trace RH de la transmission. La lecture est réservée au RH/Admin (l'endpoint
+   * l'est aussi) ; une fiche sans transmission affiche un bloc vide plutôt qu'un
+   * faux « envoyé ».
+   */
+  loadRoutingStatus(candidateId: number): void {
+    this.routingStatus = null;
+    if (!this.isHrOrAdmin()) return;
+    this.routingStatusLoading = true;
+    this.candidateService.getRoutingStatus(candidateId).subscribe({
+      next: (status: RoutingStatus) => {
+        this.routingStatus = status;
+        this.routingStatusLoading = false;
+      },
+      error: () => {
+        this.routingStatusLoading = false;
+      }
+    });
+  }
+
+  /** Relance ouverte dès qu'une transmission existe : un envoi en file ou en échec
+   *  doit pouvoir être repris sans repasser par la machine à états. */
+  get canRerouteNotification(): boolean {
+    return this.isHrOrAdmin() && !!this.routingStatus?.transmitted && !this.rerouting;
+  }
+
+  rerouteNotification(): void {
+    const candidate = this.selectedCandidate;
+    if (!candidate || this.rerouting) return;
+    this.rerouting = true;
+    this.candidateService.rerouteNotification(candidate.id).subscribe({
+      next: (status: RoutingStatus) => {
+        this.routingStatus = status;
+        this.rerouting = false;
+        const notified = status.recipients.filter(r => r.notificationStatus !== 'NOT_ENQUEUED');
+        if (notified.length === 0) {
+          this.toastrNotification.showWarning(
+            'Aucune relance envoyée : le webhook Agent 3 n\'est pas configuré côté serveur.',
+            'Relance impossible');
+        } else {
+          this.toastrNotification.showSuccess(
+            `Notification relancée pour ${notified.map(r => r.fullName).join(', ')}.`,
+            'Relance demandée');
+        }
+      },
+      error: (error: any) => {
+        this.rerouting = false;
+        this.toastrNotification.showError(
+          error?.error?.message || 'Erreur lors de la relance de la notification.',
+          'Relance échouée');
+      }
+    });
+  }
+
+  notificationStatusLabel(recipient: RoutingRecipientStatus): string {
+    switch (recipient.notificationStatus) {
+      case 'SENT': return 'Notifié';
+      case 'PENDING': return 'En cours d\'envoi';
+      case 'FAILED': return 'Échec d\'envoi';
+      default: return 'Aucune notification enregistrée';
+    }
+  }
+
+  notificationStatusBadge(recipient: RoutingRecipientStatus): string {
+    switch (recipient.notificationStatus) {
+      case 'SENT': return 'bg-success';
+      case 'PENDING': return 'bg-warning text-dark';
+      case 'FAILED': return 'bg-danger';
+      default: return 'bg-secondary';
+    }
+  }
+
+  /** Ligne « transmis à … » sous le dossier, pour que la liste reste lisible sans ouvrir la fiche. */
+  transmittedToLabel(candidate: Candidate): string | null {
+    const frozen = candidate?.routedManagerEmails
+      ? candidate.routedManagerEmails.split(',').map(e => e.trim()).filter(e => !!e)
+      : [];
+    if (!frozen.length && !candidate?.routedManagerName) return null;
+    if (candidate.routedManagerName) {
+      const others = frozen.length > 1 ? ` (+${frozen.length - 1} autre destinataire)` : '';
+      return `Transmis à ${candidate.routedManagerName}${others}`;
+    }
+    return `Transmis à ${frozen.join(', ')}`;
   }
 
   closeDetailsModal(): void {
     this.showDetailsModal = false;
     this.selectedCandidate = undefined;
     this.showScoreOverrideForm = false;
+    this.routingStatus = null;
   }
 
   @HostListener('document:click', ['$event'])
@@ -701,12 +851,14 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   updateCandidateStatus(candidate: Candidate, newStatus: string): void {
     const backendStatus = this.mapStatusToBackend(newStatus);
-    const updatedData = { ...candidate, status: newStatus };
+    const preview = this.routingPreviews[candidate.id];
     this.candidateService.updateCandidateStatus(candidate.id, backendStatus).subscribe({
-      next: () => {
-        const t = this.statusChangeToast(backendStatus, candidate);
+      next: (updated: Candidate) => {
+        const t = this.statusChangeToast(backendStatus, updated ?? candidate, preview);
         this.toastrNotification.showSuccess(t.message, t.title);
+        Object.assign(candidate, updated ?? {});
         candidate.status = newStatus as Candidate['status'];
+        delete this.routingPreviews[candidate.id];
         this.rememberStatus(candidate.id, backendStatus);
         // Réappliquer les filtres pour que la liste se mette à jour immédiatement,
         // sans rechargement de page : un candidat passé en « Candidature retirée »
@@ -719,38 +871,16 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       },
       error: (error: any) => {
         console.error('Erreur lors de la mise à jour du statut:', error);
-        this.toastrNotification.showCandidateError('Erreur lors de la mise à jour du statut');
-        this.error = 'Erreur lors de la mise à jour du statut';
+        // Le backend refuse une transmission sans manager destinataire et explique
+        // comment le corriger : reprendre son message plutôt qu'un texte générique.
+        const message = error?.error?.message || 'Erreur lors de la mise à jour du statut';
+        this.toastrNotification.showCandidateError(message);
+        this.error = message;
         // Fermer les dropdowns même en cas d'erreur
         this.openStatusDropdownId = null;
         this.openEmailDropdownId = null;
       }
     });
-  }
-
-  /**
-   * Libellé lisible du manager destinataire selon la famille de métier de l'offre.
-   * Reflète le routage automatique RH → manager (ManagerRoutingService côté backend).
-   */
-  private managerLabelForFamily(jobFamily?: string): string {
-    switch (jobFamily) {
-      case 'CS': return 'manager CS';
-      case 'PRODOPS': return 'manager ProdOps / DevOps';
-      case 'RSD': return 'manager R&D';
-      default: return 'manager concerné';
-    }
-  }
-
-  /**
-   * Libellé du manager destinataire : on privilégie le département réel de l'offre
-   * (routage organisationnel fin : CS, DevOps, ProdOps, R&D, QA...), et on retombe
-   * sur la famille de métier pour les offres non rattachées à un département.
-   */
-  private managerLabel(candidate: Candidate): string {
-    if (candidate.departmentName) {
-      return `manager ${candidate.departmentName}`;
-    }
-    return this.managerLabelForFamily(candidate.jobFamily);
   }
 
   /**
@@ -812,9 +942,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   /**
    * Message de toast (vert) spécifique au nouveau statut, pour informer clairement
    * le RH/Admin de l'effet métier de son action — notamment le routage automatique
-   * du dossier vers le manager compétent lors de la validation du CV.
+   * du dossier vers le manager compétent lors de la validation du CV. Le nom affiché
+   * vient du backend (destinataires résolus, puis figés sur le dossier) : jamais
+   * d'une déduction côté client.
    */
-  private statusChangeToast(backendStatus: string, candidate: Candidate): { message: string; title: string } {
+  private statusChangeToast(backendStatus: string, candidate: Candidate,
+                            preview?: RoutingPreview): { message: string; title: string } {
     switch (backendStatus) {
       case 'CV_REVIEWED':
         return {
@@ -823,11 +956,15 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         };
       case 'PHONE_SCREENING':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien téléphonique.' };
-      case 'TECHNICAL_TEST':
+      case 'TECHNICAL_TEST': {
+        const names = this.routedNames(candidate, preview);
         return {
           title: 'Transmis au manager',
-          message: `Entretien téléphonique validé : le dossier a été transmis au ${this.managerLabel(candidate)} pour la phase technique.`
+          message: names
+            ? `Entretien téléphonique validé : le dossier a été transmis à ${names} pour la phase technique.`
+            : 'Entretien téléphonique validé : le dossier a été transmis pour la phase technique.'
         };
+      }
       case 'INTERVIEW':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien.' };
       case 'FINAL_INTERVIEW':
@@ -867,6 +1004,22 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   canManagerAccept(candidate: Candidate): boolean {
     return ['PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
       .includes(candidate.status);
+  }
+
+  /**
+   * Un avis est-il déjà posé sur ce dossier ? Si oui, le manager n'a plus rien à
+   * saisir — le contreseing appartient au RH. Sans ce message, les deux boutons
+   * simplement grisés laissaient croire à une interface en panne.
+   */
+  managerAdviceNote(candidate: Candidate): string | null {
+    const author = candidate.statusChangedBy ? ` (${candidate.statusChangedBy})` : '';
+    if (candidate.status === 'ACCEPTED') {
+      return `Avis favorable déjà enregistré${author} — en attente de validation du RH`;
+    }
+    if (candidate.status === 'MANAGER_REJECTED') {
+      return `Refus proposé déjà enregistré${author} — en attente du contreseing du RH`;
+    }
+    return null;
   }
 
   canManagerReject(candidate: Candidate): boolean {
@@ -1078,7 +1231,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     return this.getStatusLabel(status);
   }
 
-  formatDate(date: Date): string {
+  formatDate(date: Date | string): string {
     return new Date(date).toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: '2-digit',

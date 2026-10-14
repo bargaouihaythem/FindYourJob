@@ -41,5 +41,15 @@ public class JobOfferRequest {
     private String managerEmail;
 
     private Long departmentId;
+
+    /**
+     * Manager recruteur désigné par le RH. C'est le premier niveau de l'aiguillage :
+     * quand il est renseigné, les dossiers de l'offre partent chez lui, et personne
+     * d'autre. Le champ reste nullable pour les offres historiques.
+     */
+    private Long hiringManagerId;
+
+    /** Assume un manager recruteur hors du département de l'offre ; tracé dans le journal d'audit. */
+    private Boolean allowManagerDepartmentMismatch;
 }
 

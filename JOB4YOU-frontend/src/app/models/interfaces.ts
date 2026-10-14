@@ -118,6 +118,9 @@ export interface JobOffer {
   managerEmail?: string;
   departmentId?: number;
   departmentName?: string;
+  hiringManagerId?: number;
+  hiringManagerName?: string;
+  hiringManagerEmail?: string;
   createdAt: Date;
   updatedAt: Date;
   createdBy: string;
@@ -139,8 +142,69 @@ export interface JobOfferRequest {
   deadline: string; // Added for backend compatibility
   managerEmail?: string;
   departmentId?: number;
+  hiringManagerId?: number;
+  allowManagerDepartmentMismatch?: boolean;
 }
 
+/**
+ * Chaîne de résolution du destinataire côté backend (ManagerRoutingService) :
+ * manager recruteur désigné sur l'offre, managers du département, de la famille
+ * de métier, puis e-mail libre. Le score IA n'intervient jamais dans l'aiguillage.
+ */
+export interface RoutedManager {
+  id?: number | null;
+  fullName: string;
+  email: string;
+}
+
+export interface RoutingPreview {
+  managers: RoutedManager[];
+  basis?: 'OFFER_MANAGER' | 'DEPARTMENT' | 'JOB_FAMILY' | 'LEGACY_EMAIL' | 'UNRESOLVED' | null;
+}
+
+/** État de notification d'un destinataire, lu dans l'outbox n8n. */
+export interface RoutingRecipientStatus {
+  email: string;
+  fullName: string;
+  /** NOT_ENQUEUED : webhook non configuré ; PENDING : en file ou en reprise ;
+   *  SENT : accepté par n8n ; FAILED : tentatives épuisées. */
+  notificationStatus: 'NOT_ENQUEUED' | 'PENDING' | 'SENT' | 'FAILED';
+  attempts?: number | null;
+  sentAt?: string | null;
+  nextAttemptAt?: string | null;
+  lastError?: string | null;
+  /** Relances déjà demandées par le RH sur ce destinataire. */
+  retries?: number | null;
+}
+
+/** Traçabilité RH de la transmission, relisible après coup dans la fiche candidat. */
+export interface RoutingStatus {
+  candidateId: number;
+  candidateStatus: string;
+  routedAt?: string | null;
+  routingBasis?: RoutingPreview['basis'];
+  routingBasisLabel?: string | null;
+  transmitted?: boolean | null;
+  recipients: RoutingRecipientStatus[];
+}
+
+/** Manager mobilisable dans le formulaire d'offre. */
+export interface ManagerOption {
+  id: number;
+  fullName: string;
+  email: string;
+  departmentId?: number | null;
+  departmentName?: string | null;
+}
+
+/** Proposition lexicale de rattachement d'une offre sans département, à confirmer par le RH. */
+export interface DepartmentProposal {
+  departmentId: number;
+  departmentName: string;
+  departmentCode?: string;
+  score: number;
+  matchedTerms: string[];
+}
 /** Pondération du score IA (technique/communication/séniorité) pour une
  * combinaison famille de métier × niveau de séniorité, paramétrable par le RH. */
 export interface ScoringWeightProfile {
@@ -208,6 +272,11 @@ export interface Candidate {
   jobOfferTitle: string;
   jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
   departmentName?: string;
+  /** Destinataire(s) réel(aux) du dossier, figés par le backend au moment du routage. */
+  routedManagerName?: string;
+  routedManagerEmails?: string;
+  routedAt?: Date;
+  routingBasis?: 'OFFER_MANAGER' | 'DEPARTMENT' | 'JOB_FAMILY' | 'LEGACY_EMAIL' | 'UNRESOLVED';
   jobOffers?: JobOffer[];
 }
 

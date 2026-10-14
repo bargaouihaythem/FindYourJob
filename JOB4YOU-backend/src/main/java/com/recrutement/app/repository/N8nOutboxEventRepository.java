@@ -17,6 +17,9 @@ public interface N8nOutboxEventRepository extends JpaRepository<N8nOutboxEvent, 
 
     Optional<N8nOutboxEvent> findByEventKey(String eventKey);
 
+    /** Toutes les tentatives de notification d'un dossier (préfixe « candidateId:DOSSIER_VALIDE_RH: »). */
+    List<N8nOutboxEvent> findByEventKeyStartingWithOrderByCreatedAtAsc(String prefix);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT e FROM N8nOutboxEvent e WHERE e.status = 'PENDING' AND e.nextAttemptAt <= :now ORDER BY e.createdAt ASC")
     List<N8nOutboxEvent> findPendingForUpdate(@Param("now") LocalDateTime now,

@@ -4,8 +4,10 @@ import com.recrutement.app.dto.ApplicationRequest;
 import com.recrutement.app.dto.CandidateRequest;
 import com.recrutement.app.dto.CandidateResponse;
 import com.recrutement.app.dto.MessageResponse;
+import com.recrutement.app.dto.RoutingStatusResponse;
 import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.service.CandidateService;
+import com.recrutement.app.service.ManagerRoutingService;
 import com.recrutement.app.service.PdfReportService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -89,6 +91,27 @@ public class CandidateController {
     public ResponseEntity<CandidateResponse> getCandidateById(@PathVariable Long id) {
         CandidateResponse response = candidateService.getCandidateById(id);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{id}/routing-preview")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Afficher les managers destinataires du dossier avant de confirmer sa transmission")
+    public ResponseEntity<ManagerRoutingService.RoutingResult> getRoutingPreview(@PathVariable Long id) {
+        return ResponseEntity.ok(candidateService.routingPreview(id));
+    }
+
+    @GetMapping("/{id}/routing-status")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Tracer la transmission : destinataires gelés et état de notification de chacun")
+    public ResponseEntity<RoutingStatusResponse> getRoutingStatus(@PathVariable Long id) {
+        return ResponseEntity.ok(candidateService.routingStatus(id));
+    }
+
+    @PostMapping("/{id}/reroute-notification")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Relancer la notification des managers déjà destinataires du dossier")
+    public ResponseEntity<RoutingStatusResponse> rerouteNotification(@PathVariable Long id) {
+        return ResponseEntity.ok(candidateService.rerouteNotification(id));
     }
 
     @GetMapping("/{id}/export/pdf")

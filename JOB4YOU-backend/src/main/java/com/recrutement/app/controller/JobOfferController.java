@@ -3,8 +3,11 @@ package com.recrutement.app.controller;
 import com.recrutement.app.dto.JobOfferRequest;
 import com.recrutement.app.dto.JobOfferResponse;
 import com.recrutement.app.dto.MessageResponse;
+import com.recrutement.app.dto.ManagerOptionResponse;
 import com.recrutement.app.entity.JobOffer;
+import com.recrutement.app.service.DepartmentProposalService;
 import com.recrutement.app.service.JobOfferService;
+import com.recrutement.app.service.ManagerRoutingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -94,6 +97,31 @@ public class JobOfferController {
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/manager-candidates")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Managers pouvant être désignés recruteurs d'une offre",
+            description = "Liste du sélecteur « manager recruteur » ; ceux du département fourni en tête")
+    public ResponseEntity<List<ManagerOptionResponse>> getManagerCandidates(
+            @RequestParam(required = false) Long departmentId) {
+        return ResponseEntity.ok(jobOfferService.getAssignableManagers(departmentId));
+    }
+
+    @GetMapping("/{id}/routing-preview")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Où partiraient les candidatures de cette offre",
+            description = "Destinataires résolus par la chaîne structurelle et niveau qui les a trouvés")
+    public ResponseEntity<ManagerRoutingService.RoutingResult> getRoutingPreview(@PathVariable Long id) {
+        return ResponseEntity.ok(jobOfferService.routingPreview(id));
+    }
+
+    @GetMapping("/{id}/department-proposals")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Départements proposés pour une offre non rattachée",
+            description = "Vérification lexicale déterministe ; le RH confirme, rien ne s'applique seul")
+    public ResponseEntity<List<DepartmentProposalService.Proposal>> getDepartmentProposals(@PathVariable Long id) {
+        return ResponseEntity.ok(jobOfferService.suggestDepartments(id));
     }
 
     @PutMapping("/{id}")

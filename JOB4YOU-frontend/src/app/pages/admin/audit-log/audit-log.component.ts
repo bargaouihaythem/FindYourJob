@@ -86,6 +86,9 @@ export class AuditLogComponent implements OnInit {
   getActionBadgeClass(action: string): string {
     switch (action) {
       case 'STATUS_CHANGE': return 'bg-primary';
+      case 'ROUTING': return 'bg-success text-dark';
+      case 'ROUTING_RETRY': return 'bg-info text-dark';
+      case 'ROUTING_FAILED': return 'bg-danger';
       case 'SCORE_OVERRIDE': return 'bg-warning text-dark';
       case 'INTERVIEW_SCHEDULED': return 'bg-info text-dark';
       default: return 'bg-secondary';
