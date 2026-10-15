@@ -122,15 +122,25 @@ public class InterviewService {
     }
 
     /**
-     * Calendrier dédié au manager courant. Les entretiens sont filtrés côté serveur
-     * avec la même règle de département, famille de métier ou manager assigné que
-     * les dossiers candidats ; le frontend ne décide donc jamais du périmètre.
+     * Calendrier dédié au manager courant : uniquement les entretiens dont il est
+     * l'intervieweur, et uniquement parmi les dossiers de son périmètre (même règle
+     * que la visibilité des dossiers). Le frontend ne décide jamais du périmètre.
      */
     public List<InterviewResponse> getManagerCalendar(LocalDateTime startDate, LocalDateTime endDate) {
+        Long currentUserId = accessControlService.currentUserId();
+        if (currentUserId == null) {
+            return List.of();
+        }
         List<Interview> interviews = startDate != null && endDate != null
-                ? interviewRepository.findByInterviewDateBetween(startDate, endDate)
+                ? interviewRepository.findInRangeWithRelations(startDate, endDate)
                 : interviewRepository.findAllWithRelations();
-        return toScopedResponses(interviews);
+        return interviews.stream()
+                .filter(interview -> interview != null && interview.getCandidate() != null)
+                .filter(interview -> interview.getInterviewer() != null
+                        && currentUserId.equals(interview.getInterviewer().getId()))
+                .filter(interview -> accessControlService.canAccessCandidate(interview.getCandidate()))
+                .map(InterviewResponse::new)
+                .collect(Collectors.toList());
     }
 
     private List<InterviewResponse> toScopedResponses(List<Interview> interviews) {

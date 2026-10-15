@@ -46,6 +46,13 @@ public class AccessControlService {
         }
     }
 
+    /** Identifiant de l'utilisateur authentifié, ou null hors contexte sécurisé. */
+    public Long currentUserId() {
+        Authentication authentication = currentAuthentication();
+        User currentUser = authentication != null ? findCurrentUser(authentication) : null;
+        return currentUser != null ? currentUser.getId() : null;
+    }
+
     public boolean canAccessCandidate(Candidate candidate) {
         try {
             assertCanAccessCandidate(candidate);

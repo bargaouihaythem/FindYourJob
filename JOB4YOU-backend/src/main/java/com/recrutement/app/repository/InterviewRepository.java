@@ -24,6 +24,14 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
     List<Interview> findByInterviewDateBetween(@Param("startDate") LocalDateTime startDate, 
                                              @Param("endDate") LocalDateTime endDate);
 
+    @Query("SELECT i FROM Interview i " +
+           "LEFT JOIN FETCH i.candidate c " +
+           "LEFT JOIN FETCH c.jobOffer jo " +
+           "LEFT JOIN FETCH i.interviewer " +
+           "WHERE i.interviewDate BETWEEN :startDate AND :endDate")
+    List<Interview> findInRangeWithRelations(@Param("startDate") LocalDateTime startDate,
+                                             @Param("endDate") LocalDateTime endDate);
+
     @Query("SELECT i FROM Interview i WHERE i.interviewer.id = :interviewerId AND i.interviewDate BETWEEN :startDate AND :endDate")
     List<Interview> findByInterviewerIdAndInterviewDateBetween(@Param("interviewerId") Long interviewerId, 
                                                              @Param("startDate") LocalDateTime startDate, 

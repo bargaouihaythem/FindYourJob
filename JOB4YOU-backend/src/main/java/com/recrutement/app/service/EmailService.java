@@ -32,12 +32,28 @@ public class EmailService {
     @Value("${app.email.enabled:true}")
     private boolean emailEnabled;
 
+    @Value("${spring.mail.password:}")
+    private String mailPassword;
+
+    /**
+     * Un e-mail n'est tente que si l'envoi est active ET que le compte SMTP est renseign :
+     * sans mot de passe d'application, JavaMailSender echouerait au milieu d'une requete metier.
+     */
+    private boolean canSend() {
+        if (!emailEnabled) return false;
+        if (fromEmail == null || fromEmail.isBlank() || mailPassword == null || mailPassword.isBlank()) {
+            logger.warn("app.email.enabled=true mais SPRING_MAIL_USERNAME / SPRING_MAIL_PASSWORD sont vides : envoi ignore.");
+            return false;
+        }
+        return true;
+    }
+
     /**
      * Envoie un e-mail avec un template Thymeleaf (asynchrone)
      */
     @Async
     public void sendTemplateEmail(String to, String subject, String templateName, Map<String, Object> variables) {
-        if (!emailEnabled) {
+        if (!canSend()) {
             logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
             return;
         }
@@ -72,7 +88,7 @@ public class EmailService {
      */
     @Async
     public void sendSimpleEmail(String to, String subject, String content) {
-        if (!emailEnabled) {
+        if (!canSend()) {
             logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
             return;
         }
@@ -98,7 +114,7 @@ public class EmailService {
      */
     @Async
     public void sendHtmlEmail(String to, String subject, String htmlContent) {
-        if (!emailEnabled) {
+        if (!canSend()) {
             logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
             return;
         }
@@ -123,7 +139,7 @@ public class EmailService {
      * Envoie un e-mail simple de manière synchrone
      */
     public void sendSimpleEmailSync(String to, String subject, String content) {
-        if (!emailEnabled) {
+        if (!canSend()) {
             logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
             return;
         }
@@ -148,7 +164,7 @@ public class EmailService {
      * Envoie un e-mail avec un template Thymeleaf de manière synchrone (recommandé pour les emails critiques)
      */
     public void sendTemplateEmailSync(String to, String subject, String templateName, Map<String, Object> variables) {
-        if (!emailEnabled) {
+        if (!canSend()) {
             logger.info("Email sending is disabled. Would have sent email to: {}, subject: {}", to, subject);
             return;
         }

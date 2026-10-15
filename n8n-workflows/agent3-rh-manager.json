@@ -1,4 +1,5 @@
 {
+  "id": "vuIc7XWE1gcN4hBG",
   "name": "Agent 3 — RH vers Manager (dossier validé)",
   "nodes": [
     {
@@ -12,97 +13,230 @@
       "name": "Webhook — Dossier validé par RH",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        240,
+        304
+      ],
       "webhookId": "agent3-rh-manager"
     },
     {
       "parameters": {
+        "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst candidateId   = data.candidateId || data.candidatId;\nconst candidatEmail = data.email || data.candidatEmail || data.candidateEmail || '';\nconst nom           = data.lastName || data.candidatNom || data.candidateLastName || '';\nconst prenom        = data.firstName || data.candidatPrenom || data.candidateFirstName || '';\nconst offreTitre    = data.jobOfferTitle || data.offreTitre || 'le poste';\nconst statut        = data.status || data.nouveauStatut || 'CV_REVIEWED';\nconst managerEmail  = data.managerEmail || 'bargaouihaythem1@gmail.com';\nconst cvUrl         = data.cvUrl || null;\nconst date          = new Date().toLocaleDateString('fr-FR');\nconst isRejected    = statut === 'AUTO_REJECTED' || statut === 'MANAGER_REJECTED' || statut === 'REJECTED';\nconst isAccepted    = statut === 'ACCEPTED' || statut === 'HIRED';\nconst statutMap = {\n  CV_REVIEWED:      'CV Valide - profil retenu',\n  AUTO_REJECTED:    'Profil insuffisant (score IA < 60)',\n  MANAGER_REJECTED: 'Refuse par le manager',\n  REJECTED:         'Candidature refusee',\n  ACCEPTED:         'Accepte',\n  HIRED:            'Embauche',\n};\nconst statutLabel = statutMap[statut] || statut;\n\nconst emailManagerHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#1e40af;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Nouveau dossier candidat a examiner</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<p>Bonjour,</p>'\n  + '<p>Un dossier candidat vient d\\'etre valide par le systeme RH.</p>'\n  + '<div style=\"background:white;border-left:4px solid #10b981;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<h3 style=\"color:#059669;margin-top:0;\">' + prenom + ' ' + nom + '</h3>'\n  + '<table style=\"width:100%;border-collapse:collapse;\">'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;width:140px;\">Poste</td><td style=\"font-weight:bold;\">' + offreTitre + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Statut</td><td style=\"font-weight:bold;color:#1e40af;\">' + statutLabel + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Email candidat</td><td>' + candidatEmail + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Date</td><td>' + date + '</td></tr>'\n  + (cvUrl ? '<tr><td style=\"color:#6b7280;padding:6px 0;\">CV</td><td><a href=\"' + cvUrl + '\">Telecharger le CV</a></td></tr>' : '')\n  + '</table></div>'\n  + '<p>Si le profil vous convient, planifiez un entretien sur la plateforme JOB4YOU.</p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#dc2626;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Resultat de votre candidature</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Merci pour l\\'interet porte a notre entreprise et pour votre candidature au poste de <b>' + offreTitre + '</b>.</p>'\n  + '<div style=\"background:white;border-left:4px solid #dc2626;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>Cette decision ne remet pas en cause vos competences. Nous vous encourageons a postuler pour d\\'autres offres sur JOB4YOU.</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatAccepteHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#059669;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Felicitations !</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Nous avons le plaisir de vous informer que votre candidature au poste de <b>' + offreTitre + '</b> a ete retenue.</p>'\n  + '<div style=\"background:white;border-left:4px solid #059669;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>L\\'equipe RH reviendra vers vous prochainement pour la suite du processus (planification, integration).</p>'\n  + '<p>Toutes nos felicitations !</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nreturn [{ json: { candidateId, candidatEmail, nom, prenom, offreTitre, statut, statutLabel, managerEmail, cvUrl, date, isRejected, isAccepted, emailManagerHtml, emailCandidatHtml, emailCandidatAccepteHtml } }];"
+      },
+      "id": "prepare-data",
+      "name": "Préparer données dossier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "bargaouihaythem1@gmail.com",
+        "toEmail": "={{ $json.managerEmail || 'bargaouihaythem1@gmail.com' }}",
+        "subject": "=📋 Nouveau dossier à examiner — {{ $json.prenom }} {{ $json.nom }} / {{ $json.offreTitre }}",
+        "html": "={{ $json.emailManagerHtml }}",
+        "options": {}
+      },
+      "id": "email-manager",
+      "name": "Email — Manager (dossier validé)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1184,
+        464
+      ],
+      "webhookId": "207d69ff-6b41-48d3-9cab-b9fabec5484b",
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "conditions": {
-          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
-              "id": "cond-decision-finale",
-              "leftValue": "={{ $json.event }}",
-              "rightValue": "DECISION_FINALE",
-              "operator": { "type": "string", "operation": "equals" }
+              "id": "c1",
+              "leftValue": "={{ $json.isRejected }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
             }
           ],
           "combinator": "and"
         },
         "options": {}
       },
-      "id": "route-event",
-      "name": "Décision finale ?",
+      "id": "if-rejected",
+      "name": "Rejeté ou Validé ?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        656,
+        304
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst candidateId   = data.candidateId;\nconst firstName     = data.firstName || 'Candidat';\nconst lastName      = data.lastName  || '';\nconst jobTitle      = data.jobOfferTitle || 'le poste';\nconst status        = data.status || 'CV_REVIEWED';\nconst cvUrl         = data.cvUrl  || null;\nconst email         = data.email  || '';\nconst hrName        = data.updatedBy || 'RH';\nconst managerEmail  = data.managerEmail || null;\n\n// Mapping statut → label lisible\nconst statusLabels = {\n  CV_REVIEWED:       '✅ CV validé — en attente d\\'analyse Manager',\n  PHONE_SCREENING:   '📞 Pré-qualification téléphonique',\n  TECHNICAL_TEST:    '💻 Test technique à planifier',\n  INTERVIEW:         '🎤 Entretien à planifier',\n  FINAL_INTERVIEW:   '🏆 Entretien final',\n  ACCEPTED:          '✅ Avis favorable du manager — validation RH requise',\n  HIRED:           '🎉 Candidat embauché (validation RH)',\n  MANAGER_REJECTED:'❌ Refus proposé par le manager — validation RH requise',\n  REJECTED:          '❌ Candidat refusé'\n};\nconst statusLabel = statusLabels[status] || status;\nconst profileUrl = `http://localhost:4200/admin/candidates`;\n\nreturn [{ json: {\n  candidateId, firstName, lastName, email, jobTitle,\n  status, statusLabel, cvUrl, hrName, managerEmail, profileUrl,\n  validatedAt: new Date().toISOString()\n} }];"
+        "fromEmail": "bargaouihaythem1@gmail.com",
+        "toEmail": "={{ $json.candidatEmail }}",
+        "subject": "=❌ Résultat de votre candidature — {{ $json.offreTitre }}",
+        "html": "={{ $json.emailCandidatHtml }}",
+        "options": {}
       },
-      "id": "prepare-data",
-      "name": "Préparer données dossier",
-      "type": "n8n-nodes-base.code",
+      "id": "email-candidat-rejet",
+      "name": "Email — Candidat (refus IA)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        912,
+        160
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.isAccepted }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-accepted",
+      "name": "Accepté (décision finale) ?",
+      "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [720, 180]
+      "position": [
+        912,
+        336
+      ]
     },
     {
       "parameters": {
-        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
-        "toEmail": "={{ $json.managerEmail || 'manager1@job4you.com' }}",
-        "subject": "=📋 Nouveau dossier à examiner — {{ $json.firstName }} {{ $json.lastName }} / {{ $json.jobTitle }}",
-        "emailType": "html",
-        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Nouveau dossier validé par RH</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Dossier à examiner</h2>\n    \n    <div style=\"background: white; border-left: 4px solid #1e40af; padding: 16px; margin: 16px 0;\">\n      <table style=\"width:100%; border-collapse: collapse;\">\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Candidat</td><td style=\"font-weight:bold;\">{{ $json.firstName }} {{ $json.lastName }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Email</td><td>{{ $json.email }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Poste</td><td style=\"font-weight:bold;\">{{ $json.jobTitle }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Statut</td><td>{{ $json.statusLabel }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Validé par</td><td>{{ $json.hrName }}</td></tr>\n        <tr><td style=\"color:#6b7280; padding: 4px 0;\">Date</td><td>{{ $json.validatedAt }}</td></tr>\n      </table>\n    </div>\n\n    <a href=\"{{ $json.profileUrl }}\" style=\"display:inline-block; background:#1e40af; color:white; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold; margin-top:8px;\">👁️ Voir le dossier sur JOB4YOU</a>\n\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par JOB4YOU Agent 2.\n    </p>\n  </div>\n</body></html>"
+        "fromEmail": "bargaouihaythem1@gmail.com",
+        "toEmail": "={{ $json.candidatEmail }}",
+        "subject": "=🎉 Félicitations — Votre candidature est retenue — {{ $json.offreTitre }}",
+        "html": "={{ $json.emailCandidatAccepteHtml }}",
+        "options": {}
       },
-      "id": "email-manager",
-      "name": "Email — Manager (dossier validé)",
+      "id": "email-candidat-accepte",
+      "name": "Email — Candidat (félicitations)",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [960, 180]
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = $input.first().json;\n\nconst candidateId = data.candidateId;\nconst firstName   = data.candidateFirstName || 'Candidat';\nconst lastName     = data.candidateLastName  || '';\nconst email        = data.candidateEmail     || '';\nconst jobTitle     = data.jobOfferTitle || 'le poste';\nconst status       = data.status || '';\n\n// ACCEPTED n'est plus une décision finale : seul HIRED (validé par le RH)\n// confirme l'embauche dans ce canal.\nconst accepted = status === 'HIRED';\n\nconst subject = accepted\n  ? `🎉 Félicitations — votre candidature pour ${jobTitle}`\n  : `Réponse à votre candidature — ${jobTitle}`;\n\nconst htmlBody = accepted\n  ? `<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #059669; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Votre candidature a été retenue</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #059669;\">Félicitations ${firstName} ${lastName} !</h2>\n    <p>Nous avons le plaisir de vous informer que votre candidature pour le poste de <strong>${jobTitle}</strong> a été retenue.</p>\n    <p>Notre équipe RH vous contactera prochainement pour vous communiquer les prochaines étapes.</p>\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">Cet email a été envoyé automatiquement par JOB4YOU Agent 3.</p>\n  </div>\n</body></html>`\n  : `<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #64748b; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Réponse à votre candidature</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #374151;\">Bonjour ${firstName} ${lastName},</h2>\n    <p>Nous vous remercions pour l'intérêt porté au poste de <strong>${jobTitle}</strong> et pour le temps consacré à votre candidature.</p>\n    <p>Après étude attentive de votre dossier, nous ne donnerons malheureusement pas suite à votre candidature pour ce poste.</p>\n    <p>Nous vous encourageons à consulter nos autres offres et vous souhaitons plein succès dans vos recherches.</p>\n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">Cet email a été envoyé automatiquement par JOB4YOU Agent 3.</p>\n  </div>\n</body></html>`;\n\nreturn [{ json: {\n  candidateId, firstName, lastName, email, jobTitle, status, accepted, subject, htmlBody,\n  decidedAt: new Date().toISOString()\n} }];"
+      "position": [
+        1184,
+        160
+      ],
+      "webhookId": "309aed45-eda2-42ce-a7ef-45ecfc616fae",
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
       },
-      "id": "prepare-decision",
-      "name": "Préparer données décision",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [720, 420]
-    },
-    {
-      "parameters": {
-        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
-        "toEmail": "={{ $json.email }}",
-        "subject": "={{ $json.subject }}",
-        "emailType": "html",
-        "message": "={{ $json.htmlBody }}"
-      },
-      "id": "email-candidat-decision",
-      "name": "Email — Candidat (décision finale)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
-      "position": [960, 420]
+      "continueOnFail": true
     }
   ],
   "connections": {
     "Webhook — Dossier validé par RH": {
-      "main": [[ { "node": "Décision finale ?", "type": "main", "index": 0 } ]]
-    },
-    "Décision finale ?": {
       "main": [
-        [ { "node": "Préparer données décision", "type": "main", "index": 0 } ],
-        [ { "node": "Préparer données dossier", "type": "main", "index": 0 } ]
+        [
+          {
+            "node": "Préparer données dossier",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Préparer données dossier": {
-      "main": [[ { "node": "Email — Manager (dossier validé)", "type": "main", "index": 0 } ]]
+      "main": [
+        [
+          {
+            "node": "Rejeté ou Validé ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Préparer données décision": {
-      "main": [[ { "node": "Email — Candidat (décision finale)", "type": "main", "index": 0 } ]]
+    "Rejeté ou Validé ?": {
+      "main": [
+        [
+          {
+            "node": "Email — Candidat (refus IA)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Accepté (décision finale) ?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Accepté (décision finale) ?": {
+      "main": [
+        [
+          {
+            "node": "Email — Candidat (félicitations)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email — Manager (dossier validé)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["job4you", "agent3", "rh-manager"]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "job4you",
+    "agent3",
+    "rh-manager"
+  ]
 }

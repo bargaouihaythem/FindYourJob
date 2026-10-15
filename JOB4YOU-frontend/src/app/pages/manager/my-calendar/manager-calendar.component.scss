@@ -162,3 +162,87 @@
     gap: .5rem;
   }
 }
+
+.calendar-event {
+  cursor: pointer;
+  transition: background .15s ease, box-shadow .15s ease;
+}
+
+.calendar-event:hover,
+.calendar-event:focus-visible {
+  background: #bfdbfe;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, .18);
+  outline: none;
+}
+
+.interview-details {
+  margin-bottom: 1rem;
+}
+
+.interview-details .detail-row {
+  border-bottom: 1px solid #edf0f4;
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: 130px 1fr;
+  padding: .5rem 0;
+}
+
+.interview-details dt {
+  color: #64748b;
+  font-size: .8rem;
+  font-weight: 600;
+}
+
+.interview-details dd {
+  color: #1f2937;
+  font-size: .875rem;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-name {
+  color: #1f2937;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.modal-content {
+  border: none;
+  border-radius: .85rem;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .22);
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+  border-radius: .85rem .85rem 0 0;
+  color: #fff;
+}
+
+.modal-header .modal-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.modal-header .btn-close {
+  filter: invert(1);
+  opacity: .85;
+}
+
+.modal-body,
+.modal-footer {
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-backdrop {
+  background: rgba(15, 23, 42, .45);
+  height: 100%;
+  left: 0;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  z-index: 1040;
+}
+
+.modal {
+  z-index: 1045;
+}

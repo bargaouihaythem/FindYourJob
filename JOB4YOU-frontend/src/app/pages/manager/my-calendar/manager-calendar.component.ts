@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { Interview } from '../../../models/interfaces';
 import { InterviewService } from '../../../services/interview.service';
@@ -25,6 +25,8 @@ export class ManagerCalendarComponent implements OnInit {
   upcomingInterviews: Interview[] = [];
   loading = true;
   error: string | null = null;
+  showDetailModal = false;
+  selectedInterview: Interview | null = null;
 
   constructor(private interviewService: InterviewService) {}
 
@@ -146,6 +148,17 @@ export class ManagerCalendarComponent implements OnInit {
     return classes[status] ?? 'badge bg-secondary';
   }
 
+  getStatusLabel(status: Interview['status']): string {
+    const labels: Record<Interview['status'], string> = {
+      SCHEDULED: 'Planifié',
+      IN_PROGRESS: 'En cours',
+      COMPLETED: 'Terminé',
+      CANCELLED: 'Annulé',
+      RESCHEDULED: 'Reprogrammé'
+    };
+    return labels[status] ?? status;
+  }
+
   reminderLabel(interview: Interview): string | null {
     const milliseconds = new Date(interview.interviewDate).getTime() - Date.now();
     if (milliseconds < 0 || !this.isActiveInterview(interview)) return null;
@@ -155,5 +168,30 @@ export class ManagerCalendarComponent implements OnInit {
     if (hours <= 24) return 'Aujourd’hui';
     if (hours <= 48) return 'Demain';
     return null;
+  }
+
+  openInterviewDetail(interview: Interview): void {
+    this.selectedInterview = interview;
+    this.showDetailModal = true;
+  }
+
+  closeInterviewDetail(): void {
+    this.showDetailModal = false;
+    this.selectedInterview = null;
+  }
+
+  @HostListener('document:keydown.escape')
+  closeDetailOnEscape(): void {
+    if (this.showDetailModal) {
+      this.closeInterviewDetail();
+    }
+  }
+
+  formatDateTime(value: Date | string): string {
+    return new Date(value).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' });
+  }
+
+  durationLabel(interview: Interview): string {
+    return interview.durationMinutes ? `${interview.durationMinutes} minutes` : 'Non renseignée';
   }
 }

@@ -1,4 +1,5 @@
 {
+  "id": "abHc50O9XFYNXIa8",
   "name": "Agent 1 — CV Parser + Score IA + Email Candidat",
   "nodes": [
     {
@@ -12,68 +13,130 @@
       "name": "Webhook — Nouvelle candidature",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300],
+      "position": [
+        32,
+        304
+      ],
       "webhookId": "agent1-cv-parser"
     },
     {
       "parameters": {
-        "method": "POST",
-        "url": "=http://localhost:8080/api/candidates/{{ $json.candidateId }}/ai-score/recompute",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "X-N8N-API-Key", "value": "={{ $env.JOB4YOU_N8N_API_KEY || '' }}" }
-          ]
-        },
+        "fromEmail": "bargaouihaythem1@gmail.com",
+        "toEmail": "={{ $json.email }}",
+        "subject": "=✅ Candidature reçue — {{ $json.jobTitle }}",
+        "html": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Plateforme de recrutement IA</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n    <p>Votre candidature pour le poste de <strong>{{ $json.jobTitle }}</strong> a bien été reçue.</p>\n    \n    <div style=\"background: white; border: 2px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;\">\n      <h3 style=\"color: #374151; margin-top:0;\">📊 Analyse IA de votre profil</h3>\n      <div style=\"display: flex; align-items: center; gap: 12px;\">\n        <div style=\"background: #1e40af; color: white; font-size: 24px; font-weight: bold; padding: 12px 20px; border-radius: 8px;\">{{ $json.score }}/100</div>\n        <div>\n          <strong style=\"color: #1e40af;\">{{ $json.mention }}</strong><br>\n          <small style=\"color: #6b7280;\">Score calculé par notre IA de recrutement</small>\n        </div>\n      </div>\n    </div>\n\n    <p>Notre équipe RH examinera votre dossier dans les plus brefs délais. Vous serez contacté(e) par email pour les prochaines étapes.</p>\n    \n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par la plateforme JOB4YOU.<br>\n      Traitement réalisé le {{ $json.processedAt }}.\n    </p>\n  </div>\n</body></html>",
         "options": {}
-      },
-      "id": "recompute-score",
-      "name": "Spring Boot — Recalculer score IA",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [480, 300]
-    },
-    {
-      "parameters": {
-        "fromEmail": "={{ $env.JOB4YOU_FROM_EMAIL || 'no-reply@example.com' }}",
-        "toEmail": "={{ $('Webhook — Nouvelle candidature').item.json.email }}",
-        "subject": "=✅ Candidature reçue — {{ $('Webhook — Nouvelle candidature').item.json.jobOfferTitle }}",
-        "emailType": "html",
-        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Plateforme de recrutement IA</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $('Webhook — Nouvelle candidature').item.json.firstName }} {{ $('Webhook — Nouvelle candidature').item.json.lastName }},</h2>\n    <p>Votre candidature pour le poste de <strong>{{ $('Webhook — Nouvelle candidature').item.json.jobOfferTitle }}</strong> a bien été reçue.</p>\n    \n    <div style=\"background: white; border: 2px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;\">\n      <h3 style=\"color: #374151; margin-top:0;\">📊 Analyse IA de votre profil</h3>\n      <div style=\"display: flex; align-items: center; gap: 12px;\">\n        <div style=\"background: #1e40af; color: white; font-size: 24px; font-weight: bold; padding: 12px 20px; border-radius: 8px;\">{{ $json.aiScore }}/100</div>\n        <div>\n          <strong style=\"color: #1e40af;\">{{ $json.aiScore >= 85 ? 'Excellent profil' : $json.aiScore >= 60 ? 'Bon profil' : 'Profil insuffisant' }}</strong><br>\n          <small style=\"color: #6b7280;\">{{ $json.aiSummary }}</small>\n        </div>\n      </div>\n    </div>\n\n    <p>Notre équipe RH examinera votre dossier dans les plus brefs délais. Vous serez contacté(e) par email pour les prochaines étapes.</p>\n    \n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par la plateforme JOB4YOU.\n    </p>\n  </div>\n</body></html>"
       },
       "id": "email-candidat",
       "name": "Email — Confirmation candidat",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
-      "position": [720, 180]
+      "position": [
+        864,
+        64
+      ],
+      "webhookId": "15512463-8918-44cd-8fb4-a59b75bb6bf8",
+      "credentials": {
+        "smtp": {
+          "id": "IfwIPrT1KMjf4UMR",
+          "name": "SMTP account"
+        }
+      },
+      "continueOnFail": true
     },
     {
       "parameters": {
-        "respondWith": "json",
-        "responseBody": "={ \"status\": \"ok\", \"score\": {{ $json.aiScore }}, \"summary\": \"{{ $json.aiSummary }}\" }",
         "options": {}
       },
       "id": "response",
       "name": "Réponse webhook",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [960, 300]
+      "position": [
+        960,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://localhost:8080/api/candidates/{{ ($json.body || $json).candidateId }}/ai-score/recompute",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "cohere-score-via-springboot",
+      "name": "Cohere — Score IA (Spring Boot)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        368,
+        304
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhookData = $('Webhook — Nouvelle candidature').item.json;\nconst raw = webhookData.body || webhookData;\nconst candidateId = raw.candidateId;\nconst firstName   = raw.firstName || 'Candidat';\nconst lastName    = raw.lastName  || '';\nconst email       = raw.email;\nconst jobTitle    = raw.jobOfferTitle || 'le poste';\n\nlet cohereResult = null;\ntry { cohereResult = $input.first().json; } catch (e) { cohereResult = null; }\n\nconst hasValidScore = cohereResult && typeof cohereResult.aiScore === 'number';\n\nconst score              = hasValidScore ? cohereResult.aiScore : 70;\nconst technicalScore     = hasValidScore && typeof cohereResult.aiScoreTechnical === 'number' ? cohereResult.aiScoreTechnical : 70;\nconst communicationScore = hasValidScore && typeof cohereResult.aiScoreCommunication === 'number' ? cohereResult.aiScoreCommunication : 70;\nconst seniorityScore     = hasValidScore && typeof cohereResult.aiScoreSeniorityMatch === 'number' ? cohereResult.aiScoreSeniorityMatch : 70;\nconst aiScoreSource      = hasValidScore ? cohereResult.aiScoreSource : 'SIMULATED';\nconst candidateStatus    = hasValidScore ? cohereResult.status : null;\n\nconst mention = score >= 85 ? 'Excellent profil'\n              : score >= 70 ? 'Bon profil'\n              : score >= 60 ? 'Profil moyen'\n              : 'Profil insuffisant';\n\nreturn [{\n  json: {\n    candidateId, firstName, lastName, email, jobTitle,\n    score, mention, technicalScore, communicationScore, seniorityScore,\n    aiScoreSource, status: candidateStatus,\n    processedAt: new Date().toISOString(),\n    responsePayload: {\n      status: 'ok', score, mention, candidateId,\n      technicalScore, communicationScore, aiScoreSource,\n      message: 'Candidature analysee par IA (Cohere)'\n    }\n  }\n}];"
+      },
+      "id": "prepare-email-data",
+      "name": "Préparer données email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        304
+      ]
     }
   ],
   "connections": {
     "Webhook — Nouvelle candidature": {
-      "main": [[ { "node": "Spring Boot — Recalculer score IA", "type": "main", "index": 0 } ]]
-    },
-    "Spring Boot — Recalculer score IA": {
       "main": [
         [
-          { "node": "Email — Confirmation candidat", "type": "main", "index": 0 },
-          { "node": "Réponse webhook", "type": "main", "index": 0 }
+          {
+            "node": "Cohere — Score IA (Spring Boot)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cohere — Score IA (Spring Boot)": {
+      "main": [
+        [
+          {
+            "node": "Préparer données email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Préparer données email": {
+      "main": [
+        [
+          {
+            "node": "Email — Confirmation candidat",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Réponse webhook",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     }
   },
-  "settings": { "executionOrder": "v1" },
-  "tags": ["job4you", "agent1", "cv-parser"]
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "tags": [
+    "job4you",
+    "agent1",
+    "cv-parser"
+  ]
 }

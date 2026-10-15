@@ -56,7 +56,7 @@ public class InterviewController {
 
     @GetMapping("/my-calendar")
     @PreAuthorize("hasRole('MANAGER')")
-    @Operation(summary = "Calendrier du manager courant, limité à son périmètre")
+    @Operation(summary = "Calendrier du manager courant, limité aux entretiens dont il est l'intervieweur")
     public ResponseEntity<List<InterviewResponse>> getMyManagerCalendar(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
