@@ -239,5 +239,64 @@
       "Outils": "Jira, Confluence, Xray, Trello, SQL basique"
     },
     "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_17",
+    "filename": "CV_17_Dev_Java_Mid_Stack_Incomplete_Borderline_Pertinent.pdf",
+    "candidateName": "Hugo Delaunay",
+    "targetJobOfferId": 115,
+    "targetJobOfferTitle": "Développeur Backend Java/Spring",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Backend": "Java 11, Spring Boot, Maven, REST API, JUnit",
+      "Bases de données": "PostgreSQL, SQL, JPA",
+      "Exploitation": "Docker (environnements locaux), Git, Linux"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_18",
+    "filename": "CV_18_Admin_Plates_Formes_K8s_Sans_Cloud_Borderline_Non_Pertinent.pdf",
+    "candidateName": "Nadia Ostermann",
+    "targetJobOfferId": 117,
+    "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Conteneurisation": "Docker, Kubernetes, Helm",
+      "Intégration continue": "Jenkins, GitLab CI, scripts Bash",
+      "Langages d'automatisation": "Python, Bash"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
+  },
+  {
+    "id": "GOLD_19",
+    "filename": "CV_19_Analyste_Fonctionnelle_Senior_Hors_Agile_Borderline_Pertinent.pdf",
+    "candidateName": "Claire Fontaine",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "PERTINENT",
+    "expectedDecision": true,
+    "keySkills": {
+      "Analyse": "Analyse fonctionnelle, modélisation des processus, UML, cahier des charges",
+      "Outils": "Jira, Confluence, Visio, Excel avancé, SQL",
+      "Domaines": "SIRH, paie, parcours collaborateur"
+    },
+    "rationale": "Profil directement aligné sur les critères requis de l'offre (compétences techniques et expérience)"
+  },
+  {
+    "id": "GOLD_20",
+    "filename": "CV_20_Consultant_SIRH_Fonctionnel_Junior_Borderline_Non_Pertinent.pdf",
+    "candidateName": "Yanis Moureaux",
+    "targetJobOfferId": 122,
+    "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+    "groundTruthRelevance": "NON_PERTINENT",
+    "expectedDecision": false,
+    "keySkills": {
+      "Métier": "Paie, administration du personnel, DSN, paramétrage applicatif",
+      "Support": "Gestion des incidents, documentation utilisateur, Excel, SQL"
+    },
+    "rationale": "Profil hors cible par rapport aux exigences du poste (technologies ou compétences métier non correspondantes)"
   }
 ]

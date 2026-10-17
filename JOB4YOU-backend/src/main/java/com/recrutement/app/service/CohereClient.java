@@ -14,6 +14,8 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Client pour l'API Cohere (Chat) — utilisé comme moteur d'IA pour le
@@ -237,7 +239,16 @@ public class CohereClient {
         return textObj.toString();
     }
 
-    private ScoreBreakdown parseScores(String text) {
+    /**
+     * Parse la réponse de notation par critère.
+     *
+     * Les trois clés attendues sont obligatoires : une réponse qui ne les contient pas est
+     * une sortie NON conforme, pas une note faible. On refuse donc plutôt que de reprendre les
+     * trois premiers entiers du JSON dans l'ordre, qui pouvait attribuer une année (« 2019 »)
+     * au critère technique. Le refus fait tomber le calcul en mode dégradé, ce qui déclenche
+     * la validation humaine requise.
+     */
+    ScoreBreakdown parseScores(String text) {
         int start = text.indexOf('{');
         int end = text.lastIndexOf('}');
         if (start < 0 || end < 0 || end <= start) {
@@ -247,24 +258,19 @@ public class CohereClient {
 
         try {
             JsonNode node = MAPPER.readTree(json);
-            ScoreBreakdown breakdown = new ScoreBreakdown();
-            breakdown.technical = clamp(firstPresentInt(node, 70, "technique", "technical", "competences_techniques"));
-            breakdown.communication = clamp(firstPresentInt(node, 70, "communication", "communications"));
-            breakdown.seniority = clamp(firstPresentInt(node, 70, "seniorite", "seniority", "senior"));
+            Integer technical = readScoreValue(node, "technique", "technical", "competences_techniques");
+            Integer communication = readScoreValue(node, "communication", "communications");
+            Integer seniority = readScoreValue(node, "seniorite", "seniority", "senior");
 
-            // Garde-fou : si le modèle a répondu avec des clés totalement différentes,
-            // les 3 valeurs seraient à 0 (asInt sur un champ manquant renvoie 0 si le
-            // nœud parent existe mais pas le champ demandé dans certains cas de forme).
-            // On retente une extraction brute des 3 premiers entiers du JSON dans ce cas.
-            if (breakdown.technical == 0 && breakdown.communication == 0 && breakdown.seniority == 0) {
-                List<Integer> ints = extractFirstThreeIntegers(json);
-                if (ints.size() == 3) {
-                    breakdown.technical = clamp(ints.get(0));
-                    breakdown.communication = clamp(ints.get(1));
-                    breakdown.seniority = clamp(ints.get(2));
-                }
+            if (technical == null || communication == null || seniority == null) {
+                throw new IllegalStateException(
+                        "Réponse IA non conforme : les clés technique/communication/seniorite sont absentes (" + json + ")");
             }
 
+            ScoreBreakdown breakdown = new ScoreBreakdown();
+            breakdown.technical = clamp(technical);
+            breakdown.communication = clamp(communication);
+            breakdown.seniority = clamp(seniority);
             return breakdown;
         } catch (IllegalStateException e) {
             throw e;
@@ -273,23 +279,29 @@ public class CohereClient {
         }
     }
 
-    private int firstPresentInt(JsonNode node, int defaultValue, String... keys) {
+    private static final Pattern LEADING_NUMBER = Pattern.compile("-?\\d+");
+
+    /**
+     * Lit une note sous forme de nombre ou de texte numérique (« 86 », « 86/100 »),
+     * sur le premier alias présent. Renvoie null si aucune clé reconnue ne porte de valeur
+     * exploitable.
+     */
+    private Integer readScoreValue(JsonNode node, String... keys) {
         for (String key : keys) {
             JsonNode value = node.get(key);
-            if (value != null && !value.isMissingNode() && !value.isNull() && value.canConvertToInt()) {
-                return value.asInt();
+            if (value == null || value.isNull()) continue;
+            if (value.canConvertToInt()) return value.asInt();
+            // « 86/100 » : premier nombre rencontré, pas la concaténation des chiffres.
+            Matcher matcher = LEADING_NUMBER.matcher(value.asText());
+            if (matcher.find()) {
+                try {
+                    return Integer.parseInt(matcher.group());
+                } catch (NumberFormatException ignored) {
+                    // valeur non numérique pour cette clé : on tente l'alias suivant
+                }
             }
         }
-        return defaultValue;
-    }
-
-    private List<Integer> extractFirstThreeIntegers(String json) {
-        List<Integer> result = new java.util.ArrayList<>();
-        java.util.regex.Matcher m = java.util.regex.Pattern.compile("-?\\d+").matcher(json);
-        while (m.find() && result.size() < 3) {
-            result.add(Integer.parseInt(m.group()));
-        }
-        return result;
+        return null;
     }
 
     private int clamp(int value) {

@@ -192,5 +192,37 @@ class AiScoringServiceTest {
             // listée ne peut être manquante, l'offre n'est donc pas pénalisante.
             assertThat(result.technicalScore).isEqualTo(100);
         }
+
+        @Test
+        @DisplayName("computeSeniorityScore : l'apostrophe typographique d'un CV Word ne fait pas perdre le niveau détecté")
+        void shouldDetectSeniorityThroughTypographicApostrophe() {
+            Candidate candidate = candidateWithCoverLetter(
+                    "Architecte logiciel avec 10 ans d’expérience sur des systèmes distribués.", "Java, Angular");
+            candidate.getJobOffer().setExperienceLevel("SENIOR");
+            when(cohereClient.scoreCandidate(anyString(), anyString(), anyString(), anyString()))
+                    .thenThrow(new IllegalStateException("Cohere indisponible"));
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            // 10 ans >= 5 pour un poste SENIOR → preuve de séniorité côté candidat.
+            assertThat(result.seniorityMatchScore).isEqualTo(85);
+        }
+
+        @Test
+        @DisplayName("computeCommunicationScore : la longueur du CV ne doit plus acheter des points de rédaction")
+        void shouldKeepCommunicationScoreInANarrowBand() {
+            Candidate candidate = candidateWithCoverLetter(null, "Java, Angular");
+            CV cv = new CV();
+            cv.setExtractedText("x".repeat(3000)); // bloc unique, sans structure ni lettre de motivation
+            candidate.setCv(cv);
+            when(cohereClient.scoreCandidate(anyString(), anyString(), anyString(), anyString()))
+                    .thenThrow(new IllegalStateException("Cohere indisponible"));
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            // Bandeau volontaire [40 ; 60] : ±2 points au score final, contre 70/100 avant la correction.
+            assertThat(result.communicationScore).isBetween(40, 60);
+            assertThat(result.needsHumanReview).isTrue();
+        }
     }
 }

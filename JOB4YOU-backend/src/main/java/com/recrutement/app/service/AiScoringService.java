@@ -31,6 +31,18 @@ public class AiScoringService {
     private final ScoringWeightProfileService scoringWeightProfileService;
     private final SkillNormalizationService skillNormalizationService;
 
+    /**
+     * Bande d'incertitude autour du seuil de décision : un score qui tombe là ne doit
+     * jamais déclencher un rejet automatique, qu'il vienne de Cohere, du mode dégradé ou
+     * d'un score transmis par un appelant externe (PATCH /ai-score).
+     */
+    public static final int GREY_ZONE_LOW = 55;
+    public static final int GREY_ZONE_HIGH = 65;
+
+    public static boolean isGreyZone(int score) {
+        return score >= GREY_ZONE_LOW && score <= GREY_ZONE_HIGH;
+    }
+
     public AiScoringService(CohereClient cohereClient,
                             ScoringWeightProfileService scoringWeightProfileService,
                             SkillNormalizationService skillNormalizationService) {
@@ -79,7 +91,7 @@ public class AiScoringService {
             log.info("[AiScoringService] Mode simulé activé (Cohere indisponible) : {}", e.getMessage());
             // Calcul technique basé sur la normalisation fine des compétences
             technical = Math.max(30, (int) Math.round(explanation.getTechnicalMatchRate() * 100));
-            communication = computeCommunicationScore(candidateText);
+            communication = computeCommunicationScore(candidate, candidateText);
             seniorityMatch = computeSeniorityScore(candidateText, experienceLevel);
             source = "SIMULATED";
         }
@@ -108,7 +120,7 @@ public class AiScoringService {
         // 2. Détection d'erreurs et cas nécessitant une intervention humaine (Remarque 2)
         boolean hasParsingIssue = candidate.getCv() != null
                 && (candidate.getCv().getExtractedText() == null || candidate.getCv().getExtractedText().trim().length() < 50);
-        boolean isGrayZone = finalScore >= 55 && finalScore <= 65;
+        boolean isGrayZone = isGreyZone(finalScore);
         boolean isDegradedMode = "SIMULATED".equals(source);
 
         if (hasParsingIssue) {
@@ -150,30 +162,52 @@ public class AiScoringService {
         return sb.toString();
     }
 
-    private int computeCommunicationScore(String candidateText) {
+    /**
+     * Score de communication en mode dégradé uniquement.
+     *
+     * Sans le modèle, la qualité rédactionnelle ne peut pas être jugée sur le sens du texte :
+     * on note seulement sa tenue formelle, et l'amplitude est volontairement encadrée autour
+     * de la valeur neutre (±10 × poids 0,2 = ±2 au score final), pour qu'un CV simplement plus
+     * long ne gagne pas des points de communication. Le mode dégradé déclenche de toute façon
+     * une validation humaine.
+     */
+    private int computeCommunicationScore(Candidate candidate, String candidateText) {
         if (candidateText == null || candidateText.isBlank()) {
             return 50;
         }
         int score = 50;
-        int length = candidateText.trim().length();
-        if (length >= 80) score += 10;
-        if (length >= 200) score += 10;
-        if (candidateText.matches("(?s).*[^.!?]$")) score -= 5;
-        if (candidateText.contains("\n")) score += 5;
-        return Math.max(30, Math.min(90, score));
+
+        boolean hasCoverLetter = candidate.getCoverLetter() != null && !candidate.getCoverLetter().isBlank();
+        if (hasCoverLetter) score += 8;
+
+        long structuredLines = candidateText.lines().filter(line -> line.trim().length() > 3).count();
+        if (structuredLines >= 4) score += 6;
+        if (structuredLines <= 1 && candidateText.length() > 300) score -= 7;
+
+        return Math.max(40, Math.min(60, score));
     }
 
+    /**
+     * Adéquation séniorité en mode dégradé. Le nombre d'années est lu par
+     * SkillNormalizationService.extractExperienceYears, qui distingue « 5 ans d'expérience »
+     * des versions d'outils (« Java 17 », « Angular 16 ») et accepte l'apostrophe typographique
+     * des CV Word et PDF — un test sur « ans d'expérience » en ASCII passerait à côté.
+     */
     private int computeSeniorityScore(String candidateText, String requiredLevel) {
         if (requiredLevel == null || requiredLevel.isBlank()) {
             return 70;
         }
         String text = candidateText == null ? "" : candidateText.toLowerCase(Locale.ROOT);
         String level = requiredLevel.toLowerCase(Locale.ROOT);
-        boolean seniorEvidence = text.contains("senior") || text.contains("lead")
-                || text.contains("manager") || text.contains("architect")
-                || text.contains("ans d'expérience") || text.contains("years of experience");
-        boolean juniorEvidence = text.contains("junior") || text.contains("stage")
+
+        Integer years = skillNormalizationService.extractExperienceYears(text);
+        boolean seniorEvidence = (years != null && years >= 5)
+                || text.contains("senior") || text.contains("lead")
+                || text.contains("manager") || text.contains("architect");
+        boolean juniorEvidence = (years != null && years <= 2)
+                || text.contains("junior") || text.contains("stage")
                 || text.contains("débutant") || text.contains("étudiant");
+
         if (level.contains("senior")) return seniorEvidence ? 85 : juniorEvidence ? 40 : 65;
         if (level.contains("junior") || level.contains("entry")) return juniorEvidence ? 90 : seniorEvidence ? 70 : 75;
         if (level.contains("mid") || level.contains("interm")) return seniorEvidence ? 80 : juniorEvidence ? 60 : 75;

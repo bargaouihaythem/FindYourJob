@@ -41,6 +41,9 @@ public class MatchingService {
     @Autowired
     private CohereClient cohereClient;
 
+    @Autowired
+    private SkillNormalizationService skillNormalizationService;
+
     public List<JobMatchResponse> suggestOffers(String cvText) {
         String textLower = cvText != null ? cvText.toLowerCase(Locale.ROOT) : "";
 
@@ -110,9 +113,13 @@ public class MatchingService {
      *    « Ingénieur DevOps », pas sur « Développeur Backend »),
      *  - les COMPÉTENCES requises trouvées dans le CV.
      * Le titre est pondéré à 60 % car il porte l'essentiel de l'intention métier.
+     *
+     * La présence est testée via SkillNormalizationService, la même règle à frontière de mot
+     * que le scoring : une sous-chaîne simple ferait matcher « Java » sur un CV qui ne
+     * mentionne que « JavaScript », ce que le scoring refuse explicitement.
      */
     private int computeKeywordScore(String cvTextLower, String title, String requiredSkills) {
-        if (cvTextLower.isBlank()) {
+        if (cvTextLower == null || cvTextLower.isBlank()) {
             return 0;
         }
 
@@ -125,7 +132,9 @@ public class MatchingService {
                 if (w.length() >= 2 && !TITLE_STOPWORDS.contains(w)) titleTokens.add(w);
             }
             if (!titleTokens.isEmpty()) {
-                long matched = titleTokens.stream().filter(cvTextLower::contains).count();
+                long matched = titleTokens.stream()
+                        .filter(w -> skillNormalizationService.isSkillPresentInText(w, cvTextLower))
+                        .count();
                 titleScore = (matched * 100.0) / titleTokens.size();
             }
         }
@@ -134,12 +143,14 @@ public class MatchingService {
         double skillsScore = 0.0;
         if (requiredSkills != null && !requiredSkills.isBlank()) {
             List<String> skills = new ArrayList<>();
-            for (String s : requiredSkills.split(",")) {
+            for (String s : requiredSkills.split("[,;]")) {
                 String trimmed = s.trim().toLowerCase(Locale.ROOT);
                 if (!trimmed.isEmpty()) skills.add(trimmed);
             }
             if (!skills.isEmpty()) {
-                long matched = skills.stream().filter(cvTextLower::contains).count();
+                long matched = skills.stream()
+                        .filter(s -> skillNormalizationService.isSkillPresentInText(s, cvTextLower))
+                        .count();
                 skillsScore = (matched * 100.0) / skills.size();
             }
         }

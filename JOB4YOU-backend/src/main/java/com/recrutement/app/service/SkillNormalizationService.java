@@ -269,43 +269,74 @@ public class SkillNormalizationService {
 
     /**
      * Vérification de présence d'une compétence dans le texte avec respect des frontières de mot
-     * pour éviter les faux positifs (ex: "Java" ne doit pas matcher sur "JavaScript").
+     * pour éviter les faux positifs (ex: "Java" ne doit pas matcher sur "JavaScript"), et des
+     * frontières de négation pour éviter les faux acquis.
+     *
+     * La négation est traitée par segment : « N'a pas encore manipulé Kubernetes ni les clouds
+     * publics AWS/GCP » ne doit pas faire remonter Kubernetes, AWS ni GCP dans matchedSkills.
+     * Ce n'est pas un détail de notation : cette liste est recopiée telle quelle dans la
+     * justification XAI lue par le RH (« Compétences clés maîtrisées : … »).
      */
     public boolean isSkillPresentInText(String canonicalSkill, String textLower) {
         if (canonicalSkill == null || textLower == null || textLower.isBlank()) return false;
-        String skillLower = canonicalSkill.toLowerCase(Locale.ROOT);
+        Pattern pattern = presencePattern(canonicalSkill.toLowerCase(Locale.ROOT));
+        if (pattern == null) return false;
 
-        // Cas particuliers sensibles :
-        if ("java".equals(skillLower)) {
-            // Doit matcher "java" sans matcher "javascript"
-            Pattern pattern = Pattern.compile("(?<![a-z0-9])java(?![a-z0-9]|script)", Pattern.CASE_INSENSITIVE);
-            return pattern.matcher(textLower).find();
+        Matcher matcher = pattern.matcher(textLower);
+        while (matcher.find()) {
+            if (!isNegatedInSegment(textLower, matcher.start())) return true;
         }
-        if ("angular".equals(skillLower)) {
-            // Doit matcher "angular" sans matcher "angularjs"
-            Pattern pattern = Pattern.compile("(?<![a-z0-9])angular(?![a-z0-9]|js)", Pattern.CASE_INSENSITIVE);
-            return pattern.matcher(textLower).find();
-        }
-        if ("spring boot".equals(skillLower)) {
-            return textLower.contains("spring boot") || textLower.contains("springboot") || textLower.contains("spring-boot");
-        }
-        if ("spring cloud".equals(skillLower)) {
-            return textLower.contains("spring cloud") || textLower.contains("springcloud");
-        }
-        if ("kubernetes".equals(skillLower)) {
-            return textLower.contains("kubernetes") || textLower.contains("k8s");
-        }
-        if ("postgresql".equals(skillLower)) {
-            return textLower.contains("postgresql") || textLower.contains("postgres") || textLower.contains("psql");
-        }
-        if ("typescript".equals(skillLower)) {
-            Pattern pattern = Pattern.compile("(?<![a-z0-9])(typescript|ts)(?![a-z0-9])", Pattern.CASE_INSENSITIVE);
-            return pattern.matcher(textLower).find();
-        }
+        return false;
+    }
 
-        // Cas standard : frontière de mot ou sous-chaîne isolée
-        Pattern pattern = Pattern.compile("(?<![a-z0-9])" + Pattern.quote(skillLower) + "(?![a-z0-9])", Pattern.CASE_INSENSITIVE);
-        return pattern.matcher(textLower).find();
+    /**
+     * Motif de présence d'une compétence (alias compris) : la frontière de mot n'est posée que
+     * pour les compétences qui se noient dans un mot plus long (java/javascript, angular/angularjs).
+     */
+    private Pattern presencePattern(String skillLower) {
+        switch (skillLower) {
+            case "java":
+                return Pattern.compile("(?<![a-z0-9])java(?![a-z0-9]|script)", Pattern.CASE_INSENSITIVE);
+            case "angular":
+                return Pattern.compile("(?<![a-z0-9])angular(?![a-z0-9]|js)", Pattern.CASE_INSENSITIVE);
+            case "spring boot":
+                return Pattern.compile("spring boot|springboot|spring-boot", Pattern.CASE_INSENSITIVE);
+            case "spring cloud":
+                return Pattern.compile("spring cloud|springcloud", Pattern.CASE_INSENSITIVE);
+            case "kubernetes":
+                return Pattern.compile("kubernetes|k8s", Pattern.CASE_INSENSITIVE);
+            case "postgresql":
+                return Pattern.compile("postgresql|postgres|psql", Pattern.CASE_INSENSITIVE);
+            case "typescript":
+                return Pattern.compile("(?<![a-z0-9])(typescript|ts)(?![a-z0-9])", Pattern.CASE_INSENSITIVE);
+            default:
+                return Pattern.compile("(?<![a-z0-9])" + Pattern.quote(skillLower) + "(?![a-z0-9])",
+                        Pattern.CASE_INSENSITIVE);
+        }
+    }
+
+    /**
+     * Début de segment : ponctuation forte, virgule et deux-points. La portée d'une négation
+     * s'arrête à ces séparateurs, sinon « sans gestion d'équipe : Java » effacerait Java.
+     */
+    private static final Pattern SEGMENT_START = Pattern.compile("[.;:!?\\n,]");
+
+    /** Négations françaises et anglaises courantes, en mot entier pour éviter « formation »/« ligne ». */
+    private static final Pattern NEGATION_CUE = Pattern.compile(
+            "(?:^|[^a-z0-9])(sans|aucun|aucune|pas|jamais|ni|non|without|no\\s+experience)(?:[^a-z0-9]|$)",
+            Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Une compétence est niée si une négation apparaît avant elle dans le même segment.
+     * Après, ce n'est plus sa portée : « Spring Boot et je n'ai pas Azure » garde Spring Boot.
+     */
+    private boolean isNegatedInSegment(String textLower, int skillStart) {
+        int segmentStart = 0;
+        Matcher separator = SEGMENT_START.matcher(textLower);
+        while (separator.find() && separator.start() < skillStart) {
+            segmentStart = separator.end();
+        }
+        return NEGATION_CUE.matcher(textLower.substring(segmentStart, skillStart)).find();
     }
 
     /**

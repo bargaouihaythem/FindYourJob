@@ -464,15 +464,33 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("score < 60 → statut AUTO_REJECTED (rejeté par l'IA)")
-        void shouldSetAutoRejectedWhenScoreBelowThreshold() {
+        @DisplayName("score en zone grise (55-65) → CV_REVIEWED + needsHumanReview, jamais de rejet automatique")
+        void shouldRouteGreyZoneScoreToHumanReview() {
             Candidate candidate = makeCandidate(21L, CandidateStatus.APPLIED);
             when(candidateRepository.findById(21L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
+            // 59 était autrefois un rejet automatique sur ce endpoint : le seuil seul
+            // décidait, sans jamais consulter la bande d'incertitude.
             candidateService.saveAiScore(21L, 59, "résumé", "WEAK_MATCH");
 
-            verify(candidateRepository, atLeastOnce()).save(argThat(c -> c.getStatus() == CandidateStatus.AUTO_REJECTED));
+            verify(candidateRepository, atLeastOnce()).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.CV_REVIEWED
+                            && Boolean.TRUE.equals(c.getNeedsHumanReview())));
+        }
+
+        @Test
+        @DisplayName("score franchement sous le seuil → statut AUTO_REJECTED (rejeté par l'IA)")
+        void shouldSetAutoRejectedWhenScoreBelowThreshold() {
+            Candidate candidate = makeCandidate(22L, CandidateStatus.APPLIED);
+            when(candidateRepository.findById(22L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.saveAiScore(22L, 40, "résumé", "WEAK_MATCH");
+
+            verify(candidateRepository, atLeastOnce()).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.AUTO_REJECTED
+                            && !Boolean.TRUE.equals(c.getNeedsHumanReview())));
         }
     }
 

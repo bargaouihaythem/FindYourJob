@@ -537,7 +537,7 @@ public class CandidateService {
         // REJECTED envoyé par le frontend :
         //  - porteur = manager « pur »  → MANAGER_REJECTED (refus proposé, à contre-signer)
         //  - porteur = RH/Admin         → REJECTED (décision finale : le RH est l'autorité)
-        // AUTO_REJECTED est réservé au flux IA via saveAiScore()
+        // AUTO_REJECTED est réservé au flux IA (saveAiScore / recomputeAiScore)
         Candidate.CandidateStatus effectiveStatus = (status == Candidate.CandidateStatus.REJECTED
                 && actingManager != null)
                 ? Candidate.CandidateStatus.MANAGER_REJECTED
@@ -755,8 +755,9 @@ public class CandidateService {
      * incohérents (ex. APPLIED → HIRED) et les retours en arrière depuis un état
      * terminal. Le passage d'un statut vers lui-même est toléré (idempotence :
      * re-notification manager, ré-exécution d'un agent n8n, etc.). Les transitions
-     * pilotées par l'IA (score → CV_REVIEWED / AUTO_REJECTED) passent par un autre
-     * chemin (saveAiScore) et ne sont pas concernées.
+     * pilotées par l'IA (score → CV_REVIEWED / AUTO_REJECTED) passent par
+     * saveAiScore/recomputeAiScore, qui délèguent à updateCandidateStatus : elles sont donc
+     * soumises au même garde-fou.
      */
     private void assertValidTransition(Candidate.CandidateStatus from, Candidate.CandidateStatus to) {
         if (from == to) {
@@ -989,6 +990,8 @@ public class CandidateService {
     /**
      * Score IA seuil : >= 60 → CV_REVIEWED automatique (Agent 2 notifie manager)
      *                  < 60  → REJECTED automatique    (Agent 3 envoie email refus)
+     *                  55-65 → zone grise : CV_REVIEWED avec needsHumanReview, jamais de rejet
+     *                  automatique (cf. AiScoringService.isGreyZone)
      */
     private static final int AI_SCORE_THRESHOLD = 60;
 
@@ -1000,23 +1003,41 @@ public class CandidateService {
         candidate.setAiScore(score);
         if (summary != null) candidate.setAiSummary(summary);
         if (recommendation != null) candidate.setAiRecommendation(recommendation);
+
+        // Un score transmis de l'extérieur arbitre comme un score recalculé ici : la zone
+        // grise ne peut déboucher sur aucun rejet automatique, sinon ce endpoint court-circuite
+        // le human-in-the-loop que recomputeAiScore impose.
+        boolean greyZone = AiScoringService.isGreyZone(score);
+        candidate.setNeedsHumanReview(greyZone);
+        candidate.setHumanReviewReason(greyZone
+                ? "Score transmis en zone grise incertaine (" + score + "/100, seuil critique = "
+                        + AI_SCORE_THRESHOLD + ") : arbitrage humain recommandé."
+                : null);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
         // Auto-transition basée sur le score IA
-        Candidate.CandidateStatus newStatus = score >= AI_SCORE_THRESHOLD
-                ? Candidate.CandidateStatus.CV_REVIEWED     // bon score → notifie manager (Agent 2)
-                : Candidate.CandidateStatus.AUTO_REJECTED;  // score bas → rejeté par IA (Agent 3)
+        Candidate.CandidateStatus newStatus;
+        String scoreReason;
+        if (greyZone) {
+            newStatus = Candidate.CandidateStatus.CV_REVIEWED;
+            scoreReason = "En attente de révision humaine RH : score transmis en zone grise";
+        } else if (score >= AI_SCORE_THRESHOLD) {
+            newStatus = Candidate.CandidateStatus.CV_REVIEWED;  // bon score → notifie manager (Agent 2)
+            scoreReason = null;
+        } else {
+            newStatus = Candidate.CandidateStatus.AUTO_REJECTED; // score bas → rejeté par IA (Agent 3)
+            scoreReason = "Rejet automatique : score IA (" + score + "/100) inférieur au seuil ("
+                    + AI_SCORE_THRESHOLD + ")";
+        }
 
         // Déléguer à updateCandidateStatus pour déclencher Agent 2 ou Agent 3
-        String scoreReason = newStatus == Candidate.CandidateStatus.AUTO_REJECTED
-                ? "Rejet automatique : score IA inférieur au seuil" : null;
         return updateCandidateStatus(saved.getId(), newStatus, scoreReason);
     }
 
     /**
      * Recalcule le score IA d'un candidat en utilisant le scoring par critères
-     * (technique / communication / séniorité), via HuggingFace si configuré,
+     * (technique / communication / séniorité), via Cohere si l'API répond,
      * sinon en mode simulé (fallback automatique).
      *
      * Déclenché manuellement par le RH/Admin/Manager (bouton "Recalculer avec IA").

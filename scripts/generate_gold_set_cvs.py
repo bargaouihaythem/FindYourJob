@@ -700,6 +700,159 @@ cv_data = [
         "education": [
             {"degree": "Master Management de Projets Web", "school": "Université de Lille", "year": "2023"}
         ]
+    },
+
+    # ------------------ CAS LIMITES CIBLANT LA ZONE GRISE 55-65 (needsHumanReview) ------------------
+    # Ces quatre profils sont construits pour que l'evidence soit réellement ambiguë :
+    # environ la moitié des compétences requises couvertes, ou un niveau d'expérience
+    # décalé par rapport à l'attente. Les lacunes ne sont jamais nommées dans le texte :
+    # le pré-filtrage mots-clés lit tout le CV, y compris les phrases négatives, et
+    # écrirait « aucune expérience Kubernetes » compterait « Kubernetes » comme acquis.
+    {
+        "id": "GOLD_17",
+        "filename": "CV_17_Dev_Java_Mid_Stack_Incomplete_Borderline_Pertinent.pdf",
+        "name": "Hugo Delaunay",
+        "title": "Développeur Backend Java / Spring Boot (3 ans)",
+        "email": "hugo.delaunay.sopratest@example.com",
+        "phone": "+33 6 88 99 00 11",
+        "location": "Toulouse, France",
+        "targetJobOfferId": 115,
+        "targetJobOfferTitle": "Développeur Backend Java/Spring",
+        "groundTruthRelevance": "PERTINENT",
+        "summary": [
+            "Développeur backend avec 3 ans d'expérience sur des applications Java internes.",
+            "Pratique quotidienne de Spring Boot, Maven et PostgreSQL pour la persistance.",
+            "Contexte d'exercice mono-application : conteneurisation et déploiement pris en charge par une équipe tierce."
+        ],
+        "skills": {
+            "Backend": "Java 11, Spring Boot, Maven, REST API, JUnit",
+            "Bases de données": "PostgreSQL, SQL, JPA",
+            "Exploitation": "Docker (environnements locaux), Git, Linux"
+        },
+        "experiences": [
+            {
+                "role": "Développeur Backend",
+                "company": "Éditeur Logiciels Industrie Sud",
+                "date": "2023 - Présent (3 ans)",
+                "tasks": [
+                    "Conception et développement de services REST pour un progiciel de gestion.",
+                    "Modélisation des données et optimisation de requêtes SQL.",
+                    "Tests unitaires et correctifs de version."
+                ]
+            }
+        ],
+        "education": [
+            {"degree": "Master Informatique Développement", "school": "Université Fédérale Toulouse Midi-Pyrénées", "year": "2023"}
+        ]
+    },
+    {
+        "id": "GOLD_18",
+        "filename": "CV_18_Admin_Plates_Formes_K8s_Sans_Cloud_Borderline_Non_Pertinent.pdf",
+        "name": "Nadia Ostermann",
+        "title": "Ingénieure Plateformes & Intégration Continue",
+        "email": "nadia.ostermann.sopratest@example.com",
+        "phone": "+33 6 99 00 11 22",
+        "location": "Strasbourg, France",
+        "targetJobOfferId": 117,
+        "targetJobOfferTitle": "DevOps Engineer - Mission Freelance",
+        "groundTruthRelevance": "NON_PERTINENT",
+        "summary": [
+            "Ingénieure plateforme avec 7 ans d'expérience en centres de données propriétaires.",
+            "Automatise les déploiements et les pipelines d'intégration continue sur infrastructure interne.",
+            "N'a jamais opéré de fournisseurs de ressources managées externes dans un cadre client."
+        ],
+        "skills": {
+            "Conteneurisation": "Docker, Kubernetes, Helm",
+            "Intégration continue": "Jenkins, GitLab CI, scripts Bash",
+            "Langages d'automatisation": "Python, Bash"
+        },
+        "experiences": [
+            {
+                "role": "Ingénieure Plateformes Internes",
+                "company": "Groupe Industriel Est",
+                "date": "2019 - Présent (7 ans)",
+                "tasks": [
+                    "Industrialisation des builds et des déploiements pour 40 applications.",
+                    "Administration des clusters conteneurisés du datacenter maison.",
+                    "Rédaction des scripts d'automatisation d'exploitation."
+                ]
+            }
+        ],
+        "education": [
+            {"degree": "Diplôme d'Ingénieur Systèmes et Réseaux", "school": "INSA Strasbourg", "year": "2018"}
+        ]
+    },
+    {
+        "id": "GOLD_19",
+        "filename": "CV_19_Analyste_Fonctionnelle_Senior_Hors_Agile_Borderline_Pertinent.pdf",
+        "name": "Claire Fontaine",
+        "title": "Analyste Fonctionnelle Senior - Maîtrise d'Ouvrage",
+        "email": "claire.fontaine.sopratest@example.com",
+        "phone": "+33 6 10 20 30 40",
+        "location": "Lyon, France",
+        "targetJobOfferId": 122,
+        "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+        "groundTruthRelevance": "PERTINENT",
+        "summary": [
+            "Consultante en maîtrise d'ouvrage avec 8 ans d'expérience sur des domaines RH et paie.",
+            "Analyse fonctionnelle et modélisation des processus métier pour des gros donneurs d'ordre.",
+            "Habituée aux cycles prédictifs documentés, moins aux rituels des équipes produit itératives."
+        ],
+        "skills": {
+            "Analyse": "Analyse fonctionnelle, modélisation des processus, UML, cahier des charges",
+            "Outils": "Jira, Confluence, Visio, Excel avancé, SQL",
+            "Domaines": "SIRH, paie, parcours collaborateur"
+        },
+        "experiences": [
+            {
+                "role": "Consultante Maîtrise d'Ouvrage SIRH",
+                "company": "Cabinet Conseil Rhône-Alpes",
+                "date": "2018 - Présent (8 ans)",
+                "tasks": [
+                    "Recueil et formalisation des besoins métier pour des modules de gestion des carrières.",
+                    "Rédaction des spécifications fonctionnelles et suivi de la recette.",
+                    "Accompagnement des utilisateurs lors des mises en production."
+                ]
+            }
+        ],
+        "education": [
+            {"degree": "Master Maîtrise des Systèmes d'Information", "school": "Université Lumière Lyon 2", "year": "2018"}
+        ]
+    },
+    {
+        "id": "GOLD_20",
+        "filename": "CV_20_Consultant_SIRH_Fonctionnel_Junior_Borderline_Non_Pertinent.pdf",
+        "name": "Yanis Moureaux",
+        "title": "Consultant Applicatif RH & Paie",
+        "email": "yanis.moureaux.sopratest@example.com",
+        "phone": "+33 6 20 30 40 50",
+        "location": "Bordeaux, France",
+        "targetJobOfferId": 122,
+        "targetJobOfferTitle": "Business Analyst - CDD 18 mois",
+        "groundTruthRelevance": "NON_PERTINENT",
+        "summary": [
+            "Consultant applicatif sur un progiciel de paie, orienté paramétrage et support utilisateur.",
+            "Interface quotidienne avec les services RH pour le réglage des traitements.",
+            "Pas de pratique de la rédaction de spécifications ni du pilotage d'un cycle projet complet."
+        ],
+        "skills": {
+            "Métier": "Paie, administration du personnel, DSN, paramétrage applicatif",
+            "Support": "Gestion des incidents, documentation utilisateur, Excel, SQL"
+        },
+        "experiences": [
+            {
+                "role": "Consultant Applicatif Paie",
+                "company": "Prestataire SIRH Gironde",
+                "date": "2024 - Présent (2 ans)",
+                "tasks": [
+                    "Paramétrage des rubriques et barèmes pour les clients du cabinet.",
+                    "Support de niveau deux sur les campagnes de paie mensuelles."
+                ]
+            }
+        ],
+        "education": [
+            {"degree": "Licence Professionnelle Gestion des Paies", "school": "Université de Bordeaux", "year": "2024"}
+        ]
     }
 ]
 

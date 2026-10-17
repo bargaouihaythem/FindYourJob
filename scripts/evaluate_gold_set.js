@@ -16,7 +16,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const API_URL = 'http://localhost:8080/api/matching/evaluate-gold-set';
+// Base URL surchargable : la mesure doit pouvoir viser une instance de benchmark
+// (autre port, autre base) sans toucher à l'instance de développement.
+const API_URL = process.env.GOLD_SET_API_URL || 'http://localhost:8080/api/matching/evaluate-gold-set';
 const GROUND_TRUTH_FILE = path.join(__dirname, '..', 'gold_set', 'ground_truth.json');
 const CVS_DIR = path.join(__dirname, '..', 'gold_set', 'cvs');
 const REPORT_FILE = path.join(__dirname, '..', 'gold_set', 'benchmark_report.md');
