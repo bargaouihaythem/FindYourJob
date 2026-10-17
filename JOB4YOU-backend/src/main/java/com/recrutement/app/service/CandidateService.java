@@ -1157,7 +1157,8 @@ public class CandidateService {
     }
 
     /**
-     * Décision du manager sur un dossier déjà validé par le RH (CV_REVIEWED ou plus avancé).
+     * Décision du manager sur un dossier transmis pour évaluation technique
+     * (voir Candidate#isAwaitingManagerAdvice).
      * Restreint à ACCEPTED (validation) ou REJECTED (refus → MANAGER_REJECTED).
      */
     @Transactional
@@ -1175,12 +1176,9 @@ public class CandidateService {
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
         if (!candidate.isAwaitingManagerAdvice()) {
-            throw new IllegalArgumentException("Le dossier doit d'abord être validé par le RH (CV_REVIEWED) avant décision manager");
-        }
-        if (decision == Candidate.CandidateStatus.ACCEPTED
-                && candidate.getStatus() == Candidate.CandidateStatus.CV_REVIEWED) {
             throw new IllegalArgumentException(
-                    "Le candidat doit d'abord passer l'entretien téléphonique RH (PHONE_SCREENING) avant d'être accepté");
+                    "Le dossier n'a pas encore été transmis au manager (statut « Test technique ») : "
+                            + "l'avis est réservé aux dossiers transmis par le RH.");
         }
 
         return updateCandidateStatus(id, decision, reason);

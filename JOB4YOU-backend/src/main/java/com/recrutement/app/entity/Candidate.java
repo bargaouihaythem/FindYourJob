@@ -189,13 +189,16 @@ public class Candidate {
     }
 
     /**
-     * Statuts sur lesquels un manager est autorisé à rendre un avis (dossier déjà validé
-     * par le RH). Les avis en attente de contreseing et les statuts finaux en sont exclus.
+     * Statuts sur lesquels un manager est autorisé à rendre un avis : uniquement les
+     * dossiers qui lui ont été transmis, c'est-à-dire ceux ayant franchi le pré-filtrage
+     * téléphonique du RH. Même périmètre que CandidateService#getValidatedCandidatesForManager
+     * (hors ACCEPTED, avis déjà rendu) : un bouton d'avis ne doit jamais mener à un dossier
+     * absent de la liste du manager.
+     * Exclus : APPLIED, CV_REVIEWED, PHONE_SCREENING (encore côté RH), les avis en attente de
+     * contreseing et les statuts finaux.
      */
     public boolean isAwaitingManagerAdvice() {
-        return status == CandidateStatus.CV_REVIEWED
-                || status == CandidateStatus.PHONE_SCREENING
-                || status == CandidateStatus.TECHNICAL_TEST
+        return status == CandidateStatus.TECHNICAL_TEST
                 || status == CandidateStatus.INTERVIEW
                 || status == CandidateStatus.FINAL_INTERVIEW;
     }

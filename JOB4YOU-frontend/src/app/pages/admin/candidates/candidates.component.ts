@@ -1103,13 +1103,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Avis du manager (dossier déjà validé par le RH). L'acceptation suppose l'entretien
-   * téléphonique RH, le refus reste possible dès la lecture du CV.
-   * L'avis n'est pas la décision finale : il part en validation RH.
+   * Avis du manager : uniquement sur les dossiers transmis pour évaluation technique, c'est-à-dire
+   * ceux de sa liste. L'avis n'est pas la décision finale : il part en contreseing RH.
+   * Même périmètre que Candidate#isAwaitingManagerAdvice côté serveur.
    */
-  canManagerAccept(candidate: Candidate): boolean {
-    return ['PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
-      .includes(candidate.status);
+  canManagerAdvise(candidate: Candidate): boolean {
+    return ['TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW'].includes(candidate.status);
   }
 
   /**
@@ -1132,11 +1131,6 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       return 'Décision de l’IA — confirmation ou correction réservée au RH';
     }
     return null;
-  }
-
-  canManagerReject(candidate: Candidate): boolean {
-    return ['CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
-      .includes(candidate.status);
   }
 
   /**

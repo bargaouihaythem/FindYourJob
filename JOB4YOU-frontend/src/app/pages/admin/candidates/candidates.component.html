@@ -223,12 +223,12 @@
                     </span>
                     <div class="btn-group btn-group-sm" role="group" *ngIf="!managerAdviceNote(candidate)">
                       <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)"
-                              [disabled]="!canManagerAccept(candidate)"
+                              [disabled]="!canManagerAdvise(candidate)"
                               title="Émettre un avis favorable — transmis au RH pour validation finale">
                         <i class="fas fa-check me-1"></i>Avis favorable
                       </button>
                       <button class="btn btn-outline-danger" (click)="rejectCandidate(candidate)"
-                              [disabled]="!canManagerReject(candidate)"
+                              [disabled]="!canManagerAdvise(candidate)"
                               title="Proposer un refus — transmis au RH pour validation finale">
                         <i class="fas fa-times me-1"></i>Refus proposé
                       </button>
@@ -968,12 +968,12 @@
         <ng-container *ngIf="isManagerView; else rhFooterAction">
           <div class="btn-group btn-group-sm me-auto" role="group" *ngIf="!managerAdviceNote(selectedCandidate)">
             <button class="btn btn-outline-success" (click)="acceptCandidate(selectedCandidate)"
-                    [disabled]="!canManagerAccept(selectedCandidate)"
+                    [disabled]="!canManagerAdvise(selectedCandidate)"
                     title="Émettre un avis favorable — transmis au RH pour validation finale">
               <i class="fas fa-check me-1"></i>Avis favorable
             </button>
             <button class="btn btn-outline-danger" (click)="rejectCandidate(selectedCandidate)"
-                    [disabled]="!canManagerReject(selectedCandidate)"
+                    [disabled]="!canManagerAdvise(selectedCandidate)"
                     title="Proposer un refus — transmis au RH pour validation finale">
               <i class="fas fa-times me-1"></i>Refus proposé
             </button>

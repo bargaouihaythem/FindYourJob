@@ -593,14 +593,14 @@ class CandidateServiceTest {
     class ManagerDecisionTests {
 
         @Test
-        @DisplayName("refuse la décision si le dossier n'a pas encore été validé par le RH (garde-fou)")
+        @DisplayName("refuse la décision si le dossier n'a pas encore été transmis au manager (garde-fou)")
         void shouldRejectDecisionWhenNotYetValidatedByHr() {
             Candidate candidate = makeCandidate(40L, CandidateStatus.APPLIED);
             when(candidateRepository.findById(40L)).thenReturn(Optional.of(candidate));
 
             assertThatThrownBy(() -> candidateService.managerDecision(40L, CandidateStatus.ACCEPTED))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("validé par le RH");
+                    .hasMessageContaining("transmis au manager");
 
             verify(candidateRepository, never()).save(any());
         }
@@ -614,22 +614,26 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("refuse l'acceptation directe depuis CV_REVIEWED : l'entretien téléphonique RH est obligatoire")
+        @DisplayName("refuse tout avis sur un dossier encore côté RH : le bouton d'avis n'y mène pas")
         void shouldRejectDirectAcceptanceFromCvReviewed() {
-            Candidate candidate = makeCandidate(41L, CandidateStatus.CV_REVIEWED);
-            when(candidateRepository.findById(41L)).thenReturn(Optional.of(candidate));
+            // CV_REVIEWED et PHONE_SCREENING restent la responsabilité du RH. Un avis y serait
+            // enregistré sur un dossier absent de la liste du manager (« Dossier introuvable »).
+            for (CandidateStatus stillWithHr : List.of(CandidateStatus.CV_REVIEWED, CandidateStatus.PHONE_SCREENING)) {
+                Candidate candidate = makeCandidate(41L, stillWithHr);
+                when(candidateRepository.findById(41L)).thenReturn(Optional.of(candidate));
 
-            assertThatThrownBy(() -> candidateService.managerDecision(41L, CandidateStatus.ACCEPTED))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("entretien téléphonique");
+                assertThatThrownBy(() -> candidateService.managerDecision(41L, CandidateStatus.ACCEPTED))
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("transmis au manager");
+            }
 
             verify(candidateRepository, never()).save(any());
         }
 
         @Test
-        @DisplayName("accepte la décision une fois l'entretien téléphonique RH passé")
+        @DisplayName("accepte la décision dès que le dossier est transmis pour évaluation technique")
         void shouldAcceptDecisionAfterPhoneScreening() {
-            Candidate candidate = makeCandidate(42L, CandidateStatus.PHONE_SCREENING);
+            Candidate candidate = makeCandidate(42L, CandidateStatus.TECHNICAL_TEST);
             when(candidateRepository.findById(42L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -797,7 +801,7 @@ class CandidateServiceTest {
             rd.setId(1L);
 
             Candidate candidate = candidateWithOffer(53L, "manager.devops@company.com", devops);
-            candidate.setStatus(CandidateStatus.PHONE_SCREENING);
+            candidate.setStatus(CandidateStatus.TECHNICAL_TEST);
             User manager = makeManagerUser("manager_rd", "manager.rd@company.com", rd);
 
             authenticateAs("manager_rd", Role.ERole.ROLE_MANAGER);
