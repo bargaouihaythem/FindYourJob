@@ -95,6 +95,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   private pollSubscription: Subscription | null = null;
   private readonly POLL_INTERVAL_MS = 12_000;
   isRefreshing = false;
+  /** Dossier dont la relance d'analyse est en cours (ligne affichée en chargement). */
+  recomputingId: number | null = null;
 
   /** Statut connu de chaque dossier à la dernière synchro : permet de détecter, entre
    *  deux rafraîchissements, les avis enregistrés par un manager sur un autre poste. */
@@ -451,21 +453,76 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   /** Statuts finaux — plus aucune modification possible.
    *  ACCEPTED / MANAGER_REJECTED / INTERVIEW_SCHEDULED n'en font plus partie : ce sont
-   *  des avis en attente du contreseing RH, la liste doit donc rester actionnable. */
+   *  des avis en attente du contreseing RH, la liste doit donc rester actionnable.
+   *  AUTO_REJECTED non plus : une décision de l'IA reste rouvrable par le RH
+   *  (confirmation du refus ou correction du score), l'humain doit pouvoir trancher. */
   isStatusLocked(status: string): boolean {
-    return status === 'REJECTED' || status === 'AUTO_REJECTED' ||
+    return status === 'REJECTED' ||
            status === 'HIRED' || status === 'WITHDRAWN';
+  }
+
+  /** Décision prise par l'IA, en attente d'arbitrage humain. */
+  isIaDecision(status: string): boolean {
+    return status === 'AUTO_REJECTED';
+  }
+
+  /**
+   * Score affiché en liste : le score effectivement décidé, correction RH comprise.
+   * La fiche détail et le classement du serveur (getRankingForJobOffer) retiennent déjà
+   * cette valeur ; la liste doit sinon afficher un chiffre périmé après un override.
+   */
+  listScore(candidate: Candidate): number | null {
+    const score = candidate.effectiveScore ?? candidate.aiScore;
+    return score && score > 0 ? score : null;
+  }
+
+  scoreTitle(candidate: Candidate): string {
+    if (candidate.manualScore != null) {
+      return `Score retenu ${candidate.manualScore}/100, corrigé par ${candidate.manualScoreBy || 'un RH'}`
+        + ` — score IA original : ${candidate.aiScore}/100`;
+    }
+    return `Score analysé par l'Agent 1 n8n : ${candidate.aiScore}/100`;
+  }
+
+  /**
+   * Relance de l'analyse possible seulement si la machine à états admet le statut
+   * que le recalcul produit (CV_REVIEWED ou AUTO_REJECTED). Proposer le bouton
+   * ailleurs reviendrait à afficher un contrôle qui renvoie une erreur 400.
+   */
+  canRecompute(status: string): boolean {
+    return status === 'APPLIED' || status === 'CV_REVIEWED'
+      || status === 'AUTO_REJECTED' || status === 'MANAGER_REJECTED';
+  }
+
+  recomputeScore(candidate: Candidate): void {
+    this.recomputingId = candidate.id;
+    this.candidateService.recomputeAiScore(candidate.id).subscribe({
+      next: () => {
+        this.recomputingId = null;
+        this.toastrNotification.showSuccess(
+          `Analyse relancée pour ${candidate.firstName} ${candidate.lastName}.`, 'Analyse IA');
+        this.silentRefresh();
+      },
+      error: (err: any) => {
+        this.recomputingId = null;
+        this.toastrNotification.showError(
+          err?.error?.message || "L'analyse n'a pas pu être relancée.", 'Erreur');
+      }
+    });
   }
 
   sortCandidates(): void {
     this.filteredCandidates.sort((a, b) => {
-      let aValue = a[this.sortBy as keyof Candidate];
-      let bValue = b[this.sortBy as keyof Candidate];
+      // La colonne « Score IA » trie la valeur réellement affichée, pas le seul score brut.
+      let aValue = this.sortBy === 'aiScore' ? this.listScore(a) : a[this.sortBy as keyof Candidate];
+      let bValue = this.sortBy === 'aiScore' ? this.listScore(b) : b[this.sortBy as keyof Candidate];
       
       // Gérer les valeurs undefined
       if (aValue === undefined && bValue === undefined) return 0;
       if (aValue === undefined) return 1;
       if (bValue === undefined) return -1;
+      if (aValue === null) return 1;
+      if (bValue === null) return -1;
       
       if (aValue instanceof Date) aValue = aValue.getTime();
       if (bValue instanceof Date) bValue = bValue.getTime();
@@ -956,9 +1013,27 @@ export class CandidatesComponent implements OnInit, OnDestroy {
                 withdraw];
       case 'INTERVIEW_SCHEDULED':
         return [hire, confirmReject, withdraw];
+      case 'AUTO_REJECTED':
+        // Le RH arbitre la décision de l'IA : soit il la confirme après examen (le refus
+        // devient une décision humaine motivée), soit il estime que l'IA s'est trompée et
+        // corrige le score depuis la fiche — seule voie qui ramène le dossier en pipeline,
+        // parce qu'elle impose une justification et passe au journal d'audit.
+        return [confirmReject];
       default:
         return [];
     }
+  }
+
+  /**
+   * Note affichée sous la liste des actions RH d'un dossier rejeté par l'IA : elle
+   * nomme les deux arbitraires humains possibles et dit ce que chacun fait côté
+   * notification, pour que le RH n'ait pas à deviner si le candidat va être relancé.
+   */
+  iaArbitrationHint(status: string): string | null {
+    if (status !== 'AUTO_REJECTED') return null;
+    return 'Le candidat a déjà reçu l’e-mail de refus de l’Agent 3. « Confirmer le refus » '
+      + 'trace votre décision sans le renvoyer ; pour ramener le dossier dans le pipeline, '
+      + 'utilisez « Corriger le score » dans la fiche du candidat.';
   }
 
   /** Applique la transition choisie dans la liste contextuelle. */
@@ -1050,6 +1125,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     if (candidate.status === 'MANAGER_REJECTED') {
       return `Refus proposé déjà enregistré${author} — en attente du contreseing du RH`;
     }
+    // Rejet prononcé par l'IA : le manager n'a aucune prise dessus, seul le RH
+    // peut le confirmer ou corriger le score. Sans ce message, deux boutons
+    // grisés feraient croire à un écran en panne.
+    if (candidate.status === 'AUTO_REJECTED') {
+      return 'Décision de l’IA — confirmation ou correction réservée au RH';
+    }
     return null;
   }
 
@@ -1066,7 +1147,13 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   hrValidationStep(candidate: Candidate): string | null {
     if (candidate.status === 'APPLIED') return null;
     if (candidate.status === 'AUTO_REJECTED') {
-      return 'Rejet automatique par l’agent IA — aucune validation RH, Agent 2 non déclenché';
+      return 'Rejet prononcé par l’agent IA, sans validation RH — arbitrage humain encore possible';
+    }
+    if (candidate.status === 'REJECTED') {
+      return 'Refus acté par le RH — motif enregistré au journal d’audit, Agent 2 non déclenché';
+    }
+    if (candidate.status === 'MANAGER_REJECTED') {
+      return 'Refus proposé par le manager — en attente du contreseing du RH';
     }
     if (candidate.status === 'WITHDRAWN') {
       return 'Candidature retirée par le candidat — processus arrêté avant la validation RH';
@@ -1176,6 +1263,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     const reason = (this.finalValidationForm.value.reason || '').trim();
 
     this.savingFinalValidation = true;
+    // Le refus d'un dossier déjà rejeté par l'IA est un contreseing humain : le candidat
+    // a reçu l'e-mail de l'Agent 3, le backend ne renvoie rien. Le toast doit le dire.
+    const confirmingIaRejection = decision === 'REJECTED' && candidate.status === 'AUTO_REJECTED';
     // Le champ datetime-local fournit déjà un format ISO local (2026-10-20T09:00)
     // directement parsable en LocalDateTime côté Spring — pas de conversion Fuseau.
     this.candidateService.finalValidation(
@@ -1195,7 +1285,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         this.toastrNotification.showSuccess(
           decision === 'HIRED'
             ? 'Embauche validée. Le candidat reçoit sa convocation avec la date de présentation des documents.'
-            : 'Refus final validé. Le candidat en est notifié par e-mail.',
+            : confirmingIaRejection
+              ? 'Refus de l’IA confirmé après examen humain. Le candidat a déjà été notifié : aucun second e-mail.'
+              : 'Refus final validé. Le candidat en est notifié par e-mail.',
           decision === 'HIRED' ? 'Décision finale validée' : 'Refus final validé');
       },
       error: (error: any) => {

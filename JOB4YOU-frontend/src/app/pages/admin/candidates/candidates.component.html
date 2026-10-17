@@ -163,9 +163,11 @@
                 <i [class]="getSortIcon('status')" class="me-2"></i>
                 Statut
               </th>
-              <th (click)="changeSort('aiScore')" class="sortable text-center">
+              <th (click)="changeSort('aiScore')" class="sortable text-center"
+                  title="Score retenu pour le classement : la correction manuelle du RH remplace le score de l'IA. Le tri et le badge de la ligne portent tous deux sur cette valeur.">
                 <i class="fas fa-robot me-1 text-purple"></i>
-                Score IA
+                Score retenu
+                <i [class]="getSortIcon('aiScore')"></i>
               </th>
               <th>CV</th>
               <th (click)="changeSort('createdAt')" class="sortable">
@@ -207,7 +209,7 @@
                   <!-- Statut final : badge non-cliquable -->
                   <span *ngIf="isStatusLocked(candidate.status)"
                         [class]="getStatusBadgeClass(candidate.status)"
-                        [title]="candidate.status === 'AUTO_REJECTED' ? 'Décision finale (IA) — non modifiable' : 'Décision finale — non modifiable'">
+                        title="Décision finale — non modifiable">
                     {{ getStatusText(candidate.status) }}
                     <i class="fas fa-lock ms-1" style="font-size:0.7em"></i>
                   </span>
@@ -248,7 +250,9 @@
                     <li *ngFor="let t of getAvailableTransitions(candidate.status)">
                       <a class="dropdown-item" (click)="onTransition(candidate, t); $event.stopPropagation()"
                          [title]="t.kind === 'final-hire' ? 'Contre-signer l\'avis du manager — date de présentation des documents demandée'
-                                 : t.kind === 'final-reject' ? 'Confirmer le refus — motif demandé, e-mail d\'envoi au candidat'
+                                 : t.kind === 'final-reject' ? (candidate.status === 'AUTO_REJECTED'
+                                     ? 'Confirmer la décision de l’IA après examen — motif obligatoire, le candidat a déjà été notifié'
+                                     : 'Confirmer le refus — motif demandé, e-mail d\'envoi au candidat')
                                  : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH' : ''">
                         <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
                       </a>
@@ -258,10 +262,20 @@
                             [class.text-danger]="hint.startsWith('Aucun')"
                             style="border-top: 1px solid #e9ecef;">{{ hint }}</span>
                     </li>
+                    <li *ngIf="iaArbitrationHint(candidate.status) as iaHint">
+                      <span class="dropdown-item-text small text-muted"
+                            style="border-top: 1px solid #e9ecef;">{{ iaHint }}</span>
+                    </li>
                     <li *ngIf="getAvailableTransitions(candidate.status).length === 0">
                       <span class="dropdown-item-text text-muted small">Aucune transition possible</span>
                     </li>
                   </ul>
+                  <!-- Décision de l'IA : la sortie reste entre les mains du RH seul -->
+                  <span *ngIf="isIaDecision(candidate.status) && !isManagerView"
+                        class="small text-muted d-block"
+                        title="Une décision de l'IA reste soumise à l'humain : le RH la confirme ou corrige le score.">
+                    <i class="fas fa-user-check me-1"></i>À arbitrer par le RH
+                  </span>
                 </div>
                 <ng-container *ngIf="!isManagerView">
                   <div *ngIf="transmittedToLabel(candidate) as transmittedTo"
@@ -271,15 +285,21 @@
                   </div>
                 </ng-container>
               </td>
-              <!-- Score IA (Agent 1 n8n) -->
+              <!-- Score retenu (correction RH incluse), comme dans la fiche détail -->
               <td class="text-center">
-                <ng-container *ngIf="candidate.aiScore != null && candidate.aiScore > 0; else noScore">
+                <ng-container *ngIf="listScore(candidate) as score; else noScore">
                   <div class="d-flex flex-column align-items-center gap-1">
                     <span class="badge rounded-pill px-2 py-1"
-                          [style.background-color]="candidate.aiScore >= 80 ? '#d1fae5' : candidate.aiScore >= 60 ? '#fef3c7' : '#fee2e2'"
-                          [style.color]="candidate.aiScore >= 80 ? '#065f46' : candidate.aiScore >= 60 ? '#92400e' : '#991b1b'"
-                          title="Score analysé par l'Agent 1 n8n">
-                      <i class="fas fa-robot me-1"></i>{{ candidate.aiScore }}/100
+                          [style.background-color]="score >= 80 ? '#d1fae5' : score >= 60 ? '#fef3c7' : '#fee2e2'"
+                          [style.color]="score >= 80 ? '#065f46' : score >= 60 ? '#92400e' : '#991b1b'"
+                          [title]="scoreTitle(candidate)">
+                      <i class="fas fa-robot me-1"></i>{{ score }}/100
+                    </span>
+                    <span *ngIf="candidate.manualScore != null"
+                          class="badge rounded-pill bg-info text-dark px-2 py-1"
+                          style="font-size: 0.7rem;"
+                          [title]="'Score IA original : ' + candidate.aiScore + '/100'">
+                      <i class="fas fa-user-pen me-1"></i>Corrigé RH
                     </span>
                     <span *ngIf="candidate.needsHumanReview"
                           class="badge rounded-pill bg-warning text-dark px-2 py-1"
@@ -290,7 +310,21 @@
                   </div>
                 </ng-container>
                 <ng-template #noScore>
-                  <span class="text-muted small" title="Analyse IA non encore effectuée">—</span>
+                  <div class="d-flex flex-column align-items-center gap-1">
+                    <span class="small text-muted">Analyse non effectuée</span>
+                    <button *ngIf="canRecompute(candidate.status)"
+                            class="btn btn-sm btn-outline-primary py-0 px-2"
+                            style="font-size: 0.72rem;"
+                            [disabled]="recomputingId === candidate.id"
+                            title="Relancer l'analyse IA du CV, comme à la réception de la candidature"
+                            (click)="recomputeScore(candidate)">
+                      <i class="fas me-1"
+                         [ngClass]="recomputingId === candidate.id ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>{{ recomputingId === candidate.id ? 'Analyse en cours…' : "Lancer l'analyse" }}
+                    </button>
+                    <span *ngIf="!canRecompute(candidate.status)"
+                          class="small fst-italic text-muted"
+                          title="Le recalcul ferait revenir ce dossier sur une étape que la machine à états lui interdit de reprendre : lancer l'analyse le ferait échouer.">Dossier trop avancé pour relancer l’analyse</span>
+                  </div>
                 </ng-template>
               </td>
               <td>
@@ -471,7 +505,9 @@
                 </span>
               </div>
               <small class="text-muted d-block mt-1">
-                Non modifiable ici : utilisez les actions de statut (avis manager ou validation finale RH).
+                Le formulaire ne change pas le statut : il se pilote par les actions de statut
+                de la liste (avis manager, validation finale RH). Sur une décision de l’IA,
+                le RH confirme le refus ou corrige le score depuis la fiche du candidat.
               </small>
             </div>
             <div class="col-md-6 mb-3">
@@ -872,7 +908,11 @@
               <div class="d-flex align-items-start mb-2">
                 <span class="badge rounded-pill me-2" style="background:#dbeafe;color:#1d4ed8;min-width:90px;font-size:0.7rem;">📧 Agent 1</span>
                 <span class="small text-muted me-2">{{ formatDate(selectedCandidate.applicationDate) }}</span>
-                <span class="small">Email de confirmation envoyé au candidat</span>
+                <!-- L'accusé de réception est émis par l'Agent 1 à la fin de son flux :
+                     aucun score = flux jamais arrivé à son terme = envoi non confirmé. -->
+                <span class="small" *ngIf="selectedCandidate.aiScore != null">Accusé de réception transmis par l’Agent 1</span>
+                <span class="small text-warning" *ngIf="selectedCandidate.aiScore == null"
+                      title="Le dossier n'a pas été traité jusqu'au bout par l'Agent 1 (n8n) : l'envoi de l'accusé de réception n'est pas confirmé.">En attente de l’Agent 1 — accusé de réception non confirmé</span>
               </div>
               <div class="d-flex align-items-start mb-2">
                 <span class="badge rounded-pill me-2" style="background:#f3f4f6;color:#6b7280;min-width:90px;font-size:0.7rem;">👤 RH</span>

@@ -95,6 +95,15 @@ export class CandidateService {
     return this.http.patch<Candidate>(`${this.apiUrl}/${id}/ai-score/override`, null, { params, headers });
   }
 
+  /**
+   * Relance l'analyse IA d'un dossier : exactement le chemin emprunté par l'Agent 1
+   * n8n à la réception d'une candidature (Cohere, avec repli simulé).
+   */
+  recomputeAiScore(id: number): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    return this.http.post<Candidate>(`${this.apiUrl}/${id}/ai-score/recompute`, null, { headers });
+  }
+
   uploadCV(candidateId: number, file: File): Observable<any> {
     const formData = new FormData();
     formData.append('cv', file);
