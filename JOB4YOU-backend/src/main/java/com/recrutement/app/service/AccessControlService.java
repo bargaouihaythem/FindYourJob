@@ -53,6 +53,20 @@ public class AccessControlService {
         return currentUser != null ? currentUser.getId() : null;
     }
 
+    /**
+     * L'utilisateur authentifié est-il un manager « pur », c'est-à-dire sans rôle RH/Admin ?
+     * Son périmètre d'écriture se limite à son avis sur les dossiers qui lui sont routés et à
+     * son propre agenda.
+     */
+    public boolean currentIsPureManager() {
+        Authentication authentication = currentAuthentication();
+        User currentUser = authentication != null ? findCurrentUser(authentication) : null;
+        return currentUser != null
+                && hasRole(currentUser, Role.ERole.ROLE_MANAGER)
+                && !hasRole(currentUser, Role.ERole.ROLE_HR)
+                && !hasRole(currentUser, Role.ERole.ROLE_ADMIN);
+    }
+
     public boolean canAccessCandidate(Candidate candidate) {
         try {
             assertCanAccessCandidate(candidate);

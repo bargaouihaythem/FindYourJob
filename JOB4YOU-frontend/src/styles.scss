@@ -203,7 +203,10 @@ body {
   letter-spacing: -0.5px;
 }
 
-.nav-link {
+/* Texte clair réservé à la barre de navigation sombre : sans ce préfixe, la règle
+   globale .nav-link !important rendait les onglets clairs des pages (ex. Gestion des
+   feedbacks) invisibles — blanc sur blanc. */
+.navbar .nav-link {
   font-weight: 500;
   transition: all 0.2s ease;
   color: rgba(255, 255, 255, 0.9) !important;
@@ -212,13 +215,13 @@ body {
   padding: 8px 16px !important;
 }
 
-.nav-link:hover {
+.navbar .nav-link:hover {
   color: white !important;
   background-color: rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
 }
 
-.nav-link.active {
+.navbar .nav-link.active {
   background-color: rgba(255, 255, 255, 0.15);
   color: white !important;
 }

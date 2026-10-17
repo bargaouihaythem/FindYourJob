@@ -68,7 +68,7 @@ export class ManagerCalendarComponent implements OnInit {
     const start = new Date(this.calendarDate.getFullYear(), this.calendarDate.getMonth(), 1, 0, 0, 0, 0);
     const end = new Date(this.calendarDate.getFullYear(), this.calendarDate.getMonth() + 1, 0, 23, 59, 59, 999);
 
-    this.interviewService.getManagerCalendar(start.toISOString(), end.toISOString()).subscribe({
+    this.interviewService.getManagerCalendar(this.toLocalIso(start), this.toLocalIso(end)).subscribe({
       next: (interviews: Interview[]) => {
         const sorted = [...interviews].sort((left, right) =>
           new Date(left.interviewDate).getTime() - new Date(right.interviewDate).getTime());
@@ -118,6 +118,17 @@ export class ManagerCalendarComponent implements OnInit {
       && left.getDate() === right.getDate();
   }
 
+  /**
+   * Les bornes sont lues côté serveur en LocalDateTime et comparées à des dates stockées en
+   * heure locale murale : un toISOString() avec son « Z » décalerait la plage d'une heure et
+   * perdrait les entretiens de fin de mois. D'où un horodatage local sans décalage.
+   */
+  private toLocalIso(date: Date): string {
+    const pad = (value: number) => String(value).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+      + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
   private isActiveInterview(interview: Interview): boolean {
     return ['SCHEDULED', 'IN_PROGRESS', 'RESCHEDULED'].includes(interview.status);
   }
@@ -134,7 +145,7 @@ export class ManagerCalendarComponent implements OnInit {
   getCandidateStatusLabel(status?: string): string {
     const labels: Record<string, string> = {
       APPLIED: 'Dossier encore à valider par le RH',
-      CV_REVIEWED: 'Dossier encore à valider par le RH',
+      CV_REVIEWED: 'CV validé — en attente de transmission au manager',
       PHONE_SCREENING: 'Entretien téléphonique en cours côté RH',
       TECHNICAL_TEST: 'Avis toujours possible depuis la liste des dossiers',
       INTERVIEW: 'Avis toujours possible depuis la liste des dossiers',

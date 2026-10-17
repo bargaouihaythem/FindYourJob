@@ -83,6 +83,9 @@ public class InterviewService {
         User interviewer = userRepository.findById(interviewRequest.getInterviewerId())
                 .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + interviewRequest.getInterviewerId()));
 
+        // Un manager qui planifie ne le fait que pour son propre agenda.
+        assertInterviewerAssignmentAllowed(interviewer);
+
         // Créer l'entretien
         Interview interview = new Interview();
         mapRequestToEntity(interviewRequest, interview);
@@ -156,6 +159,23 @@ public class InterviewService {
     }
 
     /**
+     * Un manager « pur » (sans rôle RH/Admin) ne peut confier un entretien qu'à lui-même :
+     * l'affecter à un pair ferait apparaître la ligne dans un agenda qu'il ne pilote pas et
+     * disparaître la sienne. Réutiliser l'intervieweur déjà enregistré (simple reprogrammation)
+     * reste autorisé — seul un changement d'intervieweur est refusé.
+     */
+    private void assertInterviewerAssignmentAllowed(User interviewer) {
+        if (!accessControlService.currentIsPureManager()) {
+            return;
+        }
+        Long currentUserId = accessControlService.currentUserId();
+        if (currentUserId == null || !currentUserId.equals(interviewer.getId())) {
+            throw new IllegalArgumentException(
+                    "Vous ne pouvez planifier un entretien que pour vous-même : sélectionnez votre compte comme intervieweur.");
+        }
+    }
+
+    /**
      * Récupère un entretien par son ID
      */
     public InterviewResponse getInterviewById(Long id) {
@@ -186,6 +206,7 @@ public class InterviewService {
         if (!interview.getInterviewer().getId().equals(interviewRequest.getInterviewerId())) {
             User interviewer = userRepository.findById(interviewRequest.getInterviewerId())
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + interviewRequest.getInterviewerId()));
+            assertInterviewerAssignmentAllowed(interviewer);
             interview.setInterviewer(interviewer);
         }
 

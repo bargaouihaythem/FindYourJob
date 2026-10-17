@@ -135,6 +135,46 @@ class InterviewServiceTest {
     }
 
     @Test
+    @DisplayName("un manager pur ne peut pas affecter l'entretien à un autre intervieweur")
+    void shouldRefuseInterviewerAssignmentByPureManager() {
+        Candidate cand = candidate(6L, Candidate.CandidateStatus.CV_REVIEWED);
+        User peer = new User();
+        peer.setId(99L);
+        peer.setUsername("manager.devops");
+
+        when(candidateRepository.findById(6L)).thenReturn(Optional.of(cand));
+        when(userRepository.findById(99L)).thenReturn(Optional.of(peer));
+        when(accessControlService.currentIsPureManager()).thenReturn(true);
+        when(accessControlService.currentUserId()).thenReturn(2L);
+
+        assertThatThrownBy(() ->
+                interviewService.scheduleInterview(request(6L, Interview.InterviewType.TECHNICAL)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("que pour vous-même");
+
+        verify(interviewRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("un manager pur peut planifier un entretien pour lui-même : il apparaît dans son calendrier")
+    void shouldAllowSelfInterviewerForPureManager() {
+        Candidate cand = candidate(7L, Candidate.CandidateStatus.CV_REVIEWED);
+        User self = new User();
+        self.setId(99L);
+        self.setUsername("manager.cs");
+
+        when(candidateRepository.findById(7L)).thenReturn(Optional.of(cand));
+        when(userRepository.findById(99L)).thenReturn(Optional.of(self));
+        when(accessControlService.currentIsPureManager()).thenReturn(true);
+        when(accessControlService.currentUserId()).thenReturn(99L);
+        when(interviewRepository.save(any(Interview.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        interviewService.scheduleInterview(request(7L, Interview.InterviewType.TECHNICAL));
+
+        verify(interviewRepository).save(any(Interview.class));
+    }
+
+    @Test
     @DisplayName("saveMeetLink enregistre le lien Google Meet réel transmis par l'agent n8n")
     void shouldSaveRealMeetLink() {
         Interview interview = new Interview();

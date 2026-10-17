@@ -10,7 +10,6 @@ import { InterviewService } from '../../../services/interview.service';
 import { InterviewerService, Interviewer } from '../../../services/interviewer.service';
 import { Interview } from '../../../models/interfaces';
 import { CandidateService } from '../../../services/candidate.service';
-import { JobOfferService } from '../../../services/job-offer.service';
 import { AuthService } from '../../../services/auth';
 import { FeedbackService } from '../../../services/feedback.service';
 import { CVService } from '../../../services/cv.service';
@@ -28,8 +27,15 @@ export class InterviewsComponent implements OnInit {
   interviews: Interview[] = [];
   filteredInterviews: Interview[] = [];
   candidates: any[] = [];
-  jobOffers: any[] = [];
   interviewers: Interviewer[] = [];
+  readonly interviewTypes = [
+    { value: 'PHONE_SCREENING', label: 'Entretien téléphonique', rhOnly: true },
+    { value: 'TECHNICAL', label: 'Entretien technique', rhOnly: false },
+    { value: 'HR', label: 'Entretien RH', rhOnly: true },
+    { value: 'MANAGER', label: 'Entretien manager', rhOnly: false },
+    { value: 'FINAL', label: 'Entretien final', rhOnly: false },
+    { value: 'GROUP', label: 'Entretien de groupe', rhOnly: false }
+  ];
   loading = true;
   error: string | null = null;
   
@@ -89,7 +95,6 @@ export class InterviewsComponent implements OnInit {
   constructor(
     private interviewService: InterviewService,
     private candidateService: CandidateService,
-    private jobOfferService: JobOfferService,
     private authService: AuthService,
     private feedbackService: FeedbackService,
     private cvService: CVService,
@@ -108,7 +113,6 @@ export class InterviewsComponent implements OnInit {
     
     this.interviewForm = this.fb.group({
       candidateId: ['', Validators.required],
-      jobOfferId: ['', Validators.required],
       interviewerId: ['', Validators.required],
       interviewDate: ['', Validators.required],
       duration: [60, [Validators.required, Validators.min(15)]],
@@ -142,7 +146,6 @@ export class InterviewsComponent implements OnInit {
     
     this.loadInterviews();
     this.loadCandidates();
-    this.loadJobOffers();
     this.loadInterviewers();
     this.setupSearchSubscription();
   }
@@ -167,24 +170,22 @@ export class InterviewsComponent implements OnInit {
     });
   }
 
+  /**
+   * Un manager ne planifie que sur les dossiers qui lui ont été transmis : la liste des
+   * candidats reprend le périmètre de « ma liste de dossiers » (getValidatedCandidates),
+   * alors que la liste RH serait complète et proposerait des dossiers que le serveur refuse
+   * (APPLIED non validé, dossier clôturé).
+   */
   loadCandidates(): void {
-    this.candidateService.getCandidates().subscribe({
+    const fetch$ = this.plansOwnAgendaOnly
+      ? this.candidateService.getValidatedCandidates()
+      : this.candidateService.getCandidates();
+    fetch$.subscribe({
       next: (candidates: any[]) => {
         this.candidates = candidates;
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des candidats:', error);
-      }
-    });
-  }
-
-  loadJobOffers(): void {
-    this.jobOfferService.getJobOffers().subscribe({
-      next: (jobOffers: any[]) => {
-        this.jobOffers = jobOffers;
-      },
-      error: (error: any) => {
-        console.error('Erreur lors du chargement des offres d\'emploi:', error);
       }
     });
   }
@@ -197,6 +198,7 @@ export class InterviewsComponent implements OnInit {
         this.interviewers = interviewers;
         console.log('[DEBUG] Interviewers chargés avec succès:', interviewers);
         console.log('[DEBUG] Nombre d\'interviewers:', interviewers.length);
+        this.prefillOwnAsInterviewer();
       },
       error: (error: any) => {
         console.error('[ERROR] Erreur lors du chargement des interviewers:', error);
@@ -208,8 +210,51 @@ export class InterviewsComponent implements OnInit {
           { id: 3, name: 'Pierre Durand', role: 'Senior Developer', email: 'pierre.durand@example.com' }
         ];
         console.log('[DEBUG] Liste de fallback activée:', this.interviewers);
+        this.prefillOwnAsInterviewer();
       }
     });
+  }
+
+  /**
+   * Un manager sans rôle RH/Admin n'instruit que les dossiers qui lui sont routés et ne tient
+   * que son propre agenda : l'intervieweur est figé sur son propre compte. Le serveur applique
+   * la même règle (InterviewService.assertInterviewerAssignmentAllowed).
+   */
+  get plansOwnAgendaOnly(): boolean {
+    return this.authService.isManager() && !this.authService.isHR() && !this.authService.isAdmin();
+  }
+
+  get currentUserId(): number | null {
+    return this.authService.getCurrentUser()?.id ?? null;
+  }
+
+  get ownInterviewerLabel(): string {
+    const me = this.interviewers.find(i => i.id === this.currentUserId);
+    if (me) return `${me.name} - ${me.role}`;
+    const user = this.authService.getCurrentUser();
+    return user ? `${user.firstName} ${user.lastName}` : 'Votre compte';
+  }
+
+  /**
+   * L'offre n'est pas une donnée de l'entretien : le backend la déduit du dossier du candidat.
+   * Elle n'est donc affichée qu'à titre informatif.
+   */
+  get selectedOfferTitle(): string {
+    if (this.selectedInterview?.jobOfferTitle) return this.selectedInterview.jobOfferTitle;
+    const candidateId = Number(this.interviewForm.get('candidateId')?.value);
+    return this.candidates.find(c => c.id === candidateId)?.jobOfferTitle || '';
+  }
+
+  get visibleInterviewTypes(): { value: string; label: string; rhOnly: boolean }[] {
+    return this.plansOwnAgendaOnly
+      ? this.interviewTypes.filter(t => !t.rhOnly)
+      : this.interviewTypes;
+  }
+
+  private prefillOwnAsInterviewer(): void {
+    if (this.plansOwnAgendaOnly && this.currentUserId !== null && !this.selectedInterview) {
+      this.interviewForm.get('interviewerId')?.setValue(String(this.currentUserId));
+    }
   }
 
   setupSearchSubscription(): void {
@@ -322,12 +367,13 @@ export class InterviewsComponent implements OnInit {
     this.selectedInterview = interview || null;
     
     if (interview) {
+      this.ensureCandidateListed(interview);
       const scheduledDate = new Date(interview.interviewDate);
       const formattedDate = scheduledDate.toISOString().slice(0, 16);
       
       this.interviewForm.patchValue({
         candidateId: interview.candidateId,
-        interviewerId: interview.interviewerId,
+        interviewerId: String(interview.interviewerId),
         interviewDate: formattedDate,
         duration: interview.durationMinutes,
         location: interview.location,
@@ -340,9 +386,23 @@ export class InterviewsComponent implements OnInit {
         type: 'TECHNICAL',
         duration: 60
       });
+      this.prefillOwnAsInterviewer();
     }
     
     this.showInterviewModal = true;
+  }
+
+  /**
+   * Un dossier instruit peut avoir quitté la liste du manager (refus validé, embauche) alors
+   * que son entretien reste modifiable : sans cette ligne le champ « Candidat » se viderait.
+   */
+  private ensureCandidateListed(interview: Interview): void {
+    if (!this.plansOwnAgendaOnly || interview.candidateId == null) return;
+    if (this.candidates.some(c => c.id === interview.candidateId)) return;
+    this.candidates = [
+      { id: interview.candidateId, firstName: interview.candidateName || 'Candidat', lastName: '' },
+      ...this.candidates
+    ];
   }
 
   closeInterviewModal(): void {

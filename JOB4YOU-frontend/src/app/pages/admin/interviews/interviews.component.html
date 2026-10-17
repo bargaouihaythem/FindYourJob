@@ -460,6 +460,10 @@
                     {{ candidate.firstName }} {{ candidate.lastName }}
                   </option>
                 </select>
+                <div class="form-text" *ngIf="plansOwnAgendaOnly">
+                  Seuls les dossiers qui vous ont été transmis pour évaluation technique sont
+                  planifiables.
+                </div>
                 <div *ngIf="interviewForm.get('candidateId')?.invalid && interviewForm.get('candidateId')?.touched" 
                      class="invalid-feedback d-block">
                   Le candidat est requis
@@ -470,18 +474,12 @@
               <div class="mb-3">
                 <label class="form-label">
                   <i class="fas fa-briefcase me-2"></i>
-                  Offre d'emploi <span class="text-danger">*</span>
+                  Offre d'emploi
                 </label>
-                <select class="form-select" formControlName="jobOfferId">
-                  <option value="">Sélectionner une offre</option>
-                  <option *ngFor="let jobOffer of jobOffers" [value]="jobOffer.id">
-                    {{ jobOffer.title }}
-                  </option>
-                </select>
-                <div *ngIf="interviewForm.get('jobOfferId')?.invalid && interviewForm.get('jobOfferId')?.touched" 
-                     class="invalid-feedback d-block">
-                  L'offre d'emploi est requise
-                </div>
+                <p class="form-control-plaintext">{{ selectedOfferTitle || 'Aucun dossier sélectionné' }}</p>
+                <small class="text-muted">
+                  Elle est portée par le dossier du candidat : un entretien n'a pas d'offre propre.
+                </small>
               </div>
             </div>
           </div>
@@ -492,12 +490,22 @@
                   <i class="fas fa-user-tie me-2"></i>
                   Interviewer <span class="text-danger">*</span>
                 </label>
-                <select class="form-select" formControlName="interviewerId">
-                  <option value="">Sélectionner un interviewer</option>
-                  <option *ngFor="let interviewer of interviewers" [value]="interviewer.id">
-                    {{ interviewer.name }} - {{ interviewer.role }}
-                  </option>
-                </select>
+                <ng-container *ngIf="plansOwnAgendaOnly; else interviewerPicker">
+                  <p class="form-control-plaintext">{{ ownInterviewerLabel }}</p>
+                  <div class="form-text">
+                    Vous planifiez pour votre propre agenda ; un entretien affecté à un autre
+                    manager n'apparaîtrait pas dans votre calendrier. Un RH, lui, peut choisir
+                    l'intervieweur.
+                  </div>
+                </ng-container>
+                <ng-template #interviewerPicker>
+                  <select class="form-select" formControlName="interviewerId">
+                    <option value="">Sélectionner un interviewer</option>
+                    <option *ngFor="let interviewer of interviewers" [value]="interviewer.id">
+                      {{ interviewer.name }} - {{ interviewer.role }}
+                    </option>
+                  </select>
+                </ng-template>
                 <div *ngIf="interviewForm.get('interviewerId')?.invalid && interviewForm.get('interviewerId')?.touched" 
                      class="invalid-feedback d-block">
                   L'interviewer est requis
@@ -539,12 +547,9 @@
                   Type <span class="text-danger">*</span>
                 </label>
                 <select class="form-select" formControlName="type">
-                  <option value="PHONE_SCREENING">Entretien téléphonique</option>
-                  <option value="TECHNICAL">Entretien technique</option>
-                  <option value="HR">Entretien RH</option>
-                  <option value="MANAGER">Entretien manager</option>
-                  <option value="FINAL">Entretien final</option>
-                  <option value="GROUP">Entretien de groupe</option>
+                  <option *ngFor="let interviewType of visibleInterviewTypes" [value]="interviewType.value">
+                    {{ interviewType.label }}
+                  </option>
                 </select>
               </div>
             </div>
@@ -571,7 +576,7 @@
             <textarea class="form-control" formControlName="notes" rows="3"
                       placeholder="Notes additionnelles sur l'entretien..."></textarea>
           </div>
-          <div class="mb-3 form-check" *ngIf="!selectedInterview">
+          <div class="mb-3 form-check" *ngIf="!selectedInterview && !plansOwnAgendaOnly">
             <input type="checkbox" class="form-check-input" id="advanceStatus" formControlName="advanceStatus">
             <label class="form-check-label" for="advanceStatus">
               Faire aussi avancer le statut du candidat à l'étape correspondante
