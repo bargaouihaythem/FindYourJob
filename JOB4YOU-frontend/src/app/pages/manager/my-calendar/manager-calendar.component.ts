@@ -3,6 +3,7 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { Interview } from '../../../models/interfaces';
 import { InterviewService } from '../../../services/interview.service';
+import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
 interface CalendarDay {
   date: Date;
@@ -23,12 +24,16 @@ export class ManagerCalendarComponent implements OnInit {
   calendarDate = new Date();
   calendarDays: CalendarDay[] = [];
   upcomingInterviews: Interview[] = [];
+  pastInterviews: Interview[] = [];
   loading = true;
   error: string | null = null;
   showDetailModal = false;
   selectedInterview: Interview | null = null;
 
-  constructor(private interviewService: InterviewService) {}
+  constructor(
+    private interviewService: InterviewService,
+    private toastrNotification: ToastrNotificationService
+  ) {}
 
   ngOnInit(): void {
     this.loadCalendar();
@@ -70,6 +75,13 @@ export class ManagerCalendarComponent implements OnInit {
         this.upcomingInterviews = sorted
           .filter(interview => this.isActiveInterview(interview) && new Date(interview.interviewDate).getTime() >= Date.now())
           .slice(0, 3);
+        // Entretiens déjà passés dans le mois affiche : le manager doit pouvoir revenir
+        // sur le dossier pour y enregistrer son avis sans repasser par la liste.
+        this.pastInterviews = sorted
+          .filter(interview => interview.status !== 'CANCELLED'
+            && new Date(interview.interviewDate).getTime() < Date.now())
+          .reverse()
+          .slice(0, 5);
         this.buildCalendar(sorted);
         this.loading = false;
       },
@@ -78,6 +90,7 @@ export class ManagerCalendarComponent implements OnInit {
         this.error = 'Impossible de charger votre calendrier. Réessayez dans quelques instants.';
         this.calendarDays = [];
         this.upcomingInterviews = [];
+        this.pastInterviews = [];
         this.loading = false;
       }
     });
@@ -107,6 +120,55 @@ export class ManagerCalendarComponent implements OnInit {
 
   private isActiveInterview(interview: Interview): boolean {
     return ['SCHEDULED', 'IN_PROGRESS', 'RESCHEDULED'].includes(interview.status);
+  }
+
+  /** Entretien dont la date est passée : l'avis du manager doit pouvoir y être rattaché. */
+  isPast(interview: Interview): boolean {
+    return new Date(interview.interviewDate).getTime() < Date.now();
+  }
+
+  /**
+   * Le serveur renvoie « advicePossible » : le bouton d'avis n'apparaît que si le dossier
+   * est encore à trancher. Sinon on affiche l'état réel du dossier plutôt qu'un bouton mort.
+   */
+  getCandidateStatusLabel(status?: string): string {
+    const labels: Record<string, string> = {
+      APPLIED: 'Dossier encore à valider par le RH',
+      CV_REVIEWED: 'Dossier encore à valider par le RH',
+      PHONE_SCREENING: 'Entretien téléphonique en cours côté RH',
+      TECHNICAL_TEST: 'Avis toujours possible depuis la liste des dossiers',
+      INTERVIEW: 'Avis toujours possible depuis la liste des dossiers',
+      FINAL_INTERVIEW: 'Avis toujours possible depuis la liste des dossiers',
+      ACCEPTED: 'Avis favorable déjà enregistré — décision RH attendue',
+      MANAGER_REJECTED: 'Refus déjà proposé — décision RH attendue',
+      INTERVIEW_SCHEDULED: 'Entretien planifié — décision RH attendue',
+      REJECTED: 'Dossier clôturé : refus validé par le RH',
+      AUTO_REJECTED: 'Dossier clôturé par l’agent IA',
+      HIRED: 'Dossier clôturé : candidat embauché',
+      WITHDRAWN: 'Dossier clôturé : candidature retirée'
+    };
+    return labels[status ?? ''] ?? 'Dossier hors de votre périmètre';
+  }
+
+  /** Marque l'entretien comme effectué (agenda seul : le pipeline reste piloté par les statuts). */
+  markAsCompleted(interview: Interview): void {
+    this.interviewService.updateInterviewStatus(interview.id, 'COMPLETED').subscribe({
+      next: (updated: Interview) => {
+        interview.status = updated.status;
+        if (this.selectedInterview?.id === interview.id) {
+          this.selectedInterview = interview;
+        }
+        this.toastrNotification.showSuccess(
+          `Entretien de ${interview.candidateName || 'candidat'} marqué comme effectué. `
+          + "L'avis sur le dossier reste à enregistrer depuis la fiche du candidat.",
+          'Entretien effectué');
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la mise à jour du statut de l’entretien:', error);
+        this.toastrNotification.showError(
+          error?.error?.message || "Impossible de marquer cet entretien comme effectué.", 'Erreur');
+      }
+    });
   }
 
   isToday(date: Date): boolean {

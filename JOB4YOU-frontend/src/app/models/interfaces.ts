@@ -310,6 +310,8 @@ export interface Interview {
   feedback?: string;
   rating?: number;
   feedbacksCount?: number;
+  candidateStatus?: string;
+  advicePossible?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }

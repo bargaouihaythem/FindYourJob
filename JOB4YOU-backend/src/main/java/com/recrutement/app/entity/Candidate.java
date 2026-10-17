@@ -188,6 +188,18 @@ public class Candidate {
         WITHDRAWN             // Candidature retirée
     }
 
+    /**
+     * Statuts sur lesquels un manager est autorisé à rendre un avis (dossier déjà validé
+     * par le RH). Les avis en attente de contreseing et les statuts finaux en sont exclus.
+     */
+    public boolean isAwaitingManagerAdvice() {
+        return status == CandidateStatus.CV_REVIEWED
+                || status == CandidateStatus.PHONE_SCREENING
+                || status == CandidateStatus.TECHNICAL_TEST
+                || status == CandidateStatus.INTERVIEW
+                || status == CandidateStatus.FINAL_INTERVIEW;
+    }
+
 	
 }
 

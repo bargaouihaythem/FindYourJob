@@ -1132,14 +1132,7 @@ public class CandidateService {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
-        List<Candidate.CandidateStatus> reviewable = List.of(
-                Candidate.CandidateStatus.CV_REVIEWED,
-                Candidate.CandidateStatus.PHONE_SCREENING,
-                Candidate.CandidateStatus.TECHNICAL_TEST,
-                Candidate.CandidateStatus.INTERVIEW,
-                Candidate.CandidateStatus.FINAL_INTERVIEW
-        );
-        if (!reviewable.contains(candidate.getStatus())) {
+        if (!candidate.isAwaitingManagerAdvice()) {
             throw new IllegalArgumentException("Le dossier doit d'abord être validé par le RH (CV_REVIEWED) avant décision manager");
         }
         if (decision == Candidate.CandidateStatus.ACCEPTED

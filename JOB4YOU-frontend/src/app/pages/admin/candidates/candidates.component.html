@@ -876,8 +876,13 @@
               </div>
               <div class="d-flex align-items-start mb-2">
                 <span class="badge rounded-pill me-2" style="background:#f3f4f6;color:#6b7280;min-width:90px;font-size:0.7rem;">👤 RH</span>
-                <span class="small text-muted me-2">—</span>
-                <span class="small text-muted">En attente de validation RH → déclenchera l'Agent 2</span>
+                <ng-container *ngIf="hrValidationStep(selectedCandidate) as step; else pendingHrValidation">
+                  <span class="small" [class.text-muted]="step.startsWith('Candidature')">{{ step }}</span>
+                </ng-container>
+                <ng-template #pendingHrValidation>
+                  <span class="small text-muted me-2">—</span>
+                  <span class="small text-muted">En attente de validation RH → déclenchera l'Agent 2</span>
+                </ng-template>
               </div>
             </div>
           </div>
@@ -917,11 +922,33 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-primary" (click)="openCandidateModal(selectedCandidate)">
-          <i class="fas fa-edit me-2"></i>
-          Modifier
-        </button>
+      <div class="modal-footer" *ngIf="selectedCandidate">
+        <!-- MANAGER : l'avis se saisit ici, sinon le bouton « Donner mon avis » du
+             calendrier n'ouvrirait qu'une fiche consultative sans action possible. -->
+        <ng-container *ngIf="isManagerView; else rhFooterAction">
+          <div class="btn-group btn-group-sm me-auto" role="group" *ngIf="!managerAdviceNote(selectedCandidate)">
+            <button class="btn btn-outline-success" (click)="acceptCandidate(selectedCandidate)"
+                    [disabled]="!canManagerAccept(selectedCandidate)"
+                    title="Émettre un avis favorable — transmis au RH pour validation finale">
+              <i class="fas fa-check me-1"></i>Avis favorable
+            </button>
+            <button class="btn btn-outline-danger" (click)="rejectCandidate(selectedCandidate)"
+                    [disabled]="!canManagerReject(selectedCandidate)"
+                    title="Proposer un refus — transmis au RH pour validation finale">
+              <i class="fas fa-times me-1"></i>Refus proposé
+            </button>
+          </div>
+          <span *ngIf="managerAdviceNote(selectedCandidate) as advice" class="small text-muted me-auto"
+                [title]="advice">
+            <i class="fas fa-hourglass-half me-1"></i>{{ advice }}
+          </span>
+        </ng-container>
+        <ng-template #rhFooterAction>
+          <button type="button" class="btn btn-outline-primary" (click)="openCandidateModal(selectedCandidate)">
+            <i class="fas fa-edit me-2"></i>
+            Modifier
+          </button>
+        </ng-template>
         <button type="button" class="btn btn-secondary" (click)="closeDetailsModal()">
           Fermer
         </button>

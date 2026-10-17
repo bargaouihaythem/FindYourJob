@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { interval, Subscription } from 'rxjs';
 import { CandidateService } from '../../../services/candidate.service';
@@ -62,6 +62,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   // Status dropdown management
   openStatusDropdownId: number | null = null;
 
+  /** Dossier à ouvrir automatiquement après le chargement (lien profond du calendrier manager). */
+  private pendingCandidateDetailId: number | null = null;
+
   /**
    * Aperçu du routage (GET /candidates/{id}/routing-preview) : destinataires réels
    * du dossier si le RH confirme la transmission. Vidé à chaque rechargement de la
@@ -120,7 +123,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     private notificationService: NotificationService,
     private fb: FormBuilder,
     private toastrNotification: ToastrNotificationService,
-    private authService: AuthService
+    private authService: AuthService,
+    private route: ActivatedRoute,
+    private router: Router
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -153,10 +158,35 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.isManagerView = this.authService.isManager() && !this.authService.isHR() && !this.authService.isAdmin();
+    this.readPendingCandidateDetailParam();
     this.loadCandidates();
     this.loadJobOffers();
     this.setupSearchSubscription();
     this.startPolling();
+  }
+
+  /**
+   * Lien profond (?candidateId=) envoyé par le calendrier du manager depuis un entretien
+   * déjà planifié : la fiche du candidat s'ouvre dès que la liste est chargée.
+   */
+  private readPendingCandidateDetailParam(): void {
+    const requested = Number(this.route.snapshot.queryParamMap.get('candidateId'));
+    if (!Number.isInteger(requested) || requested <= 0) return;
+    this.pendingCandidateDetailId = requested;
+    this.router.navigate([], { relativeTo: this.route, queryParams: {} });
+  }
+
+  private openPendingCandidateDetail(): void {
+    if (this.pendingCandidateDetailId === null) return;
+    const target = this.candidates.find(c => c.id === this.pendingCandidateDetailId);
+    this.pendingCandidateDetailId = null;
+    if (target) {
+      this.viewCandidateDetails(target);
+      return;
+    }
+    this.toastrNotification.showWarning(
+      'Ce dossier ne fait pas partie des candidatures qui vous sont transmises.',
+      'Dossier introuvable');
   }
 
   ngOnDestroy(): void {
@@ -308,6 +338,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         this.applyFilters();
         this.rememberStatuses(candidates);
         this.loading = false;
+        this.openPendingCandidateDetail();
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des candidats:', error);
@@ -1025,6 +1056,22 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   canManagerReject(candidate: Candidate): boolean {
     return ['CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW']
       .includes(candidate.status);
+  }
+
+  /**
+   * Ligne « RH » de la frise n8n de la fiche : c'est la validation RH qui déclenche
+   * l'Agent 2, elle ne peut donc plus être annoncée « à venir » sur un dossier engagé.
+   * Renvoie null tant que le dossier est au stade APPLIED (attente réelle).
+   */
+  hrValidationStep(candidate: Candidate): string | null {
+    if (candidate.status === 'APPLIED') return null;
+    if (candidate.status === 'AUTO_REJECTED') {
+      return 'Rejet automatique par l’agent IA — aucune validation RH, Agent 2 non déclenché';
+    }
+    if (candidate.status === 'WITHDRAWN') {
+      return 'Candidature retirée par le candidat — processus arrêté avant la validation RH';
+    }
+    return 'Validation RH effectuée — Agent 2 déclenché pour la planification de l’entretien';
   }
 
   acceptCandidate(candidate: Candidate): void {

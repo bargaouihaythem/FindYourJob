@@ -78,6 +78,54 @@
       </div>
     </div>
 
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h2 class="h5 mb-1">Entretiens passés ce mois-ci</h2>
+            <p class="small text-muted mb-0">Reprenez un dossier déjà vu pour y enregistrer votre avis.</p>
+          </div>
+          <span class="badge bg-light text-dark">{{ pastInterviews.length }} entretiens</span>
+        </div>
+
+        <div *ngIf="pastInterviews.length === 0" class="empty-state">
+          <i class="fas fa-clipboard-check fa-2x mb-2"></i>
+          <p class="mb-0">Aucun entretien passé dans ce mois.</p>
+        </div>
+
+        <div *ngFor="let interview of pastInterviews" class="upcoming-item">
+          <div class="date-box">
+            <strong>{{ formatTime(interview.interviewDate) }}</strong>
+            <span>{{ formatDate(interview.interviewDate) }}</span>
+          </div>
+          <div class="flex-grow-1">
+            <div class="d-flex flex-wrap align-items-center gap-2">
+              <h3 class="h6 mb-0">{{ interview.candidateName || 'Candidat' }}</h3>
+              <span [class]="getStatusClass(interview.status)">{{ getStatusLabel(interview.status) }}</span>
+            </div>
+            <p class="small text-muted mb-0 mt-1">
+              {{ interview.jobOfferTitle || 'Offre non renseignée' }} · {{ getTypeLabel(interview.type) }}
+            </p>
+          </div>
+          <div class="d-flex flex-column align-items-end gap-2">
+            <button *ngIf="interview.status !== 'COMPLETED'" type="button"
+                    class="btn btn-sm btn-outline-success" (click)="markAsCompleted(interview)"
+                    title="Marquer cet entretien comme effectué (ne change pas le statut du dossier)">
+              <i class="fas fa-check me-1"></i>Marquer comme effectué
+            </button>
+            <a *ngIf="interview.advicePossible" class="btn btn-sm btn-outline-primary" routerLink="/manager/candidates"
+               [queryParams]="{ candidateId: interview.candidateId }"
+               title="Ouvrir la fiche du candidat pour émettre votre avis — la décision finale appartient au RH">
+              <i class="fas fa-user-check me-1"></i>Donner mon avis
+            </a>
+            <p *ngIf="!interview.advicePossible" class="small text-muted mb-0 text-end">
+              {{ getCandidateStatusLabel(interview.candidateStatus) }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="card border-0 shadow-sm">
       <div class="card-header bg-white border-0 pt-4 px-4">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
@@ -163,6 +211,19 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" (click)="closeInterviewDetail()">Fermer</button>
+          <button type="button" class="btn btn-outline-success" *ngIf="isPast(interview) && interview.status !== 'COMPLETED'"
+                  (click)="markAsCompleted(interview)"
+                  title="Marquer cet entretien comme effectué — le statut du dossier reste piloté par le RH">
+            <i class="fas fa-check me-2"></i>Marquer comme effectué
+          </button>
+          <a *ngIf="interview.advicePossible" class="btn btn-outline-primary" routerLink="/manager/candidates"
+             [queryParams]="{ candidateId: interview.candidateId }" (click)="closeInterviewDetail()"
+             title="Émettre un avis — la décision finale appartient au RH">
+            <i class="fas fa-user-check me-2"></i>Donner mon avis
+          </a>
+          <span *ngIf="!interview.advicePossible" class="small text-muted me-auto">
+            {{ getCandidateStatusLabel(interview.candidateStatus) }}
+          </span>
           <a *ngIf="interview.meetLink" [href]="interview.meetLink" target="_blank" rel="noopener" class="btn btn-primary">
             <i class="fas fa-video me-2"></i>Rejoindre l’entretien
           </a>

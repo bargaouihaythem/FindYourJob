@@ -1,5 +1,6 @@
 package com.recrutement.app.dto;
 
+import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.Interview;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -30,6 +31,8 @@ public class InterviewResponse {
     private String interviewerEmail;
     private String jobOfferTitle;
     private Integer feedbacksCount;
+    private Candidate.CandidateStatus candidateStatus;
+    private Boolean advicePossible;
 
     // Constructeur pour mapper depuis l'entité Interview
     public InterviewResponse(Interview interview) {
@@ -44,7 +47,7 @@ public class InterviewResponse {
         this.createdAt = interview.getCreatedAt();
         this.updatedAt = interview.getUpdatedAt();
         this.candidateId = interview.getCandidate() != null ? interview.getCandidate().getId() : null;
-        this.candidateName = interview.getCandidate() != null ? 
+        this.candidateName = interview.getCandidate() != null ?
             interview.getCandidate().getFirstName() + " " + interview.getCandidate().getLastName() : null;
         this.candidateEmail = interview.getCandidate() != null ? interview.getCandidate().getEmail() : null;
         this.interviewerId = interview.getInterviewer() != null ? interview.getInterviewer().getId() : null;
@@ -52,6 +55,8 @@ public class InterviewResponse {
         this.interviewerEmail = interview.getInterviewer() != null ? interview.getInterviewer().getEmail() : null;
         this.jobOfferTitle = interview.getCandidate() != null && interview.getCandidate().getJobOffer() != null ? 
             interview.getCandidate().getJobOffer().getTitle() : null;
+        this.candidateStatus = interview.getCandidate() != null ? interview.getCandidate().getStatus() : null;
+        this.advicePossible = interview.getCandidate() != null && interview.getCandidate().isAwaitingManagerAdvice();
         this.feedbacksCount = interview.getFeedbacks() != null ? interview.getFeedbacks().size() : 0;
     }
 }
