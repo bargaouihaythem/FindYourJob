@@ -86,8 +86,10 @@ public class N8nService {
 
     /**
      * Appel ASYNCHRONE (ne bloque pas la réponse HTTP au candidat).
-     * Spring Boot a déjà envoyé son email de confirmation basique ;
-     * l'Agent 1 enrichit avec le score IA.
+     * L'accusé de réception n'est envoyé QUE par l'Agent 1 : Spring ne l'envoie pas
+     * quand ce webhook est configuré (cf. CandidateService#registerCandidate), il n'en
+     * assure le repli local que lorsqu'il est absent. L'Agent 1 enrichit ensuite le
+     * dossier avec le score IA.
      */
     @Async
     public void triggerAgent1CvParser(Candidate candidate) {

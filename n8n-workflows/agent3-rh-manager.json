@@ -21,7 +21,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst candidateId   = data.candidateId || data.candidatId;\nconst candidatEmail = data.email || data.candidatEmail || data.candidateEmail || '';\nconst nom           = data.lastName || data.candidatNom || data.candidateLastName || '';\nconst prenom        = data.firstName || data.candidatPrenom || data.candidateFirstName || '';\nconst offreTitre    = data.jobOfferTitle || data.offreTitre || 'le poste';\nconst statut        = data.status || data.nouveauStatut || 'CV_REVIEWED';\nconst managerEmail  = data.managerEmail || 'bargaouihaythem1@gmail.com';\nconst cvUrl         = data.cvUrl || null;\nconst date          = new Date().toLocaleDateString('fr-FR');\nconst isRejected    = statut === 'AUTO_REJECTED' || statut === 'MANAGER_REJECTED' || statut === 'REJECTED';\nconst isAccepted    = statut === 'ACCEPTED' || statut === 'HIRED';\nconst statutMap = {\n  CV_REVIEWED:      'CV Valide - profil retenu',\n  AUTO_REJECTED:    'Profil insuffisant (score IA < 60)',\n  MANAGER_REJECTED: 'Refuse par le manager',\n  REJECTED:         'Candidature refusee',\n  ACCEPTED:         'Accepte',\n  HIRED:            'Embauche',\n};\nconst statutLabel = statutMap[statut] || statut;\n\nconst emailManagerHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#1e40af;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Nouveau dossier candidat a examiner</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<p>Bonjour,</p>'\n  + '<p>Un dossier candidat vient d\\'etre valide par le systeme RH.</p>'\n  + '<div style=\"background:white;border-left:4px solid #10b981;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<h3 style=\"color:#059669;margin-top:0;\">' + prenom + ' ' + nom + '</h3>'\n  + '<table style=\"width:100%;border-collapse:collapse;\">'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;width:140px;\">Poste</td><td style=\"font-weight:bold;\">' + offreTitre + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Statut</td><td style=\"font-weight:bold;color:#1e40af;\">' + statutLabel + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Email candidat</td><td>' + candidatEmail + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Date</td><td>' + date + '</td></tr>'\n  + (cvUrl ? '<tr><td style=\"color:#6b7280;padding:6px 0;\">CV</td><td><a href=\"' + cvUrl + '\">Telecharger le CV</a></td></tr>' : '')\n  + '</table></div>'\n  + '<p>Si le profil vous convient, planifiez un entretien sur la plateforme JOB4YOU.</p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#dc2626;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Resultat de votre candidature</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Merci pour l\\'interet porte a notre entreprise et pour votre candidature au poste de <b>' + offreTitre + '</b>.</p>'\n  + '<div style=\"background:white;border-left:4px solid #dc2626;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>Cette decision ne remet pas en cause vos competences. Nous vous encourageons a postuler pour d\\'autres offres sur JOB4YOU.</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatAccepteHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#059669;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Felicitations !</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Nous avons le plaisir de vous informer que votre candidature au poste de <b>' + offreTitre + '</b> a ete retenue.</p>'\n  + '<div style=\"background:white;border-left:4px solid #059669;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>L\\'equipe RH reviendra vers vous prochainement pour la suite du processus (planification, integration).</p>'\n  + '<p>Toutes nos felicitations !</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nreturn [{ json: { candidateId, candidatEmail, nom, prenom, offreTitre, statut, statutLabel, managerEmail, cvUrl, date, isRejected, isAccepted, emailManagerHtml, emailCandidatHtml, emailCandidatAccepteHtml } }];"
+        "jsCode": "const data = $input.first().json.body || $input.first().json;\nconst candidateId   = data.candidateId || data.candidatId;\nconst candidatEmail = data.email || data.candidatEmail || data.candidateEmail || '';\nconst nom           = data.lastName || data.candidatNom || data.candidateLastName || '';\nconst prenom        = data.firstName || data.candidatPrenom || data.candidateFirstName || '';\nconst offreTitre    = data.jobOfferTitle || data.offreTitre || 'le poste';\nconst statut        = data.status || data.nouveauStatut || 'CV_REVIEWED';\nconst event         = data.event || '';\n// Plus aucun repli sur une adresse personnelle : sans destinataire resolu par\n// Spring, la transmission au manager est bloquee en aval, pas deviee.\nconst managerEmail  = data.managerEmail || '';\nconst cvUrl         = data.cvUrl || null;\nconst date          = new Date().toLocaleDateString('fr-FR');\nconst isRejected    = statut === 'AUTO_REJECTED' || statut === 'MANAGER_REJECTED' || statut === 'REJECTED';\nconst isAccepted    = statut === 'ACCEPTED' || statut === 'HIRED';\n// Le mail « nouveau dossier a examiner » n'appartient qu'a l'evenement de\n// transmission RH -> manager. Une decision finale (retrait, rejet) ne doit\n// jamais faire croire a un manager qu'un entretien l'attend.\nconst isHrRouting   = event === 'DOSSIER_VALIDE_RH' && !!managerEmail;\nconst statutMap = {\n  APPLIED:            'Candidature recue - en attente de lecture',\n  CV_REVIEWED:        'CV valide - profil retenu',\n  PHONE_SCREENING:    'Entretien telephonique RH en cours',\n  TECHNICAL_TEST:     'Dossier transmis au manager - evaluation technique',\n  INTERVIEW:          'Entretien planifie',\n  FINAL_INTERVIEW:    'Entretien final planifie',\n  INTERVIEW_SCHEDULED:'Entretien agenda - en attente de la decision finale',\n  ACCEPTED:           'Candidature acceptee',\n  REJECTED:           'Candidature refusee',\n  AUTO_REJECTED:      'Profil insuffisant (score IA inferieur au seuil)',\n  MANAGER_REJECTED:   'Refuse par le manager - en attente de validation RH',\n  HIRED:              'Embauche confirmee',\n  WITHDRAWN:          'Candidature retiree par le candidat',\n};\nconst statutLabel = statutMap[statut] || statut;\n\nconst emailManagerHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#1e40af;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Nouveau dossier candidat a examiner</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<p>Bonjour,</p>'\n  + '<p>Un dossier candidat vient d\\'etre valide par le systeme RH.</p>'\n  + '<div style=\"background:white;border-left:4px solid #10b981;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<h3 style=\"color:#059669;margin-top:0;\">' + prenom + ' ' + nom + '</h3>'\n  + '<table style=\"width:100%;border-collapse:collapse;\">'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;width:140px;\">Poste</td><td style=\"font-weight:bold;\">' + offreTitre + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Statut</td><td style=\"font-weight:bold;color:#1e40af;\">' + statutLabel + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Email candidat</td><td>' + candidatEmail + '</td></tr>'\n  + '<tr><td style=\"color:#6b7280;padding:6px 0;\">Date</td><td>' + date + '</td></tr>'\n  + (cvUrl ? '<tr><td style=\"color:#6b7280;padding:6px 0;\">CV</td><td><a href=\"' + cvUrl + '\">Telecharger le CV</a></td></tr>' : '')\n  + '</table></div>'\n  + '<p>Si le profil vous convient, planifiez un entretien sur la plateforme JOB4YOU.</p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#dc2626;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Resultat de votre candidature</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Merci pour l\\'interet porte a notre entreprise et pour votre candidature au poste de <b>' + offreTitre + '</b>.</p>'\n  + '<div style=\"background:white;border-left:4px solid #dc2626;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>Cette decision ne remet pas en cause vos competences. Nous vous encourageons a postuler pour d\\'autres offres sur JOB4YOU.</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nconst emailCandidatAccepteHtml = '<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">'\n  + '<div style=\"background:#059669;color:white;padding:24px;border-radius:8px 8px 0 0;\">'\n  + '<h1 style=\"margin:0\">JOB4YOU</h1><p style=\"margin:4px 0 0\">Felicitations !</p></div>'\n  + '<div style=\"background:#f8fafc;padding:24px;border-radius:0 0 8px 8px;\">'\n  + '<h2 style=\"color:#1e40af;\">Bonjour ' + prenom + ',</h2>'\n  + '<p>Nous avons le plaisir de vous informer que votre candidature au poste de <b>' + offreTitre + '</b> a ete retenue.</p>'\n  + '<div style=\"background:white;border-left:4px solid #059669;padding:16px;margin:16px 0;border-radius:0 8px 8px 0;\">'\n  + '<p><b>Statut :</b> ' + statutLabel + '</p>'\n  + '</div>'\n  + '<p>L\\'equipe RH reviendra vers vous prochainement pour la suite du processus (planification, integration).</p>'\n  + '<p>Toutes nos felicitations !</p>'\n  + '<p>Cordialement,<br><b>L\\'equipe RH JOB4YOU</b></p>'\n  + '<p style=\"color:#6b7280;font-size:12px;margin-top:24px;\">Email automatique JOB4YOU Agent 3 — ' + date + '</p>'\n  + '</div></body></html>';\n\nreturn [{ json: { candidateId, candidatEmail, nom, prenom, offreTitre, statut, statutLabel, managerEmail, cvUrl, date, isRejected, isAccepted, isHrRouting, emailManagerHtml, emailCandidatHtml, emailCandidatAccepteHtml } }];"
       },
       "id": "prepare-data",
       "name": "Préparer données dossier",
@@ -35,7 +35,7 @@
     {
       "parameters": {
         "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.managerEmail || 'bargaouihaythem1@gmail.com' }}",
+        "toEmail": "={{ $json.managerEmail }}",
         "subject": "=📋 Nouveau dossier à examiner — {{ $json.prenom }} {{ $json.nom }} / {{ $json.offreTitre }}",
         "html": "={{ $json.emailManagerHtml }}",
         "options": {}
@@ -169,6 +169,48 @@
         }
       },
       "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "g1",
+              "leftValue": "={{ $json.isHrRouting }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "g2",
+              "leftValue": "={{ $json.managerEmail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-hr-routing",
+      "name": "Transmis a un manager ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        400
+      ]
     }
   ],
   "connections": {
@@ -223,11 +265,23 @@
         ],
         [
           {
-            "node": "Email — Manager (dossier validé)",
+            "node": "Transmis a un manager ?",
             "type": "main",
             "index": 0
           }
         ]
+      ]
+    },
+    "Transmis a un manager ?": {
+      "main": [
+        [
+          {
+            "node": "Email — Manager (dossier validé)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
       ]
     }
   },

@@ -333,6 +333,56 @@ class CandidateServiceTest {
             assertThatCode(() -> candidateService.updateCandidateStatus(14L, CandidateStatus.CV_REVIEWED))
                     .doesNotThrowAnyException();
         }
+
+        @Test
+        @DisplayName("le RH peut confirmer un rejet IA : AUTO_REJECTED → REJECTED, motif obligatoire")
+        void shouldAllowHrConfirmationOfIaRejection() {
+            Candidate candidate = makeCandidate(15L, CandidateStatus.AUTO_REJECTED);
+            when(candidateRepository.findById(15L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(15L, CandidateStatus.REJECTED,
+                    "Rejet IA examine et confirme : experience hors cible");
+
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.REJECTED);
+            assertThat(candidate.getNeedsHumanReview()).isFalse();
+        }
+
+        @Test
+        @DisplayName("refuser un rejet IA sans motif est refuse")
+        void shouldRequireReasonToConfirmIaRejection() {
+            Candidate candidate = makeCandidate(16L, CandidateStatus.AUTO_REJECTED);
+            when(candidateRepository.findById(16L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(16L, CandidateStatus.REJECTED, "  "))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("motif est obligatoire");
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("ne pas renvoyer un second e-mail de refus quand le RH contreseigne le rejet IA")
+        void shouldNotDoubleNotifyRefusalAfterIaRejection() {
+            Candidate candidate = makeCandidate(17L, CandidateStatus.AUTO_REJECTED);
+            when(candidateRepository.findById(17L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(17L, CandidateStatus.REJECTED, "Decision IA confirmee par le RH");
+
+            verify(notificationService, never()).sendFinalRejection(any());
+        }
+
+        @Test
+        @DisplayName("envoyer bien l'e-mail de refus sur un refus RH classique (CV_REVIEWED → REJECTED)")
+        void shouldStillNotifyFreshHrRejection() {
+            Candidate candidate = makeCandidate(18L, CandidateStatus.CV_REVIEWED);
+            when(candidateRepository.findById(18L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(18L, CandidateStatus.REJECTED, "CV non conforme au poste");
+
+            verify(notificationService).sendFinalRejection(any());
+        }
     }
 
     // ────────────────────────────────────────────────────────────────────

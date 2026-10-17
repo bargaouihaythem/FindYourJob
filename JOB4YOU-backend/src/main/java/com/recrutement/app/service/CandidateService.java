@@ -556,6 +556,12 @@ public class CandidateService {
             effectiveReason = "Rejet automatique : score IA inférieur au seuil";
         }
 
+        // Le RH vient de statuer humainement sur une décision de l'IA : la revue
+        // demandée par la zone grise ou le mode dégradé est soldée par son acte.
+        if (previousStatus == Candidate.CandidateStatus.AUTO_REJECTED) {
+            candidate.setNeedsHumanReview(false);
+        }
+
         candidate.setStatus(effectiveStatus);
         if (!effectiveReason.isBlank()) {
             candidate.setStatusReason(effectiveReason);
@@ -587,8 +593,13 @@ public class CandidateService {
         // Refus acté directement par le RH, sans avis manager à contre-signer (mauvais CV,
         // entretien téléphonique concluant) : c'est une décision finale, le candidat est
         // informé avec le même e-mail que le refus validé.
+        // Exception : le RH CONFIRME un refus déjà prononcé par l'IA (AUTO_REJECTED →
+        // REJECTED). Le candidat a déjà reçu l'e-mail de refus de l'Agent 3 ; le contreseing
+        // humain est tracé dans le journal d'audit et le motif, il ne doit pas générer une
+        // seconde notification du même refus.
         if (actingManager == null && previousStatus != effectiveStatus
-                && effectiveStatus == Candidate.CandidateStatus.REJECTED) {
+                && effectiveStatus == Candidate.CandidateStatus.REJECTED
+                && previousStatus != Candidate.CandidateStatus.AUTO_REJECTED) {
             notificationService.sendFinalRejection(updatedCandidate);
         }
 
@@ -782,9 +793,17 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.AUTO_REJECTED;
                 break;
             case AUTO_REJECTED:
-                // Seule sortie autorisée depuis un rejet IA : la correction manuelle du
-                // score par le RH/Admin (override), qui repasse le dossier en CV_REVIEWED.
-                allowed = to == Candidate.CandidateStatus.CV_REVIEWED;
+                // Une décision de l'IA n'est jamais définitive sans intervention humaine
+                // (RGPD art. 22). Le RH dispose des deux sorties :
+                //  - REJECTED    : il examine le dossier et CONFIRME le refus (motif obligatoire),
+                //                  la décision devient une décision humaine tracée ;
+                //  - CV_REVIEWED : il estime que l'IA a eu tort et remet le dossier dans le
+                //                  pipeline. Seule la correction du score (overrideAiScore)
+                //                  mène ici, car elle impose une justification et l'audite.
+                // Le manager n'a aucune de ces deux sorties : assertStatusEditableByActor
+                // le limite à son avis, qui serait un MANAGER_REJECTED refusé par la machine.
+                allowed = to == Candidate.CandidateStatus.CV_REVIEWED
+                        || to == Candidate.CandidateStatus.REJECTED;
                 break;
             case PHONE_SCREENING:
                 allowed = to == Candidate.CandidateStatus.TECHNICAL_TEST
@@ -834,7 +853,9 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             default:
-                // REJECTED, AUTO_REJECTED, HIRED, WITHDRAWN : états terminaux
+                // REJECTED, HIRED, WITHDRAWN : états terminaux.
+                // AUTO_REJECTED n'y figure plus : une rejetée IA reste rouverte au RH
+                // (confirmation du refus ou correction du score), voir le cas ci-dessus.
                 allowed = false;
         }
         if (!allowed) {
