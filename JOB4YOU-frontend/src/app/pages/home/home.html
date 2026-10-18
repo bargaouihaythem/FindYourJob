@@ -158,14 +158,25 @@
                 <i class="fas fa-map-marker-alt me-2"></i>
                 {{ job.location }}
               </p>
-              <p class="text-muted mb-2" *ngIf="job.salary">
-                <i class="fas fa-euro-sign me-2"></i>
-                {{ formatSalary(job.salary) }}
+              <p class="text-muted mb-2">
+                <i class="fas fa-hourglass-half me-2"></i>
+                Expérience : {{ job.experienceLevel || job.seniorityLevel || 'à préciser' }}
               </p>
               <p class="text-muted">
                 <i class="fas fa-calendar-alt me-2"></i>
                 {{ job.createdAt | date:'dd/MM/yyyy' }}
               </p>
+            </div>
+
+            <div class="mb-2" *ngIf="splitSkills(job.requiredSkills).length > 0">
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1 mb-1"
+                    *ngFor="let skill of splitSkills(job.requiredSkills) | slice:0:3">
+                {{ skill }}
+              </span>
+              <span class="badge bg-light text-muted"
+                    *ngIf="splitSkills(job.requiredSkills).length > 3">
+                +{{ splitSkills(job.requiredSkills).length - 3 }}
+              </span>
             </div>
             
             <p class="card-text">

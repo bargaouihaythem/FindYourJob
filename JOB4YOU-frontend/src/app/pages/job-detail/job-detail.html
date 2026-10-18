@@ -49,20 +49,46 @@
               Compétences et exigences
             </h4>
             <div class="bg-light p-4 rounded">
-              <p class="mb-0" style="white-space: pre-line;">{{ job.requirements }}</p>
-            </div>
-          </div>
+              <!-- Compétences demandées ( champ back-end requiredSkills ) -->
+              <div *ngIf="job.requiredSkills">
+                <h6 class="text-uppercase small fw-bold text-muted mb-2">Compétences requises</h6>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                  <span class="badge bg-primary-subtle text-primary border border-primary-subtle"
+                        *ngFor="let skill of splitSkills(job.requiredSkills)">
+                    {{ skill }}
+                  </span>
+                </div>
+              </div>
 
-          <div class="mb-4">
-            <h4 class="text-primary mb-3">
-              <i class="fas fa-euro-sign me-2"></i>
-              Rémunération
-            </h4>
-            <div class="bg-light p-3 rounded">
-              <span class="fs-5 fw-bold text-success" *ngIf="job.salary">
-                {{ job.salary | number:'1.0-0' }} € / an
-              </span>
-              <span class="text-muted" *ngIf="!job.salary">À négocier selon profil</span>
+              <!-- Expérience attendue -->
+              <div class="d-flex align-items-center gap-3 flex-wrap mb-2" *ngIf="job.experienceLevel || job.seniorityLevel">
+                <span class="badge bg-warning-subtle text-dark border">
+                  <i class="fas fa-hourglass-half me-1"></i>
+                  Expérience attendue : {{ job.experienceLevel || job.seniorityLevel }}
+                </span>
+                <span class="badge bg-info-subtle text-dark border" *ngIf="job.seniorityLevel">
+                  <i class="fas fa-signal me-1"></i>
+                  Niveau {{ job.seniorityLevel }}
+                </span>
+                <span class="badge bg-secondary-subtle text-dark border" *ngIf="job.departmentName">
+                  <i class="fas fa-building me-1"></i>
+                  Département {{ job.departmentName }}
+                </span>
+                <span class="badge bg-secondary-subtle text-dark border" *ngIf="!job.departmentName && job.jobFamily">
+                  <i class="fas fa-layer-group me-1"></i>
+                  Famille {{ job.jobFamily }}
+                </span>
+              </div>
+
+              <!-- Exigences détaillées rédigées par le RH ( ancienne description libre ) -->
+              <p class="mb-0 text-muted" style="white-space: pre-line;" *ngIf="job.requirements">
+                {{ job.requirements }}
+              </p>
+
+              <p class="mb-0 text-muted fst-italic"
+                 *ngIf="!job.requiredSkills && !job.experienceLevel && !job.seniorityLevel && !job.requirements">
+                Aucune compétence ni expérience explicite n'a encore été saisie pour cette offre.
+              </p>
             </div>
           </div>
 
@@ -72,19 +98,20 @@
             </a>
             
             <!-- Bouton Postuler pour les utilisateurs connectés avec rôle USER -->
-            <button *ngIf="job.status === 'ACTIVE' && canApplyToJob() && !hasAlreadyApplied" 
+            <button *ngIf="job.status === 'ACTIVE' && canApplyToJob()" 
                     (click)="handleApplyAction()" 
                     class="btn btn-success btn-lg">
-              <i class="fas fa-paper-plane me-2"></i> Postuler maintenant
+              <i class="fas fa-paper-plane me-2"></i>
+              {{ existingApplicationStatus === 'WITHDRAWN' ? 'Postuler à nouveau' : 'Postuler maintenant' }}
             </button>
 
-            <!-- Message pour candidature déjà soumise -->
-            <div *ngIf="job.status === 'ACTIVE' && hasAlreadyApplied && isAuthenticated()" 
+            <!-- Message quand un dossier existe déjà pour cette offre : le libellé suit le statut réel -->
+            <div *ngIf="job.status === 'ACTIVE' && hasActiveApplication && isAuthenticated()" 
                  class="alert alert-info">
               <i class="fas fa-check-circle me-2"></i>
-              <strong>Candidature déjà transmise</strong>
+              <strong>Votre candidature sur cette offre</strong>
               <p class="mb-0 mt-1">
-                Vous avez déjà postulé pour cette offre. 
+                {{ applicationStatusMessage }}
                 <a routerLink="/candidate/my-applications" class="alert-link">
                   Consultez l'état de votre candidature
                 </a>
@@ -108,7 +135,7 @@
             </div>
 
             <!-- Message pour les utilisateurs administratifs uniquement (RH, Manager, Admin) -->
-            <div *ngIf="job.status === 'ACTIVE' && !hasAlreadyApplied && isAdministrativeUser()" 
+            <div *ngIf="job.status === 'ACTIVE' && !hasActiveApplication && isAdministrativeUser()" 
                  class="alert alert-info">
               <i class="fas fa-info-circle me-2"></i>
               <strong>Espace Recruteur / Administrateur</strong>

@@ -150,7 +150,8 @@
                 </div>
                 <p class="company-name text-muted mb-0">
                   <i class="fas fa-building me-2"></i>
-                  Entreprise
+                  <span *ngIf="job.departmentName; else genericCompany">Département {{ job.departmentName }}</span>
+                  <ng-template #genericCompany>Entreprise</ng-template>
                 </p>
               </div>
 
@@ -160,14 +161,26 @@
                   <i class="fas fa-map-marker-alt me-2"></i>
                   {{ job.location }}
                 </p>
-                <p class="text-muted mb-2" *ngIf="job.salary">
-                  <i class="fas fa-euro-sign me-2"></i>
-                  {{ formatSalary(job.salary) }}
+                <p class="text-muted mb-2">
+                  <i class="fas fa-hourglass-half me-2"></i>
+                  Expérience : {{ job.experienceLevel || job.seniorityLevel || 'à préciser' }}
                 </p>
                 <p class="text-muted mb-0">
                   <i class="fas fa-calendar-alt me-2"></i>
                   Publié le {{ job.createdAt | date:'dd/MM/yyyy' }}
                 </p>
+              </div>
+
+              <!-- Compétences demandées -->
+              <div class="mb-3" *ngIf="splitSkills(job.requiredSkills).length > 0">
+                <span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1 mb-1"
+                      *ngFor="let skill of splitSkills(job.requiredSkills) | slice:0:4">
+                  {{ skill }}
+                </span>
+                <span class="badge bg-light text-muted"
+                      *ngIf="splitSkills(job.requiredSkills).length > 4">
+                  +{{ splitSkills(job.requiredSkills).length - 4 }} autres
+                </span>
               </div>
 
               <!-- Job Description -->
@@ -200,14 +213,26 @@
                     <i class="fas fa-eye me-1"></i>
                     Détails
                   </a>
-                  <!-- Bouton Postuler visible uniquement pour les candidats connectés avec rôle USER -->
-                  <a *ngIf="job.status === 'ACTIVE' && canApplyToJob()"
+                  <!-- Bouton Postuler visible uniquement pour les candidats connectés avec rôle USER.
+                       Le statut est évalué offre par offre : une candidature retirée autorise un
+                       nouveau dépôt, une candidature en cours se contente d'un badge discret. -->
+                  <a *ngIf="job.status === 'ACTIVE' && canApplyToJob() && canSubmitApplication(job)"
                      [routerLink]="['/job-offers', job.id]"
                      fragment="application-section"
                      class="btn btn-success btn-sm">
                     <i class="fas fa-paper-plane me-1"></i>
-                    Postuler
+                    {{ applicationBadgeFor(job) }}
                   </a>
+
+                  <!-- Candidature déjà déposée sur cette offre : pas de bouton actif, mais un
+                       libellé qui explique la situation au lieu d'afficher « Postuler ». -->
+                  <button *ngIf="job.status === 'ACTIVE' && canApplyToJob() && !canSubmitApplication(job)"
+                          class="btn btn-outline-secondary btn-sm"
+                          disabled
+                          [title]="applicationBadgeFor(job)">
+                    <i class="fas fa-check me-1"></i>
+                    {{ applicationBadgeFor(job) }}
+                  </button>
                   
                   <!-- Message informatif quand un visiteur non connecté ne peut pas postuler.
                        Masqué pour le personnel interne (RH/Manager/Admin) : "Postuler" n'a pas

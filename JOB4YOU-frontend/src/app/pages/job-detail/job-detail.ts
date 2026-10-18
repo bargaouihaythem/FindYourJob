@@ -18,7 +18,33 @@ export class JobDetailComponent implements OnInit {
   job: JobOffer | null = null;
   loading = true;
   error: string | null = null;
-  hasAlreadyApplied = false; // Nouvelle propriété pour tracker si l'utilisateur a déjà postulé
+  /** Statut du dossier existant du candidat sur cette offre, null s'il n'y en a pas. */
+  existingApplicationStatus: string | null = null;
+
+  /**
+   * Un dossier retiré n'est pas une candidature en cours : le candidat qui s'est
+   * rétracté peut postuler à nouveau (le back-end réactive le même dossier). Un
+   * dossier refusé reste close : la réponse a déjà été donnée.
+   */
+  get hasActiveApplication(): boolean {
+    return !!this.existingApplicationStatus && this.existingApplicationStatus !== 'WITHDRAWN';
+  }
+
+  /** Ne dit jamais « déjà transmise » à un dossier refusé : le libellé suit le statut réel. */
+  get applicationStatusMessage(): string {
+    switch (this.existingApplicationStatus) {
+      case 'REJECTED':
+      case 'AUTO_REJECTED':
+      case 'MANAGER_REJECTED':
+        return 'Votre candidature pour cette offre est close (refusée).';
+      case 'ACCEPTED':
+      case 'INTERVIEW_SCHEDULED':
+      case 'HIRED':
+        return 'Votre candidature pour cette offre est acceptée.';
+      default:
+        return 'Vous avez déjà postulé pour cette offre.';
+    }
+  }
   
   // Application form
   applicationForm: FormGroup;
@@ -99,6 +125,18 @@ export class JobDetailComponent implements OnInit {
   }
 
   /**
+   * Les compétences sont stockées en une seule chaîne séparée par des virgules
+   * (ou point-virgules / retours à la ligne) : on les affiche en badges.
+   */
+  splitSkills(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    return raw
+      .split(/[,;\n]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+  }
+
+  /**
    * Vérifie si l'utilisateur peut postuler à une offre d'emploi
    * Seuls les utilisateurs connectés avec le rôle USER peuvent postuler
    */
@@ -108,8 +146,8 @@ export class JobDetailComponent implements OnInit {
       return false;
     }
 
-    // Vérifier si l'utilisateur a déjà postulé
-    if (this.hasAlreadyApplied) {
+    // Un dossier retiré n'empêche pas de postuler à nouveau
+    if (this.hasActiveApplication) {
       return false;
     }
 
@@ -147,18 +185,19 @@ export class JobDetailComponent implements OnInit {
   checkIfAlreadyApplied(email: string, jobOfferId: number): void {
     this.candidateService.getCandidatesByEmail(email).subscribe({
       next: (applications: Candidate[]) => {
-        this.hasAlreadyApplied = applications.some((app: Candidate) => app.jobOfferId === jobOfferId);
+        const match = applications.find((app: Candidate) => app.jobOfferId === jobOfferId);
+        this.existingApplicationStatus = match ? match.status : null;
         console.log('Vérification candidature existante:', {
           email: email,
           jobOfferId: jobOfferId,
-          hasAlreadyApplied: this.hasAlreadyApplied,
+          existingApplicationStatus: this.existingApplicationStatus,
           applicationsCount: applications.length
         });
       },
       error: (err: any) => {
         console.error('Erreur lors de la vérification des candidatures:', err);
         // En cas d'erreur, on assume que l'utilisateur n'a pas encore postulé
-        this.hasAlreadyApplied = false;
+        this.existingApplicationStatus = null;
       }
     });
   }

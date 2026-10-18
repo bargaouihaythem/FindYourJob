@@ -4,6 +4,7 @@ import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { JobOfferService } from '../../services/job-offer.service';
 import { AuthService } from '../../services/auth';
+import { CandidateService } from '../../services/candidate.service';
 import { JobOffer } from '../../models/interfaces';
 
 @Component({
@@ -33,6 +34,7 @@ export class JobOffersComponent implements OnInit {
   constructor(
     private jobOfferService: JobOfferService,
     private authService: AuthService,
+    private candidateService: CandidateService,
     private fb: FormBuilder,
     private route: ActivatedRoute
   ) {
@@ -45,6 +47,7 @@ export class JobOffersComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadJobOffers();
+    this.loadMyApplicationStatuses();
     this.setupSearchForm();
     this.handleUrlParams();
   }
@@ -147,9 +150,12 @@ export class JobOffersComponent implements OnInit {
     return types[contractType] || contractType;
   }
 
-  formatSalary(salary: number | undefined): string {
-    if (!salary) return 'Salaire non spécifié';
-    return `${salary.toLocaleString('fr-FR')} €`;
+  splitSkills(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    return raw
+      .split(/[,;\n]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
   }
 
   clearFilters(): void {
@@ -247,12 +253,67 @@ export class JobOffersComponent implements OnInit {
   }
 
   /**
-   * Retourne le message à afficher quand l'utilisateur ne peut pas postuler
-   * (uniquement pertinent pour un visiteur non connecté — le personnel interne
-   * ne voit pas ce bouton du tout, cf. isStaffUser() dans le template)
+   * Message informatif quand un visiteur non connecté ne peut pas postuler
+   * (uniquement pertinent pour lui — le personnel interne ne voit pas ce bouton)
    */
   getApplyButtonMessage(): string {
     return 'Connectez-vous pour postuler';
+  }
+
+  /**
+   * Statut du dossier du candidat connecté sur chaque offre, pour que la liste
+   * ne propose plus « Postuler » sur une offre déjà traitée (cohérence liste/détail).
+   */
+  private applicationStatusByOffer = new Map<number, string>();
+
+  loadMyApplicationStatuses(): void {
+    if (!this.canApplyToJob()) return;
+    const email = this.authService.getCurrentUser()?.email;
+    if (!email) return;
+    this.candidateService.getCandidatesByEmail(email).subscribe({
+      next: (applications) => {
+        this.applicationStatusByOffer.clear();
+        applications.forEach(app => {
+          if (app.jobOfferId != null && app.status) {
+            this.applicationStatusByOffer.set(app.jobOfferId, app.status);
+          }
+        });
+      },
+      error: (err) => console.error('Chargement des candidatures du candidat impossible:', err)
+    });
+  }
+
+  applicationStatusFor(job: JobOffer): string | null {
+    return this.applicationStatusByOffer.get(job.id) ?? null;
+  }
+
+  /** Un dossier retiré n'empêche pas une nouvelle candidature. */
+  canSubmitApplication(job: JobOffer): boolean {
+    const status = this.applicationStatusFor(job);
+    return this.canApplyToJob() && (status === null || status === 'WITHDRAWN');
+  }
+
+  /**
+   * Libellé du bouton d'une offre. « Déjà postulé » et consorts ne s'affichent que si un
+   * dossier existe réellement : sans dossier — ou si la chargement des candidatures a échoué —
+   * le libellé reste « Postuler », sinon toutes les offres paraissent déjà postulées.
+   */
+  applicationBadgeFor(job: JobOffer): string {
+    const status = this.applicationStatusFor(job);
+    if (status === null) return 'Postuler';
+    if (status === 'WITHDRAWN') return 'Postuler à nouveau';
+    if (status === 'APPLIED') return 'Candidature en cours';
+    if (status === 'CV_REVIEWED' || status === 'PHONE_SCREENING'
+        || status === 'TECHNICAL_TEST' || status === 'INTERVIEW' || status === 'FINAL_INTERVIEW') {
+      return 'Candidature en cours d\'examen';
+    }
+    if (status === 'REJECTED' || status === 'AUTO_REJECTED' || status === 'MANAGER_REJECTED') {
+      return 'Candidature close';
+    }
+    if (status === 'ACCEPTED' || status === 'INTERVIEW_SCHEDULED' || status === 'HIRED') {
+      return 'Candidature retenue';
+    }
+    return 'Candidature en cours';
   }
 }
 

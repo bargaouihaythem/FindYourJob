@@ -77,9 +77,12 @@ export class HomeComponent implements OnInit {
     return types[contractType] || contractType;
   }
 
-  formatSalary(salary: number | undefined): string {
-    if (!salary) return 'Salaire non spécifié';
-    return `${salary.toLocaleString('fr-FR')} €`;
+  splitSkills(raw: string | null | undefined): string[] {
+    if (!raw) return [];
+    return raw
+      .split(/[,;\n]/)
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
   }
 
   isAuthenticated(): boolean {
