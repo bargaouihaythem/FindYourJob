@@ -47,6 +47,9 @@
                 <div class="d-flex flex-wrap align-items-center gap-2">
                   <h3 class="h6 mb-0">{{ interview.candidateName || 'Candidat' }}</h3>
                   <span [class]="getStatusClass(interview.status)">{{ getStatusLabel(interview.status) }}</span>
+                  <span *ngIf="isDossierClosed(interview)" [class]="getDossierBadgeClass(interview.candidateStatus)">
+                    {{ getCandidateStatusLabel(interview.candidateStatus) }}
+                  </span>
                   <span *ngIf="reminderLabel(interview)" class="reminder-badge">
                     <i class="fas fa-bell me-1"></i>{{ reminderLabel(interview) }}
                   </span>
@@ -55,9 +58,12 @@
                   {{ interview.jobOfferTitle || 'Offre non renseignée' }} · {{ getTypeLabel(interview.type) }}
                   <span *ngIf="interview.location"> · {{ interview.location }}</span>
                 </p>
-                <a *ngIf="interview.meetLink" [href]="interview.meetLink" target="_blank" rel="noopener" class="small">
+                <a *ngIf="canJoin(interview)" [href]="interview.meetLink" target="_blank" rel="noopener" class="small">
                   <i class="fas fa-video me-1"></i>Rejoindre le lien Google Meet
                 </a>
+                <p *ngIf="closedReasonLabel(interview) as why" class="small text-muted mb-0 mt-1">
+                  <i class="fas fa-lock me-1"></i>{{ why }}
+                </p>
               </div>
             </div>
           </div>
@@ -108,7 +114,12 @@
             </p>
           </div>
           <div class="d-flex flex-column align-items-end gap-2">
-            <button *ngIf="interview.status !== 'COMPLETED'" type="button"
+            <div class="d-flex flex-wrap justify-content-end gap-2">
+              <span [class]="getDossierBadgeClass(interview.candidateStatus)">
+                {{ getCandidateStatusLabel(interview.candidateStatus) }}
+              </span>
+            </div>
+            <button *ngIf="interview.status !== 'COMPLETED' && !isDossierClosed(interview)" type="button"
                     class="btn btn-sm btn-outline-success" (click)="markAsCompleted(interview)"
                     title="Marquer cet entretien comme effectué (ne change pas le statut du dossier)">
               <i class="fas fa-check me-1"></i>Marquer comme effectué
@@ -118,9 +129,7 @@
                title="Ouvrir la fiche du candidat pour émettre votre avis — la décision finale appartient au RH">
               <i class="fas fa-user-check me-1"></i>Donner mon avis
             </a>
-            <p *ngIf="!interview.advicePossible" class="small text-muted mb-0 text-end">
-              {{ getCandidateStatusLabel(interview.candidateStatus) }}
-            </p>
+            <p *ngIf="closedReasonLabel(interview) as why" class="small text-muted mb-0 text-end">{{ why }}</p>
           </div>
         </div>
       </div>
@@ -149,14 +158,23 @@
           <article *ngFor="let day of calendarDays" class="calendar-day" [class.outside-month]="!day.inCurrentMonth" [class.today]="isToday(day.date)">
             <span class="day-number">{{ day.date.getDate() }}</span>
             <div *ngFor="let interview of day.interviews" class="calendar-event" [class.cancelled]="interview.status === 'CANCELLED'"
+                 [class.settled]="!isDossierClosed(interview) && isSlotSettled(interview)"
+                 [class.awaiting-hr]="!isDossierClosed(interview) && awaitsHrDecision(interview)"
+                 [class.dossier-closed]="isDossierClosed(interview)"
                  role="button" tabindex="0"
                  (click)="openInterviewDetail(interview)"
                  (keydown.enter)="$event.preventDefault(); openInterviewDetail(interview)"
                  (keydown.space)="$event.preventDefault(); openInterviewDetail(interview)"
-                 [attr.aria-label]="'Détail de l’entretien de ' + (interview.candidateName || 'Candidat')">
+                 [attr.aria-label]="'Détail de l’entretien de ' + (interview.candidateName || 'Candidat') + ' — ' + getCandidateStatusLabel(interview.candidateStatus)">
               <span>{{ formatTime(interview.interviewDate) }}</span>
               <strong>{{ interview.candidateName || 'Candidat' }}</strong>
-              <small>{{ getTypeLabel(interview.type) }}</small>
+              <small>
+                <i class="fas me-1"
+                   [ngClass]="isDossierClosed(interview) ? 'fa-lock'
+                              : interview.status === 'COMPLETED' ? 'fa-check'
+                              : interview.status === 'CANCELLED' ? 'fa-ban'
+                              : awaitsHrDecision(interview) ? 'fa-hourglass-half' : 'fa-clock'"></i>{{ getTypeLabel(interview.type) }}
+              </small>
             </div>
           </article>
         </div>
@@ -178,6 +196,9 @@
           <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
             <h6 class="candidate-name mb-0">{{ interview.candidateName || 'Candidat' }}</h6>
             <span [class]="getStatusClass(interview.status)">{{ getStatusLabel(interview.status) }}</span>
+            <span [class]="getDossierBadgeClass(interview.candidateStatus)">
+              {{ getCandidateStatusLabel(interview.candidateStatus) }}
+            </span>
             <span *ngIf="reminderLabel(interview)" class="reminder-badge">
               <i class="fas fa-bell me-1"></i>{{ reminderLabel(interview) }}
             </span>
@@ -210,21 +231,22 @@
           </p>
         </div>
         <div class="modal-footer">
+          <p *ngIf="closedReasonLabel(selectedInterview) as why" class="small text-muted me-auto mb-0">
+            <i class="fas fa-lock me-1"></i>{{ why }}
+          </p>
           <button type="button" class="btn btn-outline-secondary" (click)="closeInterviewDetail()">Fermer</button>
-          <button type="button" class="btn btn-outline-success" *ngIf="isPast(interview) && interview.status !== 'COMPLETED'"
-                  (click)="markAsCompleted(interview)"
+          <button type="button" class="btn btn-outline-success"
+                  *ngIf="selectedInterview.status !== 'COMPLETED' && !isDossierClosed(selectedInterview)"
+                  (click)="markAsCompleted(selectedInterview)"
                   title="Marquer cet entretien comme effectué — le statut du dossier reste piloté par le RH">
             <i class="fas fa-check me-2"></i>Marquer comme effectué
           </button>
-          <a *ngIf="interview.advicePossible" class="btn btn-outline-primary" routerLink="/manager/candidates"
-             [queryParams]="{ candidateId: interview.candidateId }" (click)="closeInterviewDetail()"
+          <a *ngIf="selectedInterview.advicePossible" class="btn btn-outline-primary" routerLink="/manager/candidates"
+             [queryParams]="{ candidateId: selectedInterview.candidateId }" (click)="closeInterviewDetail()"
              title="Émettre un avis — la décision finale appartient au RH">
             <i class="fas fa-user-check me-2"></i>Donner mon avis
           </a>
-          <span *ngIf="!interview.advicePossible" class="small text-muted me-auto">
-            {{ getCandidateStatusLabel(interview.candidateStatus) }}
-          </span>
-          <a *ngIf="interview.meetLink" [href]="interview.meetLink" target="_blank" rel="noopener" class="btn btn-primary">
+          <a *ngIf="canJoin(selectedInterview)" [href]="selectedInterview.meetLink" target="_blank" rel="noopener" class="btn btn-primary">
             <i class="fas fa-video me-2"></i>Rejoindre l’entretien
           </a>
         </div>

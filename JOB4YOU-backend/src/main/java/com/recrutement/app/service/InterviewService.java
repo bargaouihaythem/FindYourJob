@@ -47,6 +47,9 @@ public class InterviewService {
     @Autowired
     private AccessControlService accessControlService;
 
+    @Autowired
+    private CandidateService candidateService;
+
     /**
      * Planifie un nouvel entretien
      */
@@ -56,6 +59,33 @@ public class InterviewService {
             Candidate.CandidateStatus.AUTO_REJECTED,
             Candidate.CandidateStatus.MANAGER_REJECTED,
             Candidate.CandidateStatus.WITHDRAWN
+    );
+
+    /**
+     * Dossiers définitivement tranchés par le RH : leurs entretiens ne sont plus modifiables.
+     * {@code MANAGER_REJECTED} en est absent — c'est une proposition, pas une décision — et le
+     * manager doit pouvoir y clôturer l'entretien qui a produit refus.
+     */
+    private static final List<Candidate.CandidateStatus> DOSSIER_DECIDED_STATUSES = List.of(
+            Candidate.CandidateStatus.HIRED,
+            Candidate.CandidateStatus.REJECTED,
+            Candidate.CandidateStatus.AUTO_REJECTED,
+            Candidate.CandidateStatus.WITHDRAWN
+    );
+
+    /** Durée retenue quand la requête n'en indique pas : celle du formulaire d'origine. */
+    private static final int DEFAULT_DURATION_MINUTES = 60;
+
+    /**
+     * Statuts qui réservent l'agenda de l'intervieweur : seule une annulation libère le créneau.
+     * COMPLETED compte comme pris, et RESCHEDULED garde la date courante de la ligne — c'est bien
+     * elle qui bloque désormais l'intervieweur.
+     */
+    private static final List<Interview.InterviewStatus> BOOKING_STATUSES = List.of(
+            Interview.InterviewStatus.SCHEDULED,
+            Interview.InterviewStatus.IN_PROGRESS,
+            Interview.InterviewStatus.COMPLETED,
+            Interview.InterviewStatus.RESCHEDULED
     );
 
     @Transactional
@@ -86,6 +116,10 @@ public class InterviewService {
         // Un manager qui planifie ne le fait que pour son propre agenda.
         assertInterviewerAssignmentAllowed(interviewer);
 
+        // Deux rendez-vous en même temps, c'est physiquement impossible — même le même jour.
+        assertNoOverlapWithInterviewerAgenda(interviewer.getId(), interviewRequest.getInterviewDate(),
+                interviewRequest.getDurationMinutes(), null);
+
         // Créer l'entretien
         Interview interview = new Interview();
         mapRequestToEntity(interviewRequest, interview);
@@ -94,16 +128,19 @@ public class InterviewService {
         interview.setCreatedAt(LocalDateTime.now());
         interview.setUpdatedAt(LocalDateTime.now());
 
-        // NB : planifier un entretien est un acte de LOGISTIQUE (agenda) et ne modifie plus le
-        // statut du candidat. L'avancement du pipeline (PHONE_SCREENING, TECHNICAL_TEST, ...) reste
-        // piloté exclusivement par les actions de statut RH/manager, seules garde-fouées par la
-        // machine à états (CandidateService.assertValidTransition). La notification du manager reste
-        // déclenchée par le passage en TECHNICAL_TEST, côté CandidateService.
-
+        // Planifier l'entretien est d'abord un acte d'agenda — mais cet agenda est l'étape du
+        // pipeline en cours : le dossier passe donc à l'étape correspondant au type planifié,
+        // dans la même transaction. La machine à états (CandidateService) garde la main : une
+        // avancée qu'elle refuse laisse le dossier où il est, sans jamais annuler l'entretien.
         Interview savedInterview = interviewRepository.save(interview);
 
+        candidateService.advanceForScheduledInterview(
+                candidate.getId(), candidateStatusForType(savedInterview.getType()),
+                "Entretien " + labelForType(savedInterview.getType()) + " planifié le "
+                        + savedInterview.getInterviewDate());
+
         auditLogService.log("CANDIDATE", candidate.getId(), "INTERVIEW_SCHEDULED",
-                null, interviewRequest.getType() + " le " + savedInterview.getInterviewDate());
+                null, savedInterview.getType() + " le " + savedInterview.getInterviewDate());
 
         // Rappels automatiques : candidat J-1, interviewer H-2
         reminderService.createInterviewReminders(savedInterview);
@@ -115,6 +152,47 @@ public class InterviewService {
         n8nService.triggerAgent2InterviewScheduler(savedInterview);
 
         return new InterviewResponse(savedInterview);
+    }
+
+    /**
+     * Étape de pipeline que représente un type d'entretien planifié. Le mapping est volontaire
+     * identique à celui que faisait le frontend : la différence est qu'il est maintenant appliqué
+     * par le serveur, donc sous le contrôle de la machine à états et quelle que soit la voie
+     * d'appel (ihm, API, rappel n8n).
+     */
+    private Candidate.CandidateStatus candidateStatusForType(Interview.InterviewType type) {
+        if (type == null) {
+            return null;
+        }
+        switch (type) {
+            case PHONE_SCREENING:
+                return Candidate.CandidateStatus.PHONE_SCREENING;
+            case TECHNICAL:
+                return Candidate.CandidateStatus.TECHNICAL_TEST;
+            case FINAL:
+                return Candidate.CandidateStatus.FINAL_INTERVIEW;
+            case HR:
+            case MANAGER:
+            case GROUP:
+                return Candidate.CandidateStatus.INTERVIEW;
+            default:
+                return null;
+        }
+    }
+
+    private String labelForType(Interview.InterviewType type) {
+        if (type == null) {
+            return "";
+        }
+        switch (type) {
+            case PHONE_SCREENING: return "téléphonique";
+            case TECHNICAL: return "technique";
+            case HR: return "RH";
+            case MANAGER: return "avec le manager";
+            case FINAL: return "final";
+            case GROUP: return "de groupe";
+            default: return type.name();
+        }
     }
 
     /**
@@ -176,6 +254,56 @@ public class InterviewService {
     }
 
     /**
+     * Refuse un créneau qui en chevauche un déjà réservé par le même intervieweur.
+     * Plusieurs entretiens le même jour restent autorisés : ce qui est physiquement impossible,
+     * c'est d'être à deux rendez-vous en même temps. Sans ce contrôle, l'agent n8n pose deux
+     * événements Google qui se recouvrent et le second candidat reçoit une invitation pour un
+     * créneau où son intervieweur est déjà pris.
+     *
+     * @param excludedId un entretien en cours de modification ne doit pas se chevaucher lui-même
+     */
+    private void assertNoOverlapWithInterviewerAgenda(Long interviewerId, LocalDateTime start,
+                                                     Integer durationMinutes, Long excludedId) {
+        if (interviewerId == null || start == null) {
+            return;
+        }
+        LocalDateTime end = start.plusMinutes(resolveDuration(durationMinutes));
+        // Fenêtre volontairement large : un entretien de la veille au soir ou du lendemain matin
+        // peut chevaucher une fin / un début de journée.
+        List<Interview> surroundings = interviewRepository.findByInterviewerIdAndInterviewDateBetween(
+                interviewerId, start.minusDays(1), start.plusDays(1));
+
+        for (Interview other : surroundings) {
+            if (other.getId().equals(excludedId) || !BOOKING_STATUSES.contains(other.getStatus())) {
+                continue;
+            }
+            LocalDateTime otherEnd = other.getInterviewDate().plusMinutes(resolveDuration(other.getDurationMinutes()));
+            if (start.isBefore(otherEnd) && other.getInterviewDate().isBefore(end)) {
+                throw new IllegalArgumentException("Ce créneau chevauche un entretien déjà planifié avec "
+                        + candidateLabel(other) + " (" + other.getInterviewDate().toLocalDate()
+                        + " " + other.getInterviewDate().toLocalTime() + ", "
+                        + resolveDuration(other.getDurationMinutes()) + " min). "
+                        + "Plusieurs entretiens le même jour sont possibles, mais pas en même temps : "
+                        + "choisissez un autre horaire.");
+            }
+        }
+    }
+
+    private int resolveDuration(Integer durationMinutes) {
+        return durationMinutes == null || durationMinutes <= 0
+                ? DEFAULT_DURATION_MINUTES : durationMinutes;
+    }
+
+    private String candidateLabel(Interview interview) {
+        Candidate candidate = interview.getCandidate();
+        if (candidate == null) {
+            return "un autre candidat";
+        }
+        String fullName = (candidate.getFirstName() + " " + candidate.getLastName()).trim();
+        return fullName.isEmpty() ? "Candidat " + candidate.getId() : fullName;
+    }
+
+    /**
      * Récupère un entretien par son ID
      */
     public InterviewResponse getInterviewById(Long id) {
@@ -212,6 +340,11 @@ public class InterviewService {
 
         mapRequestToEntity(interviewRequest, interview);
         interview.setUpdatedAt(LocalDateTime.now());
+
+        // Déplacer un entretien sur son propre créneau n'est pas un conflit : c'est le cas normal
+        // d'une simple correction de durée, d'où l'identité exclue de la comparaison.
+        assertNoOverlapWithInterviewerAgenda(interview.getInterviewer().getId(),
+                interviewRequest.getInterviewDate(), interviewRequest.getDurationMinutes(), id);
 
         Interview updatedInterview = interviewRepository.save(interview);
         return new InterviewResponse(updatedInterview);
@@ -283,6 +416,25 @@ public class InterviewService {
         assertCanAccessInterview(interview);
 
         Interview.InterviewStatus previousStatus = interview.getStatus();
+
+        // Un dossier déjà tranché n'a plus d'entretien à rejouer. Sans ce garde, le manager
+        // peut relancer un créneau clos — et déclencher par exemple un e-mail d'annulation
+        // chez un candidat que le RH vient d'embaucher.
+        Candidate.CandidateStatus dossierStatus = interview.getCandidate().getStatus();
+        if (status != previousStatus && DOSSIER_DECIDED_STATUSES.contains(dossierStatus)) {
+            throw new IllegalArgumentException(
+                    "Cet entretien est rattaché à un dossier déjà tranché (" + dossierStatus
+                    + ") : il n'est plus modifiable. Adressez-vous au RH.");
+        }
+        // Rouvrir un entretien clôturé n'appartient qu'au RH : le manager qui a tenu son
+        // rendez-vous ne peut pas en effacer la clôture.
+        if (previousStatus == Interview.InterviewStatus.COMPLETED
+                && status != Interview.InterviewStatus.COMPLETED
+                && accessControlService.currentIsPureManager()) {
+            throw new IllegalArgumentException(
+                    "Cet entretien est déjà marqué comme effectué : seul le RH peut le rouvrir.");
+        }
+
         interview.setStatus(status);
         interview.setUpdatedAt(LocalDateTime.now());
 

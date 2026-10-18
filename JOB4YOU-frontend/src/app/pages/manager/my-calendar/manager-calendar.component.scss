@@ -175,6 +175,47 @@
   outline: none;
 }
 
+/* Créneau clôturé (entretien effectué) puis dossier tranché par le RH : le gris doit se lire
+   d'emblée dans la grille, sinon le manager croit avoir un rendez-vous à tenir ou à défaire. */
+.calendar-event.settled {
+  background: #dcfce7;
+  border-left-color: #16a34a;
+  color: #14532d;
+  opacity: .8;
+}
+
+.calendar-event.dossier-closed {
+  background: #eef0f4;
+  border-left-color: #94a3b8;
+  color: #64748b;
+  opacity: .65;
+}
+
+.calendar-event.settled:hover,
+.calendar-event.settled:focus-visible {
+  background: #bbf7d0;
+  box-shadow: 0 2px 8px rgba(22, 163, 74, .18);
+}
+
+.calendar-event.dossier-closed:hover,
+.calendar-event.dossier-closed:focus-visible {
+  background: #e2e8f0;
+  box-shadow: none;
+}
+
+/* Avis rendu (favorable ou refus après entretien) : décision RH en attente, créneau traité. */
+.calendar-event.awaiting-hr {
+  background: #fef3c7;
+  border-left-color: #d97706;
+  color: #92400e;
+}
+
+.calendar-event.awaiting-hr:hover,
+.calendar-event.awaiting-hr:focus-visible {
+  background: #fde68a;
+  box-shadow: 0 2px 8px rgba(217, 119, 6, .18);
+}
+
 .interview-details {
   margin-bottom: 1rem;
 }

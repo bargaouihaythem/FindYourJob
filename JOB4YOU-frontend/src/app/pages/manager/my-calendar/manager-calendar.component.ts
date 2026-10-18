@@ -161,7 +161,87 @@ export class ManagerCalendarComponent implements OnInit {
     return labels[status ?? ''] ?? 'Dossier hors de votre périmètre';
   }
 
-  /** Marque l'entretien comme effectué (agenda seul : le pipeline reste piloté par les statuts). */
+  /**
+   * Décision finale atteinte côté dossier (contreseing RH, rejet IA arbitré, retrait) :
+   * le créneau n'a plus rien à faire vivre — sans ce garde, le manager peut rouvrir un
+   * entretien et le clôturer une seconde fois sur un dossier déjà tranché.
+   */
+  isDossierClosed(interview: Interview): boolean {
+    return ['REJECTED', 'HIRED', 'AUTO_REJECTED', 'WITHDRAWN'].includes(interview.candidateStatus ?? '');
+  }
+
+  /** Créneau soldé dans l'agenda : entretien effectué ou annulé. */
+  isSlotSettled(interview: Interview): boolean {
+    return interview.status === 'COMPLETED' || interview.status === 'CANCELLED';
+  }
+
+  /**
+   * Le manager a rendu son avis — favorable comme défavorable — et la balle est dans le camp
+   * du RH. Le dossier n'est pas clos pour autant : c'est précisément l'état « en attente »,
+   * qu'il faut distinguer d'un créneau encore à traiter.
+   */
+  awaitsHrDecision(interview: Interview): boolean {
+    return ['ACCEPTED', 'MANAGER_REJECTED', 'INTERVIEW_SCHEDULED'].includes(interview.candidateStatus ?? '');
+  }
+
+  /**
+   * Un lien Meet ne se rejoint que tant que le créneau court. La borne est la fin prévue
+   * (date + durée) : arrêtée au début du créneau, elle ferait disparaître le bouton pendant
+   * l'entretien lui-même.
+   */
+  canJoin(interview: Interview): boolean {
+    const duration = interview.durationMinutes && interview.durationMinutes > 0 ? interview.durationMinutes : 60;
+    const slotEnd = new Date(interview.interviewDate).getTime() + duration * 60000;
+    return !!interview.meetLink && slotEnd > Date.now()
+      && !this.isSlotSettled(interview) && !this.isDossierClosed(interview);
+  }
+
+  /**
+   * Ce qui remplace les boutons : un motif lisible plutôt qu'un contrôle grisé sans explication.
+   */
+  closedReasonLabel(interview: Interview): string | null {
+    if (this.isDossierClosed(interview)) {
+      switch (interview.candidateStatus) {
+        case 'HIRED': return 'Dossier clôturé : le RH a validé l’embauche — il n’y a plus rien à saisir ici.';
+        case 'REJECTED': return 'Dossier clôturé : le RH a validé le refus — il n’y a plus rien à saisir ici.';
+        case 'AUTO_REJECTED': return 'Dossier clôturé après arbitrage RH du rejet de l’agent IA.';
+        default: return 'Dossier clôturé : le candidat s’est retiré.';
+      }
+    }
+    // Refus (ou avis favorable) déjà rendu après cet entretien : le manager ne doit pas croire
+    // qu'il a raté une étape. Le candidat n'est pas encore prévenu — c'est le RH qui envoie la
+    // réponse, pour éviter deux e-mails contradictoires.
+    if (interview.candidateStatus === 'MANAGER_REJECTED') {
+      return 'Votre refus après cet entretien est enregistré et transmis au RH. Le candidat n’est '
+        + 'pas encore prévenu : la réponse lui vient du RH, qui confirme ou renverse votre avis. '
+        + 'Rien à resaisir ici.';
+    }
+    if (interview.candidateStatus === 'ACCEPTED') {
+      return 'Votre avis favorable est enregistré : le RH le contre-signe (embauche) ou le renverse. '
+        + 'Le candidat ne reçoit sa réponse que de lui.';
+    }
+    if (interview.candidateStatus === 'INTERVIEW_SCHEDULED') {
+      return 'Entretien confirmé de votre côté : la décision finale appartient au RH.';
+    }
+    if (interview.status === 'COMPLETED') {
+      return 'Entretien déjà marqué comme effectué : il ne se clôture pas deux fois.';
+    }
+    if (interview.status === 'CANCELLED') {
+      return 'Entretien annulé : ce créneau n’est plus à traiter.';
+    }
+    return null;
+  }
+
+  /** Badge de l'état du dossier, posé sur le créneau pour qu'on le voie d'un coup d'œil. */
+  getDossierBadgeClass(status?: string): string {
+    if (status === 'HIRED') return 'badge bg-success';
+    if (status === 'REJECTED' || status === 'AUTO_REJECTED' || status === 'WITHDRAWN') return 'badge bg-secondary';
+    if (status === 'ACCEPTED' || status === 'MANAGER_REJECTED' || status === 'INTERVIEW_SCHEDULED') {
+      return 'badge bg-warning text-dark';
+    }
+    return 'badge bg-light text-dark';
+  }
+
   markAsCompleted(interview: Interview): void {
     this.interviewService.updateInterviewStatus(interview.id, 'COMPLETED').subscribe({
       next: (updated: Interview) => {

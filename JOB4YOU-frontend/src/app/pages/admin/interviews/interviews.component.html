@@ -568,6 +568,31 @@
               </div>
             </div>
           </div>
+          <!-- Plusieurs entretiens le même jour sont possibles, pas à la même heure :
+               l'agenda du jour est montré avant l'enregistrement, pas après le refus serveur. -->
+          <div class="mb-3 interviewer-day-preview" *ngIf="interviewerDayLabel() as dayLabel">
+            <div class="border rounded bg-light p-2">
+              <div class="small fw-semibold mb-1">
+                <i class="fas fa-user-clock me-1"></i>{{ dayLabel }}
+              </div>
+              <p class="small text-muted mb-0" *ngIf="interviewerDaySlots.length === 0">
+                Aucun autre entretien ce jour-là.
+              </p>
+              <ul class="list-unstyled small mb-0" *ngIf="interviewerDaySlots.length">
+                <li *ngFor="let slot of interviewerDaySlots">
+                  <i class="fas fa-clock me-1"></i>{{ formatTime(slot.interviewDate) }} –
+                  {{ formatSlotEnd(slot) }} · {{ slot.candidateName || 'Candidat' }}
+                  <span class="text-muted">({{ slot.durationMinutes || 60 }} min)</span>
+                </li>
+              </ul>
+            </div>
+            <div class="alert alert-warning py-2 mt-2 mb-0 interviewer-clash" role="alert" *ngIf="slotConflict() as clash">
+              <i class="fas fa-exclamation-triangle me-1"></i>
+              Chevauchement avec l'entretien de {{ clash.candidateName || 'ce candidat' }} à
+              {{ formatTime(clash.interviewDate) }}. Choisissez un autre horaire : plusieurs
+              entretiens le même jour sont possibles, mais pas en même temps.
+            </div>
+          </div>
           <div class="mb-3">
             <label class="form-label">
               <i class="fas fa-sticky-note me-2"></i>
@@ -576,15 +601,12 @@
             <textarea class="form-control" formControlName="notes" rows="3"
                       placeholder="Notes additionnelles sur l'entretien..."></textarea>
           </div>
-          <div class="mb-3 form-check" *ngIf="!selectedInterview && !plansOwnAgendaOnly">
-            <input type="checkbox" class="form-check-input" id="advanceStatus" formControlName="advanceStatus">
-            <label class="form-check-label" for="advanceStatus">
-              Faire aussi avancer le statut du candidat à l'étape correspondante
-            </label>
-            <small class="d-block text-muted">
-              Optionnel : par défaut, planifier un entretien ne modifie pas le statut (agenda uniquement).
-            </small>
-          </div>
+          <p class="small text-muted mb-0" *ngIf="!selectedInterview">
+            <i class="fas fa-circle-info me-1"></i>
+            Le dossier passera automatiquement à l'étape correspondant à cet entretien
+            (téléphonique, test technique, entretien, entretien final) tant que le workflow le
+            permet ; un dossier déjà plus avancé garde son étape.
+          </p>
         </form>
       </div>
       <div class="modal-footer">
@@ -592,8 +614,8 @@
           <i class="fas fa-times me-2"></i>
           Annuler
         </button>
-        <button type="button" class="btn btn-primary" (click)="saveInterview()" 
-                [disabled]="interviewForm.invalid">
+        <button type="button" class="btn btn-primary" (click)="saveInterview()"
+                [disabled]="interviewForm.invalid || slotConflict()">
           <i class="fas fa-save me-2"></i>
           {{ selectedInterview ? 'Mettre à jour' : 'Créer' }}
         </button>

@@ -1,7 +1,7 @@
 import { environment } from "../../../../environments/environment";
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
@@ -90,6 +90,10 @@ export class InterviewsComponent implements OnInit {
   calendarDate = new Date();
   calendarDays: { date: Date; interviews: Interview[] }[] = [];
 
+  // Créneaux déjà réservés à l'intervieweur pour la journée en cours de préparation
+  interviewerDaySlots: Interview[] = [];
+  private interviewerDayCache = new Map<number, Interview[]>();
+
   readonly Math = Math;
 
   constructor(
@@ -102,7 +106,9 @@ export class InterviewsComponent implements OnInit {
     private toastrNotification: ToastrNotificationService,
     private notificationService: NotificationService,
     private http: HttpClient,
-    private interviewerService: InterviewerService
+    private interviewerService: InterviewerService,
+    private route: ActivatedRoute,
+    private router: Router
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -118,11 +124,7 @@ export class InterviewsComponent implements OnInit {
       duration: [60, [Validators.required, Validators.min(15)]],
       location: ['', Validators.required],
       type: ['TECHNICAL', Validators.required],
-      notes: [''],
-      // Option A : planifier un entretien = pure logistique (agenda) et ne change PAS le statut.
-      // Cette case (décochée par défaut) permet, par commodité, de faire aussi avancer le statut
-      // du candidat à l'étape correspondante — via l'endpoint de statut, donc validé par le garde-fou.
-      advanceStatus: [false]
+      notes: ['']
     });
 
     this.feedbackForm = this.fb.group({
@@ -140,14 +142,19 @@ export class InterviewsComponent implements OnInit {
     });
   }
 
+  /** Dossier pré-sélectionné demandé par lien profond depuis la liste des candidats. */
+  private pendingPlanCandidateId: number | null = null;
+
   ngOnInit(): void {
     // Initialiser la propriété d'accès aux CVs
     this.userCanViewCV = this.canViewCV();
-    
+    this.pendingPlanCandidateId = Number(this.route.snapshot.queryParamMap.get('newFor')) || null;
+
     this.loadInterviews();
     this.loadCandidates();
     this.loadInterviewers();
     this.setupSearchSubscription();
+    this.setupInterviewerDayPreview();
   }
 
   loadInterviews(): void {
@@ -183,6 +190,7 @@ export class InterviewsComponent implements OnInit {
     fetch$.subscribe({
       next: (candidates: any[]) => {
         this.candidates = candidates;
+        this.openPendingPlan();
       },
       error: (error: any) => {
         console.error('Erreur lors du chargement des candidats:', error);
@@ -261,6 +269,87 @@ export class InterviewsComponent implements OnInit {
     this.searchForm.valueChanges.subscribe(() => {
       this.applyFilters();
     });
+  }
+
+  /**
+   * Plusieurs entretiens le même jour sont possibles, pas à la même heure. Plutôt que de
+   * laisser l'utilisateur découvrir le chevauchement à l'enregistrement, l'agenda du jour
+   * est affiché dès que l'intervieweur, la date ou la durée change.
+   */
+  setupInterviewerDayPreview(): void {
+    ['interviewerId', 'interviewDate', 'duration'].forEach(control =>
+      this.interviewForm.get(control)?.valueChanges.subscribe(() => this.refreshInterviewerDay()));
+  }
+
+  refreshInterviewerDay(): void {
+    const interviewerId = Number(this.interviewForm.get('interviewerId')?.value);
+    const date = this.interviewForm.get('interviewDate')?.value;
+    if (!interviewerId || !date) {
+      this.interviewerDaySlots = [];
+      return;
+    }
+    const show = (all: Interview[]) => (this.interviewerDaySlots = this.bookedSlotsOn(all, new Date(date)));
+    const cached = this.interviewerDayCache.get(interviewerId);
+    if (cached) {
+      show(cached);
+      return;
+    }
+    this.interviewService.getInterviewsByInterviewer(interviewerId).subscribe({
+      next: (all: Interview[]) => {
+        this.interviewerDayCache.set(interviewerId, all);
+        show(all);
+      },
+      // L'aperçu reste un confort : le serveur refusera de toute façon le chevauchement.
+      error: () => (this.interviewerDaySlots = [])
+    });
+  }
+
+  /** Créneaux qui occupent ce jour-là : hors entretien annulé et hors entretien en cours d'édition. */
+  private bookedSlotsOn(interviews: Interview[], day: Date): Interview[] {
+    const sameDay = (date: Date | string) => {
+      const other = new Date(date);
+      return other.getFullYear() === day.getFullYear()
+        && other.getMonth() === day.getMonth()
+        && other.getDate() === day.getDate();
+    };
+    return interviews
+      .filter(iv => iv.status !== 'CANCELLED' && iv.id !== this.selectedInterview?.id && sameDay(iv.interviewDate))
+      .sort((a, b) => new Date(a.interviewDate).getTime() - new Date(b.interviewDate).getTime());
+  }
+
+  /** Le créneau en préparation retombe-t-il sur une réservation déjà prise ? */
+  slotConflict(): Interview | null {
+    const date = this.interviewForm.get('interviewDate')?.value;
+    if (!date) return null;
+    const start = new Date(date).getTime();
+    const end = start + this.durationOf(Number(this.interviewForm.get('duration')?.value)) * 60000;
+    return this.interviewerDaySlots.find(other => {
+      const otherStart = new Date(other.interviewDate).getTime();
+      return start < otherStart + this.durationOf(other.durationMinutes) * 60000 && otherStart < end;
+    }) ?? null;
+  }
+
+  formatSlotEnd(interview: Interview): string {
+    const end = new Date(interview.interviewDate).getTime() + this.durationOf(interview.durationMinutes) * 60000;
+    return this.formatTime(new Date(end));
+  }
+
+  interviewerDayLabel(): string | null {
+    const date = this.interviewForm.get('interviewDate')?.value;
+    if (!date || !this.interviewForm.get('interviewerId')?.value) return null;
+    return `Journée de ${this.selectedInterviewerName()} le ${this.formatDate(date)}`;
+  }
+
+  private selectedInterviewerName(): string {
+    if (this.plansOwnAgendaOnly) return this.ownInterviewerLabel;
+    const interviewer = this.interviewers.find(i => i.id === Number(this.interviewForm.get('interviewerId')?.value));
+    return interviewer ? interviewer.name : 'l’intervieweur';
+  }
+
+  /** Une durée manquante retombe sur les 60 minutes du formulaire, comme côté serveur. */
+  private durationOf(minutes?: number | null): number {
+    const value = Number(minutes);
+    return value > 0 ? value : 60;
   }
 
   applyFilters(): void {
@@ -363,6 +452,32 @@ export class InterviewsComponent implements OnInit {
     return this.sortOrder === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
   }
 
+  /**
+   * Lien profond « ?newFor=<id> » envoyé par le bouton Planifier l'entretien de la liste des
+   * candidats : la popup s'ouvre avec le dossier déjà sélectionné. Elle ne peut s'ouvrir qu'une
+   * fois la liste des dossiers reçue, faute de quoi le champ « Candidat » perdrait la valeur.
+   */
+  private openPendingPlan(): void {
+    const candidateId = this.pendingPlanCandidateId;
+    if (candidateId == null || candidateId <= 0) { return; }
+    this.pendingPlanCandidateId = null;
+
+    if (!this.candidates.some(c => c.id === candidateId)) {
+      this.toastrNotification.showWarning(
+        'Ce dossier n\'est pas dans votre périmètre : il n\'a pas pu être pré-sélectionné.',
+        'Planification refusée');
+      return;
+    }
+    this.router.navigate([], { relativeTo: this.route, queryParams: {} });
+
+    this.openInterviewModal();
+    this.interviewForm.get('candidateId')?.setValue(String(candidateId));
+    if (this.plansOwnAgendaOnly) {
+      // Un manager qui se programme lui-même ouvre un entretien avec le manager.
+      this.interviewForm.get('type')?.setValue('MANAGER');
+    }
+  }
+
   openInterviewModal(interview?: Interview): void {
     this.selectedInterview = interview || null;
     
@@ -434,6 +549,17 @@ export class InterviewsComponent implements OnInit {
         this.toastrNotification.showValidationError('ID de l\'interviewer invalide');
         return;
       }
+
+      // Le serveur (InterviewService.assertNoOverlapWithInterviewerAgenda) refuse déjà le
+      // chevauchement : le refuser ici évite une erreur 400 et annonce l'heure libre.
+      const clash = this.slotConflict();
+      if (clash) {
+        this.toastrNotification.showInterviewError(
+          `Ce créneau chevauche l'entretien de ${clash.candidateName || 'un autre candidat'} `
+          + `à ${this.formatTime(clash.interviewDate)} (${this.durationOf(clash.durationMinutes)} min). `
+          + `Plusieurs entretiens le même jour sont possibles, mais pas en même temps.`);
+        return;
+      }
       
       // Conversion de la date au format compatible avec LocalDateTime
       // Format attendu: "2024-12-23T14:30:00"
@@ -463,6 +589,7 @@ export class InterviewsComponent implements OnInit {
         this.interviewService.updateInterview(this.selectedInterview.id, interviewToSend).subscribe({
           next: () => {
             this.toastrNotification.showInterviewUpdatedSuccess();
+            this.interviewerDayCache.clear();
             this.loadInterviews();
             this.closeInterviewModal();
           },
@@ -474,12 +601,10 @@ export class InterviewsComponent implements OnInit {
         });
       } else {
         this.interviewService.createInterview(interviewToSend).subscribe({
-          next: () => {
+          next: (created: Interview) => {
             this.toastrNotification.showInterviewCreatedSuccess();
-            // Commodité optionnelle : avancer aussi le statut du candidat (garde-fouté côté backend)
-            if (interviewData.advanceStatus) {
-              this.advanceCandidateStatusForType(candidateId, interviewData.type);
-            }
+            this.interviewerDayCache.clear();
+            this.reportPipelineAdvance(created, candidateId);
             this.loadInterviews();
             this.closeInterviewModal();
           },
@@ -505,34 +630,45 @@ export class InterviewsComponent implements OnInit {
   }
 
   /**
-   * Fait avancer le statut du candidat à l'étape correspondant au type d'entretien planifié.
-   * Passe par l'endpoint de statut (donc validé par la machine à états côté backend) : une
-   * transition non autorisée renvoie un 400 affiché comme avertissement, sans bloquer la
-   * planification déjà effectuée.
+   * Le serveur place le dossier à l'étape correspondant à l'entretien qu'il vient de créer,
+   * sous le contrôle de la machine à états. On rend compte de l'état réellement renvoyé plutôt
+   * que de promettre une avancée qu'un pipeline déjà engagé refuserait (un manager ne peut pas,
+   * par exemple, faire revenir un dossier en entretien téléphonique).
    */
-  private advanceCandidateStatusForType(candidateId: number, type: string): void {
-    const target = this.mapInterviewTypeToStatus(type);
-    if (!target) { return; }
-    this.candidateService.updateCandidateStatus(candidateId, target).subscribe({
-      next: () => this.toastrNotification.showSuccess('Statut du candidat avancé à l\'étape correspondante.', 'Statut mis à jour'),
-      error: (err: any) => {
-        const msg = err?.error?.message || 'Le statut n\'a pas pu être avancé (transition non autorisée par le workflow).';
-        this.toastrNotification.showWarning(msg);
-      }
-    });
+  private reportPipelineAdvance(created: Interview, candidateId: number): void {
+    if (!created?.candidateStatus) { return; }
+    const candidate = this.candidates.find(c => c.id === candidateId);
+    const previous = candidate?.status;
+    if (candidate) { candidate.status = created.candidateStatus as any; }
+    if (previous && created.candidateStatus !== previous) {
+      this.toastrNotification.showSuccess(
+        `Dossier avancé : ${this.getPipelineLabel(previous)} → ${this.getPipelineLabel(created.candidateStatus)}.`,
+        'Étape du pipeline');
+    } else {
+      this.toastrNotification.showInfo(
+        `Le dossier reste à l'étape « ${this.getPipelineLabel(created.candidateStatus)} » : `
+        + 'la planification de l\'entretien ne remonte pas un pipeline déjà engagé.',
+        'Statut inchangé');
+    }
   }
 
-  /** Étape de statut candidat correspondant à un type d'entretien (cf. machine à états). */
-  private mapInterviewTypeToStatus(type: string): string | null {
-    switch (type) {
-      case 'PHONE_SCREENING': return 'PHONE_SCREENING';
-      case 'TECHNICAL': return 'TECHNICAL_TEST';
-      case 'HR':
-      case 'MANAGER':
-      case 'GROUP': return 'INTERVIEW';
-      case 'FINAL': return 'FINAL_INTERVIEW';
-      default: return null;
-    }
+  private getPipelineLabel(status: string): string {
+    const labels: Record<string, string> = {
+      APPLIED: 'Candidature soumise',
+      CV_REVIEWED: 'CV examiné',
+      PHONE_SCREENING: 'Entretien téléphonique',
+      TECHNICAL_TEST: 'Test technique',
+      INTERVIEW: 'Entretien',
+      FINAL_INTERVIEW: 'Entretien final',
+      ACCEPTED: 'Avis favorable du manager',
+      MANAGER_REJECTED: 'Refus proposé par le manager',
+      INTERVIEW_SCHEDULED: 'Entretien planifié',
+      REJECTED: 'Refus validé',
+      AUTO_REJECTED: 'Rejet automatique (IA)',
+      HIRED: 'Candidat embauché',
+      WITHDRAWN: 'Candidature retirée'
+    };
+    return labels[status] ?? status;
   }
 
   /**
