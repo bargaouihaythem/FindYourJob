@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -180,7 +181,7 @@ class CandidateControllerWorkflowTest {
         @DisplayName("RH valide un dossier → PATCH /api/candidates/1/status?status=CV_REVIEWED → Agent 2 déclenché")
         void hr_validatesCandidate_triggersAgent2() throws Exception {
             CandidateResponse updated = fakeResponse(1L, CandidateStatus.CV_REVIEWED);
-            when(candidateService.updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED))
+            when(candidateService.updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED, null, null))
                     .thenReturn(updated);
 
             mockMvc.perform(patch("/api/candidates/1/status")
@@ -190,14 +191,14 @@ class CandidateControllerWorkflowTest {
                     .andExpect(jsonPath("$.status").value("CV_REVIEWED"));
 
             // Vérifie que le service a bien été appelé (qui lui déclenche Agent 2)
-            verify(candidateService).updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED);
+            verify(candidateService).updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED, null, null);
         }
 
         @Test
         @WithMockUser(roles = "HR")
         @DisplayName("RH peut rejeter un candidat → REJECTED")
         void hr_canRejectCandidate() throws Exception {
-            when(candidateService.updateCandidateStatus(3L, CandidateStatus.REJECTED))
+            when(candidateService.updateCandidateStatus(3L, CandidateStatus.REJECTED, null, null))
                     .thenReturn(fakeResponse(3L, CandidateStatus.REJECTED));
 
             mockMvc.perform(patch("/api/candidates/3/status")
@@ -205,6 +206,39 @@ class CandidateControllerWorkflowTest {
                     .param("status", "REJECTED"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.status").value("REJECTED"));
+        }
+
+        @Test
+        @WithMockUser(roles = "HR")
+        @DisplayName("Transmission sans managerId → 400 : le destinataire est un choix obligatoire")
+        void transmissionWithoutManagerIdIsRejected() throws Exception {
+            when(candidateService.updateCandidateStatus(4L, CandidateStatus.TECHNICAL_TEST, null, null))
+                    .thenThrow(new IllegalArgumentException(
+                            "Le manager destinataire doit être désigné : la transmission d'un dossier à un "
+                                    + "manager est une décision humaine."));
+
+            mockMvc.perform(patch("/api/candidates/4/status")
+                    .with(csrf())
+                    .param("status", "TECHNICAL_TEST"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value(containsString("doit être désigné")));
+        }
+
+        @Test
+        @WithMockUser(roles = "HR")
+        @DisplayName("Le managerId du popup est transmis au service")
+        void transmissionForwardsDesignatedManager() throws Exception {
+            when(candidateService.updateCandidateStatus(4L, CandidateStatus.TECHNICAL_TEST, null, 12L))
+                    .thenReturn(fakeResponse(4L, CandidateStatus.TECHNICAL_TEST));
+
+            mockMvc.perform(patch("/api/candidates/4/status")
+                    .with(csrf())
+                    .param("status", "TECHNICAL_TEST")
+                    .param("managerId", "12"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("TECHNICAL_TEST"));
+
+            verify(candidateService).updateCandidateStatus(4L, CandidateStatus.TECHNICAL_TEST, null, 12L);
         }
     }
 
@@ -237,7 +271,7 @@ class CandidateControllerWorkflowTest {
         @WithMockUser(roles = "MANAGER")
         @DisplayName("Manager PEUT changer le statut d'un candidat (pipeline Kanban) → 200")
         void manager_canUpdateStatusViaKanban() throws Exception {
-            when(candidateService.updateCandidateStatus(eq(1L), any()))
+            when(candidateService.updateCandidateStatus(eq(1L), any(), any(), any()))
                     .thenReturn(fakeResponse(1L, CandidateStatus.INTERVIEW));
 
             mockMvc.perform(patch("/api/candidates/1/status")

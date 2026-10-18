@@ -186,11 +186,13 @@ public class CandidateController {
             @Parameter(description = "Nouveau statut")
             @RequestParam Candidate.CandidateStatus status,
             @Parameter(description = "Motif obligatoire pour un rejet manuel")
-            @RequestParam(required = false) String reason) {
+            @RequestParam(required = false) String reason,
+            @Parameter(description = "Manager destinataire désigné par le RH — obligatoire pour "
+                    + "la transmission du dossier (passage en TECHNICAL_TEST)")
+            @RequestParam(required = false) Long managerId) {
         try {
-            CandidateResponse response = (reason == null || reason.isBlank())
-                    ? candidateService.updateCandidateStatus(id, status)
-                    : candidateService.updateCandidateStatus(id, status, reason);
+            CandidateResponse response = candidateService.updateCandidateStatus(
+                    id, status, reason, managerId);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             // Transition de statut non autorisée (machine à états) → 400 plutôt que 500

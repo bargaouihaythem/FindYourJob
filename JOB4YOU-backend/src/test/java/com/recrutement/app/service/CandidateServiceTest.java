@@ -116,6 +116,16 @@ class CandidateServiceTest {
         return candidate;
     }
 
+    /** Compte MANAGER que le RH peut désigner comme destinataire à la transmission. */
+    private User managerAccount(Long id, String username, String email) {
+        User user = new User();
+        user.setId(id);
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setRoles(Set.of(new Role(Role.ERole.ROLE_MANAGER)));
+        return user;
+    }
+
     // ────────────────────────────────────────────────────────────────────
     // getValidatedCandidatesForManager()
     // ────────────────────────────────────────────────────────────────────
@@ -228,15 +238,17 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("TECHNICAL_TEST transmet le dossier au manager résolu et gèle la destination")
+        @DisplayName("TECHNICAL_TEST transmet le dossier au manager désigné par le RH et gèle la destination")
         void shouldNotifyManagerWhenTechnicalTest() {
             Candidate candidate = candidateOnOffer(15L, CandidateStatus.PHONE_SCREENING,
                     "manager.cs@company.com", null);
             candidate.getJobOffer().setTitle("Développeur Java");
             when(candidateRepository.findById(15L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            when(userRepository.findById(15L)).thenReturn(Optional.of(
+                    managerAccount(15L, "manager_cs", "manager.cs@company.com")));
 
-            candidateService.updateCandidateStatus(15L, CandidateStatus.TECHNICAL_TEST);
+            candidateService.updateCandidateStatus(15L, CandidateStatus.TECHNICAL_TEST, null, 15L);
 
             verify(n8nService).triggerAgent3HrValidation(eq(15L), anyString(), anyString(), anyString(),
                     eq("Développeur Java"),
@@ -245,30 +257,26 @@ class CandidateServiceTest {
             verify(notificationService).sendPhoneScreeningValidatedNotification(candidate);
             // Destination gelée sur le dossier : c'est elle qui fera foi ensuite.
             assertThat(candidate.getRoutedManagerEmails()).isEqualTo("manager.cs@company.com");
-            assertThat(candidate.getRoutingBasis()).isEqualTo(RoutingBasis.LEGACY_EMAIL);
+            assertThat(candidate.getRoutingBasis()).isEqualTo(RoutingBasis.MANUAL);
             assertThat(candidate.getRoutedAt()).isNotNull();
         }
 
         @Test
-        @DisplayName("TECHNICAL_TEST sans manager destinataire bloque : aucune adresse inventée")
-        void shouldRefuseTechnicalTestWhenNoManagerResolvable() {
-            // Offre sans manager désigné, sans département peuplé, sans famille ni e-mail libre
+        @DisplayName("TECHNICAL_TEST sans destinataire désigné bloque : l'aiguillage reste une décision humaine")
+        void shouldRefuseTechnicalTestWithoutDesignation() {
             Candidate candidate = candidateOnOffer(16L, CandidateStatus.PHONE_SCREENING, null, null);
-            Department empty = new Department("HRAccess", "HRACCESS");
-            empty.setId(9L);
-            candidate.getJobOffer().setDepartment(empty);
             when(candidateRepository.findById(16L)).thenReturn(Optional.of(candidate));
-            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
-            when(userRepository.findManagersByDepartment(9L, Role.ERole.ROLE_MANAGER))
-                    .thenReturn(List.of());
 
-            assertThatThrownBy(() -> candidateService.updateCandidateStatus(16L, CandidateStatus.TECHNICAL_TEST))
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(
+                    16L, CandidateStatus.TECHNICAL_TEST))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("aucun manager destinataire");
+                    .hasMessageContaining("doit être désigné");
 
+            // Ni le statut, ni la destination, ni les e-mails ne bougent.
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.PHONE_SCREENING);
+            verify(candidateRepository, never()).save(any());
             verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(),
                     any(), any(), any(), any());
-            verify(auditLogService).log(eq("CANDIDATE"), eq(16L), eq("ROUTING_FAILED"), any(), any());
         }
 
         @Test
@@ -1149,6 +1157,258 @@ class CandidateServiceTest {
                             && "Poste pourvu en interne".equals(c.getStatusReason())));
             verify(notificationService).sendFinalRejection(any(Candidate.class));
             verify(notificationService, never()).sendHiringConvocation(any());
+        }
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // Robustesse du flux candidature → entretien → calendrier :
+    //  1) la planification d'un entretien fait avancer l'étape, mais seule la
+    //     machine à états décide (advanceForScheduledInterview) ;
+    //  2) un recalcul de score sur un dossier engagé enregistre le score sans
+    //     jamais remuer le statut ;
+    //  3) INTERVIEW_SCHEDULED est une étape réelle, avec ses sorties.
+    // ────────────────────────────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("advanceForScheduledInterview() - l'agenda fait avancer l'étape")
+    class AdvanceForScheduledInterviewTests {
+
+        @Test
+        @DisplayName("TECHNICAL_TEST → INTERVIEW : le dossier suit le créneau réservé")
+        void movesDossierToScheduledStep() {
+            Candidate candidate = makeCandidate(90L, CandidateStatus.TECHNICAL_TEST);
+            when(candidateRepository.findById(90L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            CandidateStatus result = candidateService.advanceForScheduledInterview(
+                    90L, CandidateStatus.INTERVIEW, "Entretien avec le manager planifié le 20/10/2026");
+
+            assertThat(result).isEqualTo(CandidateStatus.INTERVIEW);
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.INTERVIEW
+                            && "Entretien avec le manager planifié le 20/10/2026".equals(c.getStatusReason())
+                            && "SYSTEM".equals(c.getStatusChangedBy())
+                            && c.getStatusChangedAt() != null));
+            verify(auditLogService).log("CANDIDATE", 90L, "STATUS_CHANGE",
+                    CandidateStatus.TECHNICAL_TEST, CandidateStatus.INTERVIEW);
+        }
+
+        @Test
+        @DisplayName("une avancée refusée par la machine ne touche ni le dossier ni le journal de statut")
+        void refusesSilentlyWhenTransitionNotAllowed() {
+            // CV_REVIEWED → TECHNICAL_TEST est interdit : c'est le RH qui transmet, en désignant
+            // un manager. Le créneau posé sur un dossier qui n'est pas encore côté manager ne
+            // doit donc pas faire croire à une transmission.
+            Candidate candidate = makeCandidate(91L, CandidateStatus.CV_REVIEWED);
+            when(candidateRepository.findById(91L)).thenReturn(Optional.of(candidate));
+
+            CandidateStatus result = candidateService.advanceForScheduledInterview(
+                    91L, CandidateStatus.TECHNICAL_TEST, "Entretien technique planifié");
+
+            assertThat(result).isEqualTo(CandidateStatus.CV_REVIEWED);
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.CV_REVIEWED);
+            verify(candidateRepository, never()).save(any());
+            verify(auditLogService, never()).log(any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("dossier déjà à l'étape concernée : aucune écriture inutile")
+        void noOpWhenAlreadyAtStep() {
+            Candidate candidate = makeCandidate(92L, CandidateStatus.INTERVIEW);
+            when(candidateRepository.findById(92L)).thenReturn(Optional.of(candidate));
+
+            assertThat(candidateService.advanceForScheduledInterview(92L, CandidateStatus.INTERVIEW, "x"))
+                    .isEqualTo(CandidateStatus.INTERVIEW);
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un créneau ne rouvre pas un dossier clos")
+        void keepsClosedDossierClosed() {
+            Candidate candidate = makeCandidate(93L, CandidateStatus.REJECTED);
+            when(candidateRepository.findById(93L)).thenReturn(Optional.of(candidate));
+
+            assertThat(candidateService.advanceForScheduledInterview(93L, CandidateStatus.INTERVIEW, "x"))
+                    .isEqualTo(CandidateStatus.REJECTED);
+            assertThat(candidateService.advanceForScheduledInterview(93L, CandidateStatus.FINAL_INTERVIEW, "x"))
+                    .isEqualTo(CandidateStatus.REJECTED);
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("dossier introuvable ou type d'entretien sans étape : rien ne se passe")
+        void toleratesUnknownCandidateAndUnmappedType() {
+            when(candidateRepository.findById(94L)).thenReturn(Optional.empty());
+            assertThat(candidateService.advanceForScheduledInterview(94L, CandidateStatus.INTERVIEW, "x"))
+                    .isNull();
+
+            Candidate candidate = makeCandidate(95L, CandidateStatus.TECHNICAL_TEST);
+            when(candidateRepository.findById(95L)).thenReturn(Optional.of(candidate));
+            assertThat(candidateService.advanceForScheduledInterview(95L, null, "x"))
+                    .isEqualTo(CandidateStatus.TECHNICAL_TEST);
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("motif vierge : l'étape avance, le motif existant reste en place")
+        void keepsPreviousReasonWhenNoneGiven() {
+            Candidate candidate = makeCandidate(96L, CandidateStatus.TECHNICAL_TEST);
+            candidate.setStatusReason("Présélection validée par le RH");
+            when(candidateRepository.findById(96L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.advanceForScheduledInterview(96L, CandidateStatus.INTERVIEW, "   ");
+
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.INTERVIEW
+                            && "Présélection validée par le RH".equals(c.getStatusReason())));
+        }
+    }
+
+    @Nested
+    @DisplayName("Score IA sur un dossier engagé - non-destructif")
+    class ScoreOnEngagedDossierTests {
+
+        @Test
+        @DisplayName("score faible enregistré sans ramener un dossier d'entretien en rejet IA")
+        void keepsStatusAndAuditsSkippedTransition() {
+            Candidate candidate = makeCandidate(100L, CandidateStatus.INTERVIEW);
+            candidate.setAiScore(80);
+            when(candidateRepository.findById(100L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            CandidateResponse response = candidateService.saveAiScore(100L, 40, "résumé", "WEAK_MATCH");
+
+            assertThat(response.getStatus()).isEqualTo(CandidateStatus.INTERVIEW);
+            assertThat(candidate.getAiScore()).isEqualTo(40);
+            verify(auditLogService).log(eq("CANDIDATE"), eq(100L), eq("SCORE_STATUS_NOT_APPLIED"),
+                    eq(CandidateStatus.INTERVIEW), contains("dossier déjà engagé"));
+            verify(candidateRepository, never()).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.AUTO_REJECTED));
+        }
+
+        @Test
+        @DisplayName("bon score : pas de rétrogradation en CV_REVIEWED d'un dossier en entretien final")
+        void doesNotRollBackFinalInterview() {
+            Candidate candidate = makeCandidate(101L, CandidateStatus.FINAL_INTERVIEW);
+            when(candidateRepository.findById(101L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(candidateService.saveAiScore(101L, 90, "résumé", "GOOD_MATCH").getStatus())
+                    .isEqualTo(CandidateStatus.FINAL_INTERVIEW);
+
+            verify(auditLogService).log(eq("CANDIDATE"), eq(101L), eq("SCORE_STATUS_NOT_APPLIED"),
+                    any(), contains("CV_REVIEWED"));
+        }
+
+        @Test
+        @DisplayName("correction manuelle du score : le score prime, le statut d'un dossier engagé reste")
+        void manualCorrectionKeepsEngagedStatus() {
+            Candidate candidate = makeCandidate(102L, CandidateStatus.TECHNICAL_TEST);
+            candidate.setAiScore(70);
+            when(candidateRepository.findById(102L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.overrideAiScore(102L, 30, "Analyse initiale surévaluée", "rh_user");
+
+            assertThat(candidate.getManualScore()).isEqualTo(30);
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.TECHNICAL_TEST);
+            verify(auditLogService).log(eq("CANDIDATE"), eq(102L), eq("SCORE_STATUS_NOT_APPLIED"),
+                    eq(CandidateStatus.TECHNICAL_TEST), contains("AUTO_REJECTED"));
+        }
+
+        @Test
+        @DisplayName("non-régression : un dossier encore soumis suit bien le score")
+        void stillFollowsScoreWhileUnengaged() {
+            Candidate candidate = makeCandidate(103L, CandidateStatus.APPLIED);
+            when(candidateRepository.findById(103L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThat(candidateService.saveAiScore(103L, 40, "résumé", "WEAK_MATCH").getStatus())
+                    .isEqualTo(CandidateStatus.AUTO_REJECTED);
+
+            verify(auditLogService, never()).log(any(), any(), eq("SCORE_STATUS_NOT_APPLIED"), any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("INTERVIEW_SCHEDULED - l'agenda confirmé a des sorties réelles")
+    class InterviewScheduledTests {
+
+        @Test
+        @DisplayName("ACCEPTED → INTERVIEW_SCHEDULED : l'avis favorable se matérialise")
+        void acceptedMovesToScheduledInterview() {
+            Candidate candidate = makeCandidate(110L, CandidateStatus.ACCEPTED);
+            when(candidateRepository.findById(110L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(110L, CandidateStatus.INTERVIEW_SCHEDULED,
+                    "Créneau confirmé avec le manager");
+
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.INTERVIEW_SCHEDULED));
+        }
+
+        @Test
+        @DisplayName("INTERVIEW_SCHEDULED → REJECTED : le RH peut clore après le créneau, e-mail au candidat")
+        void refusedAfterScheduledInterview() {
+            Candidate candidate = makeCandidate(111L, CandidateStatus.INTERVIEW_SCHEDULED);
+            when(candidateRepository.findById(111L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(111L, CandidateStatus.REJECTED, "Entretien non concluant");
+
+            verify(candidateRepository).save(argThat(c ->
+                    c.getStatus() == CandidateStatus.REJECTED
+                            && "Entretien non concluant".equals(c.getStatusReason())));
+            verify(notificationService).sendFinalRejection(any(Candidate.class));
+        }
+
+        @Test
+        @DisplayName("pas de motif, pas de refus")
+        void refusalStillRequiresReason() {
+            Candidate candidate = makeCandidate(112L, CandidateStatus.INTERVIEW_SCHEDULED);
+            when(candidateRepository.findById(112L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(112L, CandidateStatus.REJECTED, "  "))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("motif");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("le dossier ne remonte pas d'une étape : INTERVIEW_SCHEDULED → TECHNICAL_TEST refusé")
+        void cannotGoBackwards() {
+            Candidate candidate = makeCandidate(113L, CandidateStatus.INTERVIEW_SCHEDULED);
+            when(candidateRepository.findById(113L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(
+                    113L, CandidateStatus.TECHNICAL_TEST))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Transition de statut non autorisée");
+
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("l'embauche sur un agenda confirmé passe par la validation finale RH")
+        void hiringGoesThroughFinalValidation() {
+            Candidate candidate = makeCandidate(114L, CandidateStatus.INTERVIEW_SCHEDULED);
+            when(candidateRepository.findById(114L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(114L, CandidateStatus.HIRED))
+                    .isInstanceOf(AccessDeniedException.class)
+                    .hasMessageContaining("validation finale");
+
+            // La voie légitime, elle, est ouverte depuis ce statut.
+            candidate.setPresentationDate(LocalDateTime.now().plusDays(7));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+            assertThat(candidateService.hrFinalValidation(114L, CandidateStatus.HIRED,
+                    candidate.getPresentationDate(), null).getStatus()).isEqualTo(CandidateStatus.HIRED);
         }
     }
 }

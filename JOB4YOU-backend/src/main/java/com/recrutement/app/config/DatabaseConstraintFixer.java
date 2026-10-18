@@ -85,5 +85,30 @@ public class DatabaseConstraintFixer implements CommandLineRunner {
         } catch (Exception e) {
             System.err.println("Erreur correction status_check: " + e.getMessage());
         }
+
+        // La chaîne d'aiguillage peut désormais enregistrer la désignation manuelle du RH
+        // (RoutingBasis.MANUAL) ; les bases créées avant ce changement ont une CHECK qui l'ignore.
+        try {
+            System.out.println("=== CORRECTION CONTRAINTE candidates_routing_basis_check ===");
+            var defs = jdbcTemplate.queryForList(
+                "SELECT pg_get_constraintdef(oid) AS def FROM pg_constraint " +
+                "WHERE conname = 'candidates_routing_basis_check' AND conrelid = 'candidates'::regclass",
+                String.class
+            );
+            if (defs.isEmpty()) {
+                System.out.println("Aucune contrainte candidates_routing_basis_check");
+            } else if (defs.get(0).contains("'MANUAL'")) {
+                System.out.println("✅ MANUAL déjà autorisé");
+            } else {
+                jdbcTemplate.execute("ALTER TABLE candidates DROP CONSTRAINT IF EXISTS candidates_routing_basis_check");
+                jdbcTemplate.execute(
+                    "ALTER TABLE candidates ADD CONSTRAINT candidates_routing_basis_check CHECK (routing_basis IN (" +
+                    "'OFFER_MANAGER','DEPARTMENT','JOB_FAMILY','LEGACY_EMAIL','UNRESOLVED','MANUAL'))"
+                );
+                System.out.println("✅ Contrainte candidates_routing_basis_check corrigée avec MANUAL");
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur correction routing_basis_check: " + e.getMessage());
+        }
     }
 }

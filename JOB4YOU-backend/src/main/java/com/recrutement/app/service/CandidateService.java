@@ -85,7 +85,17 @@ public class CandidateService {
         JobOffer jobOffer = jobOfferRepository.findById(applicationRequest.getJobOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offre d'emploi non trouvée avec l'ID: " + applicationRequest.getJobOfferId()));
 
-        // Vérifier si le candidat n'a pas déjà postulé pour cette offre
+        // Un dossier est unique par (e-mail, offre) : contrainte d'unicité en base.
+        // Un retrait n'est pourtant pas une fin de parcours — le candidat qui se
+        // rétracte puis change d'avis doit pouvoir postuler à nouveau. On réactive
+        // alors le dossier retiré au lieu d'opposer un refus définitif.
+        Candidate withdrawn = candidateRepository
+                .findByEmailAndJobOfferId(applicationRequest.getEmail(), applicationRequest.getJobOfferId())
+                .filter(c -> c.getStatus() == Candidate.CandidateStatus.WITHDRAWN)
+                .orElse(null);
+        if (withdrawn != null) {
+            return reactivateWithdrawnApplication(withdrawn, applicationRequest, cvFile, jobOffer);
+        }
         if (candidateRepository.existsByEmailAndJobOfferId(applicationRequest.getEmail(), applicationRequest.getJobOfferId())) {
             throw new IllegalArgumentException("Vous avez déjà postulé pour cette offre d'emploi");
         }
@@ -131,8 +141,14 @@ public class CandidateService {
         // Lier le CV au candidat en mémoire pour que l'Agent 1 reçoive l'URL du CV
         savedCandidate.setCv(cv);
 
-        // Un seul système envoie l’accusé de réception : Agent 1 n8n si
-        // configuré, sinon Spring Boot assure le fallback local.
+        return notifyNewApplication(savedCandidate);
+    }
+
+    /**
+     * Accusé de réception puis analyse IA. Un seul système envoie l'accusé : Agent 1
+     * n8n si configuré, sinon Spring Boot assure le repli local.
+     */
+    private CandidateResponse notifyNewApplication(Candidate savedCandidate) {
         if (!n8nService.isAgent1Configured()) {
             notificationService.sendApplicationConfirmation(savedCandidate);
         }
@@ -141,6 +157,85 @@ public class CandidateService {
         n8nService.triggerAgent1CvParser(savedCandidate);
 
         return new CandidateResponse(savedCandidate);
+    }
+
+    /**
+     * Réactivation d'un dossier retiré : le candidat repart d'une candidature
+     * neuve sur la même ligne (contrainte d'unicité email + offre). Le nouveau CV
+     * remplace l'ancien, et toutes les traces de la tentative précédente — score
+     * IA, arbitrage humain, correction RH, destination gelée — sont effacées pour
+     * que la nouvelle analyse ne soit pas contaminée par la première.
+     */
+    private CandidateResponse reactivateWithdrawnApplication(Candidate candidate,
+                                                             ApplicationRequest applicationRequest,
+                                                             MultipartFile cvFile,
+                                                             JobOffer jobOffer) {
+        validateCVFile(cvFile);
+
+        candidate.setFirstName(applicationRequest.getFirstName());
+        candidate.setLastName(applicationRequest.getLastName());
+        candidate.setPhone(applicationRequest.getPhone());
+        candidate.setAddress(applicationRequest.getAddress());
+        candidate.setLinkedinProfile(applicationRequest.getLinkedinProfile());
+        candidate.setCoverLetter(applicationRequest.getCoverLetter());
+        candidate.setJobOffer(jobOffer);
+        candidate.setStatus(Candidate.CandidateStatus.APPLIED);
+        candidate.setStatusReason(null);
+        candidate.setStatusChangedBy(null);
+        candidate.setStatusChangedAt(null);
+        candidate.setApplicationDate(LocalDateTime.now());
+        candidate.setLastUpdated(LocalDateTime.now());
+
+        candidate.setAiScore(null);
+        candidate.setAiSummary(null);
+        candidate.setAiRecommendation(null);
+        candidate.setAiScoreTechnical(null);
+        candidate.setAiScoreCommunication(null);
+        candidate.setAiScoreSeniorityMatch(null);
+        candidate.setAiScoreSource(null);
+        candidate.setMatchedSkills(null);
+        candidate.setMissingSkills(null);
+        candidate.setNeedsHumanReview(false);
+        candidate.setHumanReviewReason(null);
+        candidate.setManualScore(null);
+        candidate.setManualScoreReason(null);
+        candidate.setManualScoreBy(null);
+        candidate.setManualScoreDate(null);
+        candidate.setRoutedManagerEmails(null);
+        candidate.setRoutingBasis(null);
+        candidate.setRoutedAt(null);
+        candidate.setRoutedToManager(null);
+
+        Candidate saved = candidateRepository.save(candidate);
+
+        Map<String, String> storeResult = localFileStorageService.storeFile(cvFile);
+        CV cv = saved.getCv();
+        String previousFilename = cv != null ? cv.getStoredFilename() : null;
+        if (cv == null) {
+            cv = new CV();
+            cv.setCandidate(saved);
+        }
+        cv.setOriginalFilename(cvFile.getOriginalFilename());
+        cv.setStoredFilename(storeResult.get("fileName"));
+        cv.setFilePath(storeResult.get("path"));
+        cv.setFileUrl(storeResult.get("url"));
+        cv.setFileSize(Long.valueOf(storeResult.get("fileSize")));
+        cv.setContentType(cvFile.getContentType());
+        cv.setUploadDate(LocalDateTime.now());
+        cv.setLastAccessed(LocalDateTime.now());
+        cv.setExtractedText(cvTextExtractionService.extractText(
+                java.nio.file.Paths.get(cv.getFilePath()), cv.getContentType()));
+        cvRepository.save(cv);
+        saved.setCv(cv);
+
+        if (previousFilename != null && !previousFilename.equals(cv.getStoredFilename())) {
+            localFileStorageService.deleteFile(previousFilename);
+        }
+
+        auditLogService.log("CANDIDATE", saved.getId(), "REAPPLIED",
+                Candidate.CandidateStatus.WITHDRAWN, Candidate.CandidateStatus.APPLIED);
+
+        return notifyNewApplication(saved);
     }
 
     /**
@@ -520,11 +615,21 @@ public class CandidateService {
      *   n8n Agent 2 → notifie le manager, envoie le dossier, relance si nécessaire
      */
     public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status) {
-        return updateCandidateStatus(id, status, null);
+        return updateCandidateStatus(id, status, null, null);
     }
 
-    @Transactional
     public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status, String reason) {
+        return updateCandidateStatus(id, status, reason, null);
+    }
+
+    /**
+     * @param managerId le manager destinataire désigné par le RH. Obligatoire dès que la
+     *                  transition transmet le dossier (entrée en TECHNICAL_TEST) :
+     *                  l'aiguillage automatique ne sert plus que de proposition.
+     */
+    @Transactional
+    public CandidateResponse updateCandidateStatus(Long id, Candidate.CandidateStatus status, String reason,
+                                                   Long managerId) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
 
@@ -546,6 +651,14 @@ public class CandidateService {
         Candidate.CandidateStatus previousStatus = candidate.getStatus();
         assertValidTransition(previousStatus, effectiveStatus);
         assertStatusEditableByActor(actingManager, effectiveStatus);
+
+        boolean transmission = effectiveStatus == Candidate.CandidateStatus.TECHNICAL_TEST
+                && previousStatus != Candidate.CandidateStatus.TECHNICAL_TEST;
+        // La désignation est validée avant toute écriture : un destinataire inexistant,
+        // sans rôle MANAGER ou sans e-mail doit refuser la transmission, pas faire
+        // avancer le dossier puis revenir en arrière.
+        ManagerRoutingService.RoutingResult designatedRouting =
+                transmission ? managerRoutingService.resolveManual(managerId) : null;
 
         String effectiveReason = reason != null ? reason.trim() : "";
         if ((effectiveStatus == Candidate.CandidateStatus.MANAGER_REJECTED
@@ -621,12 +734,11 @@ public class CandidateService {
             );
         }
 
-        // Passage en évaluation technique → transmission du dossier complet au(x) manager(s)
-        // du département (Agent 3), et confirmation au CANDIDAT que son entretien
-        // téléphonique est validé et que son dossier avance à l'étape suivante.
-        if (previousStatus != Candidate.CandidateStatus.TECHNICAL_TEST
-                && effectiveStatus == Candidate.CandidateStatus.TECHNICAL_TEST) {
-            notifyManagersForTechnicalEvaluation(updatedCandidate);
+        // Passage en évaluation technique → transmission du dossier complet au manager désigné
+        // par le RH (Agent 3), et confirmation au CANDIDAT que son entretien téléphonique est
+        // validé et que son dossier avance à l'étape suivante.
+        if (transmission) {
+            notifyManagersForTechnicalEvaluation(updatedCandidate, designatedRouting);
             notificationService.sendPhoneScreeningValidatedNotification(updatedCandidate);
         }
 
@@ -678,36 +790,26 @@ public class CandidateService {
      *   si l'interface ne le lui montre jamais.
      */
     /**
-     * Transmet le dossier complet du candidat au(x) manager(s) destinataire(s) pour
-     * l'évaluation technique (Agent 3 : un e-mail par manager). Déclenché au passage
-     * en TECHNICAL_TEST.
+     * Transmet le dossier complet du candidat au manager que le RH a désigné pour
+     * l'évaluation technique (Agent 3). Déclenché au passage en TECHNICAL_TEST.
      *
-     * Deux garanties :
-     * - la destination est résolue par la chaîne structurelle (ManagerRoutingService) ;
-     *   si elle ne résout rien, la transmission est BLOQUÉE (400) et tracée, au lieu
-     *   d'envoyer le dossier à une adresse de repli inventée ;
-     * - la liste des destinataires est gelée sur la candidature. Le périmètre de
-     *   lecture et d'écriture (ManagerScopeService) repose ensuite sur cette liste,
-     *   donc changer le département de l'offre après coup ne dépossède pas le manager
-     *   qui a reçu le dossier.
+     * Trois garanties :
+     * - le destinataire est un choix humain : la chaîne structurelle (ManagerRoutingService)
+     *   ne fournit plus qu'une proposition affichée et pré-sélectionnée dans la modale, elle
+     *   ne transmet jamais seule ;
+     * - le compte désigné doit être un manager joignable, sinon la transmission est refusée
+     *   (400) au lieu de partir vers une adresse inventée ;
+     * - la destination est gelée sur la candidature. Le périmètre de lecture et d'écriture
+     *   (ManagerScopeService) repose ensuite sur cette liste, donc changer le département de
+     *   l'offre après coup ne dépossède pas le manager qui a reçu le dossier.
      */
-    private void notifyManagersForTechnicalEvaluation(Candidate candidate) {
+    private void notifyManagersForTechnicalEvaluation(Candidate candidate,
+                                                     ManagerRoutingService.RoutingResult routing) {
         String offreTitre = candidate.getJobOffer() != null
             ? candidate.getJobOffer().getTitle() : "Candidature générale";
         String cvUrl = candidate.getCv() != null ? candidate.getCv().getFileUrl() : null;
 
-        ManagerRoutingService.RoutingResult routing =
-                managerRoutingService.resolve(candidate.getJobOffer());
-        if (!routing.isResolved()) {
-            auditLogService.log("CANDIDATE", candidate.getId(), "ROUTING_FAILED",
-                    candidate.getStatus().name(),
-                    "Aucun manager destinataire : rattachez l'offre à un manager ou à un département contenant un manager");
-            throw new IllegalArgumentException(
-                    "Impossible de transmettre ce dossier : l'offre « " + offreTitre
-                            + " » n'a aucun manager destinataire. Désignez le manager recruteur sur l'offre "
-                            + "ou rattachez-la à un département qui compte au moins un manager.");
-        }
-
+        auditManualDeviation(candidate, routing);
         freezeRouting(candidate, routing);
 
         for (String managerEmail : routing.emails()) {
@@ -717,6 +819,23 @@ public class CandidateService {
                 offreTitre, cvUrl, candidate.getStatus().name(), managerEmail, "RH"
             );
         }
+    }
+
+    /**
+     * Le RH peut désigner un manager hors de la proposition automatique (département de
+     * l'offre mal rattaché, offre sans recruteur désigné, plusieurs profils candidats).
+     * L'écart est journalisé : on retrouve plus tard qui proposait la chaîne structurelle
+     * et qui a réellement reçu le dossier.
+     */
+    private void auditManualDeviation(Candidate candidate, ManagerRoutingService.RoutingResult chosen) {
+        List<String> proposed = managerRoutingService.resolve(candidate.getJobOffer()).emails();
+        String chosenEmail = chosen.emails().get(0);
+        if (proposed.contains(chosenEmail)) {
+            return;
+        }
+        auditLogService.log("CANDIDATE", candidate.getId(), "ROUTING_MANUAL",
+                proposed.isEmpty() ? "aucun destinataire proposé" : String.join(", ", proposed),
+                "Désignation manuelle par le RH : " + chosenEmail);
     }
 
     /** Gèle la destination sur le dossier, avant l'envoi asynchrone pour que la
@@ -754,10 +873,12 @@ public class CandidateService {
     private static final java.time.format.DateTimeFormatter ROUTED_AT_FORMAT =
             java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private static final Map<RoutingBasis, String> ROUTING_BASIS_LABELS = Map.of(            RoutingBasis.OFFER_MANAGER, "le manager désigné sur l'offre",
+    private static final Map<RoutingBasis, String> ROUTING_BASIS_LABELS = Map.of(
+            RoutingBasis.OFFER_MANAGER, "le manager désigné sur l'offre",
             RoutingBasis.DEPARTMENT, "le département de l'offre",
             RoutingBasis.JOB_FAMILY, "la famille métier de l'offre",
             RoutingBasis.LEGACY_EMAIL, "l'ancien champ e-mail de l'offre",
+            RoutingBasis.MANUAL, "la désignation manuelle du RH",
             RoutingBasis.UNRESOLVED, "aucun critère résolu");
 
     /**
@@ -773,6 +894,20 @@ public class CandidateService {
     private void assertValidTransition(Candidate.CandidateStatus from, Candidate.CandidateStatus to) {
         if (from == to) {
             return;
+        }
+        if (!isTransitionAllowed(from, to)) {
+            throw new IllegalArgumentException(
+                    "Transition de statut non autorisée : " + from + " → " + to);
+        }
+    }
+
+    /**
+     * Prédicat de la machine à états, utilisé tel quel par les flux qui doivent s'adapter
+     * plutôt qu'échouer (reprise du score IA, planification d'un entretien).
+     */
+    private boolean isTransitionAllowed(Candidate.CandidateStatus from, Candidate.CandidateStatus to) {
+        if (from == to) {
+            return true;
         }
         boolean allowed;
         switch (from) {
@@ -849,7 +984,11 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case INTERVIEW_SCHEDULED:
+                // Le RH a confirmé l'agenda après un avis favorable : l'entretien peut se
+                // conclure par l'embauche ou par un refus (hrFinalValidation admet déjà ce
+                // second cas — la machine ne doit pas être plus stricte que l'acte RH).
                 allowed = to == Candidate.CandidateStatus.HIRED
+                        || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             default:
@@ -858,10 +997,41 @@ public class CandidateService {
                 // (confirmation du refus ou correction du score), voir le cas ci-dessus.
                 allowed = false;
         }
-        if (!allowed) {
-            throw new IllegalArgumentException(
-                    "Transition de statut non autorisée : " + from + " → " + to);
+        return allowed;
+    }
+
+    /**
+     * Planifier un entretien est un acte d'agenda, mais cet agenda matérialise une étape du
+     * pipeline : le dossier passe donc à l'étape correspondante. La machine à états reste la
+     * seule autorité (une avancée qu'elle refuse est simplement ignorée) — en revanche elle
+     * n'annule jamais l'entretien déjà créé, et n'exige pas le rôle RH : le manager qui pose
+     * son propre créneau fait avancer le dossier qu'on lui a transmis, ce qui n'est pas une
+     * décision de pipeline libre mais la conséquence de son agenda.
+     */
+    @Transactional
+    public Candidate.CandidateStatus advanceForScheduledInterview(Long candidateId,
+                                                                  Candidate.CandidateStatus target,
+                                                                  String reason) {
+        Candidate candidate = candidateRepository.findById(candidateId).orElse(null);
+        if (candidate == null || target == null) {
+            return candidate == null ? null : candidate.getStatus();
         }
+        Candidate.CandidateStatus previous = candidate.getStatus();
+        if (previous == target || !isTransitionAllowed(previous, target)) {
+            return previous;
+        }
+
+        candidate.setStatus(target);
+        if (reason != null && !reason.isBlank()) {
+            candidate.setStatusReason(reason.trim());
+        }
+        candidate.setStatusChangedBy(currentActor());
+        candidate.setStatusChangedAt(LocalDateTime.now());
+        candidate.setLastUpdated(LocalDateTime.now());
+        Candidate saved = candidateRepository.save(candidate);
+
+        auditLogService.log("CANDIDATE", saved.getId(), "STATUS_CHANGE", previous, target);
+        return target;
     }
 
     private void assertCandidateOwnerOrPrivileged(Candidate candidate) {
@@ -1016,6 +1186,25 @@ public class CandidateService {
      */
     private static final int AI_SCORE_THRESHOLD = 60;
 
+    /**
+     * Applique la décision de statut qui découle d'un score (IA ou arbitrage RH), sans jamais
+     * faire échouer l'enregistrement de ce score : un score peut arriver tard — re-exécution de
+     * l'Agent 1, « Recalculer avec IA » sur un dossier déjà en entretien — et la machine à états
+     * refuse alors de remettre le dossier en arrière. Le score est stocké, la décision de l'IA est
+     * journalisée, et le RH tranche lui-même ; le dossier ne bouge pas tout seul.
+     */
+    private CandidateResponse applyScoreDrivenStatus(Candidate candidate, Candidate.CandidateStatus newStatus,
+                                                     String statusReason) {
+        if (isTransitionAllowed(candidate.getStatus(), newStatus)) {
+            return updateCandidateStatus(candidate.getId(), newStatus, statusReason);
+        }
+        auditLogService.log("CANDIDATE", candidate.getId(), "SCORE_STATUS_NOT_APPLIED",
+                candidate.getStatus(), newStatus + " (score "
+                        + (candidate.getManualScore() != null ? candidate.getManualScore() : candidate.getAiScore())
+                        + ") : dossier déjà engagé");
+        return new CandidateResponse(candidate);
+    }
+
     @Transactional
     public CandidateResponse saveAiScore(Long id, Integer score, String summary, String recommendation) {
         Candidate candidate = candidateRepository.findById(id)
@@ -1052,8 +1241,9 @@ public class CandidateService {
                     + AI_SCORE_THRESHOLD + ")";
         }
 
-        // Déléguer à updateCandidateStatus pour déclencher Agent 2 ou Agent 3
-        return updateCandidateStatus(saved.getId(), newStatus, scoreReason);
+        // Déléguer le choix de statut au garde-fou commun : un dossier déjà engagé ne revient pas
+        // en arrière, mais le score, lui, est bien enregistré.
+        return applyScoreDrivenStatus(saved, newStatus, scoreReason);
     }
 
     /**
@@ -1098,7 +1288,7 @@ public class CandidateService {
             statusReason = "Rejet automatique : score IA (" + result.finalScore + "/100) inférieur au seuil (" + AI_SCORE_THRESHOLD + ")";
         }
 
-        return updateCandidateStatus(saved.getId(), newStatus, statusReason);
+        return applyScoreDrivenStatus(saved, newStatus, statusReason);
     }
 
     /**
@@ -1137,7 +1327,7 @@ public class CandidateService {
                 ? Candidate.CandidateStatus.CV_REVIEWED
                 : Candidate.CandidateStatus.AUTO_REJECTED;
 
-        return updateCandidateStatus(saved.getId(), newStatus, "Décision RH post-arbitrage : " + reason);
+        return applyScoreDrivenStatus(saved, newStatus, "Décision RH post-arbitrage : " + reason);
     }
 
     /**

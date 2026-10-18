@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { interval, Subscription } from 'rxjs';
+import { interval, Subscription, forkJoin } from 'rxjs';
 import { CandidateService } from '../../../services/candidate.service';
 import { JobOfferService } from '../../../services/job-offer.service';
 import { CVService } from '../../../services/cv.service';
@@ -11,9 +11,10 @@ import { FeedbackService } from '../../../services/feedback.service';
 import { NotificationService, FeedbackNotificationRequest } from '../../../services/notification.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { InternalNotesComponent } from '../../../components/internal-notes/internal-notes.component';
-import { Candidate, JobOffer, RoutingPreview, RoutingRecipientStatus, RoutingStatus } from '../../../models/interfaces';
+import { Candidate, JobOffer, ManagerOption, RoutingPreview, RoutingRecipientStatus, RoutingStatus } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 import { AuthService } from '../../../services/auth';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-candidates',
@@ -102,6 +103,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
    *  deux rafraîchissements, les avis enregistrés par un manager sur un autre poste. */
   private lastSeenStatuses = new Map<number, string>();
 
+  /** Horodatage de la dernière écriture de statut faite depuis ce poste (voir isStaleSnapshot). */
+  private lastLocalWriteAt = 0;
+
   // Validation finale de la décision du manager (RH/Admin)
   showFinalValidationModal = false;
   finalValidationCandidate: Candidate | undefined;
@@ -110,11 +114,47 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   savingFinalValidation = false;
 
   /**
+   * Modale de transmission RH → manager. Le destinataire est un CHOIX du RH : la
+   * chaîne structurelle (manager de l'offre, département, famille métier) ne fournit
+   * plus qu'une proposition pré-sélectionnée. Sans managerId, le backend refuse le
+   * passage en « Test technique ».
+   */
+  showTransmissionModal = false;
+  transmissionCandidate: Candidate | undefined;
+  transmissionManagers: ManagerOption[] = [];
+  transmissionPreview: RoutingPreview | null = null;
+  transmissionSelectedId: number | null = null;
+  transmissionLoading = false;
+  transmitting = false;
+
+  /**
    * Vue Manager : true si l'utilisateur connecté est MANAGER.
    * Dans ce mode : lecture seule, seuls les dossiers validés par RH sont visibles.
    * Dans ce mode : boutons édition/suppression/statut sont cachés.
    */
   isManagerView = false;
+
+  /**
+   * Lecture du CV dans la fiche elle-même : le manager doit pouvoir juger le CV
+   * sans quitter la carte d'où partent « Planifier l'entretien » et « Refus proposé ».
+   * Le fichier est récupéré en blob (mêmes droits que le téléchargement) puis exposé
+   * comme blob: URL dans une iframe PDF.
+   */
+  cvPreviewUrl: SafeResourceUrl | null = null;
+  cvPreviewLoading = false;
+  cvPreviewError: string | null = null;
+  private cvPreviewObjectUrl: string | null = null;
+
+  /** Dossier déplié dans la liste (contact, analyse IA, compétences, lettre). */
+  expandedCandidateId: number | null = null;
+
+  toggleRowDetails(candidateId: number): void {
+    this.expandedCandidateId = this.expandedCandidateId === candidateId ? null : candidateId;
+  }
+
+  splitSkills(raw?: string): string[] {
+    return (raw || '').split(/[,;|]/).map(s => s.trim()).filter(s => !!s);
+  }
 
   constructor(
     private candidateService: CandidateService,
@@ -127,7 +167,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     private toastrNotification: ToastrNotificationService,
     private authService: AuthService,
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private sanitizer: DomSanitizer
   ) {
     this.searchForm = this.fb.group({
       searchTerm: [''],
@@ -193,6 +234,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.pollSubscription?.unsubscribe();
+    this.releaseCvPreview();
   }
 
   isHrOrAdmin(): boolean {
@@ -267,19 +309,21 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   /** Rafraîchit les données sans afficher le spinner principal */
   silentRefresh(): void {
     this.isRefreshing = true;
+    const requestedAt = Date.now();
     const fetch$ = this.isManagerView
       ? this.candidateService.getValidatedCandidates()
       : this.candidateService.getCandidates();
 
     fetch$.subscribe({
       next: (candidates: Candidate[]) => {
+        this.isRefreshing = false;
+        if (this.isStaleSnapshot(requestedAt)) return;
         if (!this.isManagerView) this.detectManagerDecisions(candidates);
         this.candidates = candidates;
         this.totalCandidates = candidates.length;
         this.totalPages = Math.ceil(this.totalCandidates / this.pageSize);
         this.applyFilters();
         this.rememberStatuses(candidates);
-        this.isRefreshing = false;
       },
       error: () => { this.isRefreshing = false; }
     });
@@ -319,6 +363,15 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   /** Mémorise le statut juste posé par l'utilisateur courant (pour ne pas s'auto-notifier). */
   private rememberStatus(candidateId: number, status: string): void {
     this.lastSeenStatuses.set(candidateId, status);
+    this.lastLocalWriteAt = Date.now();
+  }
+
+  /**
+   * Une synchro partie avant une écriture du RH peut arriver après et ramener l'ancien
+   * statut : la ligne repasserait en « Entretien téléphonique » juste après la transmission.
+   */
+  private isStaleSnapshot(requestedAt: number): boolean {
+    return requestedAt < this.lastLocalWriteAt;
   }
 
   loadCandidates(): void {
@@ -331,8 +384,13 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       ? this.candidateService.getValidatedCandidates()
       : this.candidateService.getCandidates();
 
+    const requestedAt = Date.now();
     fetch$.subscribe({
       next: (candidates: Candidate[]) => {
+        if (this.isStaleSnapshot(requestedAt)) {
+          this.loading = false;
+          return;
+        }
         this.candidates = candidates;
         this.routingPreviews = {};
         this.totalCandidates = candidates.length;
@@ -485,13 +543,13 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Relance de l'analyse possible seulement si la machine à états admet le statut
-   * que le recalcul produit (CV_REVIEWED ou AUTO_REJECTED). Proposer le bouton
-   * ailleurs reviendrait à afficher un contrôle qui renvoie une erreur 400.
+   * Relancer l'analyse sert à corriger un score, plus à faire revenir un dossier en arrière :
+   * le backend enregistre le score et ne déplace le statut que si la machine à états l'admet.
+   * Le bouton reste donc proposé sur tout dossier encore vivant ; sur un dossier clos
+   * (refusé, embauché, retiré) un nouveau score n'a plus d'usage.
    */
   canRecompute(status: string): boolean {
-    return status === 'APPLIED' || status === 'CV_REVIEWED'
-      || status === 'AUTO_REJECTED' || status === 'MANAGER_REJECTED';
+    return !this.isStatusLocked(status);
   }
 
   recomputeScore(candidate: Candidate): void {
@@ -605,27 +663,129 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   /** Nom lisible des managers destinataires, tel que résolu par le backend. */
   routingHint(candidateId: number): string | null {
-    if (this.routingPreviewLoading === candidateId) return 'Destinataires en cours de calcul…';
+    if (this.routingPreviewLoading === candidateId) return 'Proposition en cours de calcul…';
     const preview = this.routingPreviews[candidateId];
     if (!preview) return null;
     if (!preview.managers || preview.managers.length === 0) {
-      return 'Aucun manager destinataire : l\'offre n\'est rattachée à aucun manager.';
+      return 'Aucune proposition : l\'offre n\'est rattachée à aucun manager.';
     }
-    return `Destinataires : ${preview.managers.map(m => m.fullName).join(', ')}`;
+    return `Proposition : ${preview.managers.map(m => m.fullName).join(', ')} — à confirmer`;
   }
 
-  /** Destinataires figés sur le dossier après transmission ; à défaut, l'aperçu. */
-  private routedNames(candidate: Candidate, preview?: RoutingPreview): string {
-    const frozen = candidate?.routedManagerEmails
-      ? candidate.routedManagerEmails.split(',').map(e => e.trim()).filter(e => !!e)
-      : [];
-    if (frozen.length) {
-      const byEmail = new Map((preview?.managers ?? []).map(m => [m.email.toLowerCase(), m.fullName]));
-      return frozen.map(email => byEmail.get(email.toLowerCase()) ?? email).join(', ');
+  /** Libellés du critère d'aiguillage, ceux du backend (RoutingBasis), pour la modale. */
+  private static readonly ROUTING_BASIS_LABELS: Record<string, string> = {
+    OFFER_MANAGER: 'le manager désigné sur l\'offre',
+    DEPARTMENT: 'le département de l\'offre',
+    JOB_FAMILY: 'la famille métier de l\'offre',
+    LEGACY_EMAIL: 'l\'ancien champ e-mail de l\'offre',
+    MANUAL: 'votre désignation',
+    UNRESOLVED: 'aucun critère résolu'
+  };
+
+  /**
+   * Ouvre la modale de transmission. Deux sources, toutes deux serveur : la proposition
+   * automatique de la chaîne structurelle (routing-preview) et la liste des comptes
+   * MANAGER. Rien n'est déduit côté client.
+   */
+  openTransmissionModal(candidate: Candidate): void {
+    this.transmissionCandidate = candidate;
+    this.showTransmissionModal = true;
+    this.transmissionLoading = true;
+    this.transmitting = false;
+    this.transmissionManagers = [];
+    this.transmissionPreview = null;
+    this.transmissionSelectedId = null;
+    forkJoin({
+      managers: this.jobOfferService.getAssignableManagers(null),
+      preview: this.candidateService.getRoutingPreview(candidate.id)
+    }).subscribe({
+      next: (result) => {
+        this.transmissionManagers = result.managers || [];
+        this.transmissionPreview = result.preview;
+        this.transmissionLoading = false;
+        // Pré-sélection du destinataire proposé, s'il correspond à un compte MANAGER
+        // réel : un e-mail libre saisi sur l'offre n'est pas sélectionnable. Même ordre
+        // que le message « L'aiguillage automatique propose X » affiché au-dessus.
+        const proposal = this.transmissionProposal;
+        this.transmissionSelectedId = proposal.length ? proposal[0].id : null;
+      },
+      error: () => {
+        this.transmissionLoading = false;
+        this.toastrNotification.showError(
+          'Impossible de charger les managers destinataires. Vérifiez votre connexion et réessayez.',
+          'Transmission impossible');
+        this.closeTransmissionModal();
+      }
+    });
+  }
+
+  closeTransmissionModal(): void {
+    this.showTransmissionModal = false;
+    this.transmissionCandidate = undefined;
+    this.transmissionSelectedId = null;
+    this.transmitting = false;
+  }
+
+  /** Comptes MANAGER que la chaîne structurelle propose pour cette offre. */
+  get transmissionProposal(): ManagerOption[] {
+    const emails = new Set((this.transmissionPreview?.managers ?? []).map(m => m.email.toLowerCase()));
+    return this.transmissionManagers.filter(m => emails.has(m.email.toLowerCase()));
+  }
+
+  /** Les autres comptes MANAGER, hors proposition. */
+  get transmissionOtherManagers(): ManagerOption[] {
+    const proposed = new Set(this.transmissionProposal.map(m => m.id));
+    return this.transmissionManagers.filter(m => !proposed.has(m.id));
+  }
+
+  get transmissionProposalBasisLabel(): string {
+    const basis = this.transmissionPreview?.basis;
+    return (basis && CandidatesComponent.ROUTING_BASIS_LABELS[basis]) || 'aucun critère résolu';
+  }
+
+  get chosenTransmissionManager(): ManagerOption | undefined {
+    return this.transmissionManagers.find(m => m.id === this.transmissionSelectedId);
+  }
+
+  /** Choisir hors proposition est légitime (département mal rattaché) : c'est tracé. */
+  get transmissionIsOutsideProposal(): boolean {
+    return this.transmissionSelectedId !== null
+      && !this.transmissionProposal.some(m => m.id === this.transmissionSelectedId);
+  }
+
+  confirmTransmission(): void {
+    const candidate = this.transmissionCandidate;
+    const managerId = this.transmissionSelectedId;
+    if (!candidate) return;
+    if (!managerId) {
+      this.toastrNotification.showValidationError('Désignez le manager destinataire du dossier.');
+      return;
     }
-    if (candidate?.routedManagerName) return candidate.routedManagerName;
-    const names = (preview?.managers ?? []).map(m => m.fullName);
-    return names.length ? names.join(', ') : '';
+    this.transmitting = true;
+    this.candidateService.updateCandidateStatus(candidate.id, 'TECHNICAL_TEST', undefined, managerId)
+      .subscribe({
+        next: (updated: Candidate) => {
+          const chosen = this.chosenTransmissionManager;
+          this.transmitting = false;
+          this.closeTransmissionModal();
+          // Le nom vient de la destination gelée par le serveur, pas du seul choix local.
+          const name = updated?.routedManagerName || chosen?.fullName || 'le manager désigné';
+          this.toastrNotification.showSuccess(
+            `Dossier transmis à ${name} pour l'évaluation technique. Le candidat est informé `
+              + 'que son entretien téléphonique est validé.',
+            'Transmis au manager');
+          Object.assign(candidate, updated ?? {});
+          candidate.status = 'TECHNICAL_TEST' as Candidate['status'];
+          delete this.routingPreviews[candidate.id];
+          this.rememberStatus(candidate.id, 'TECHNICAL_TEST');
+          this.applyFilters();
+        },
+        error: (error: any) => {
+          this.transmitting = false;
+          const message = error?.error?.message || 'La transmission a été refusée par le serveur.';
+          this.toastrNotification.showError(message, 'Transmission impossible');
+        }
+      });
   }
 
   isStatusDropdownOpen(candidateId: number): boolean {
@@ -646,6 +806,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     this.selectedCandidate = candidate;
     this.showDetailsModal = true;
     this.showScoreOverrideForm = false;
+    this.releaseCvPreview();
+    this.loadCvPreview(candidate);
     this.loadRoutingStatus(candidate.id);
   }
 
@@ -739,6 +901,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     this.selectedCandidate = undefined;
     this.showScoreOverrideForm = false;
     this.routingStatus = null;
+    this.releaseCvPreview();
   }
 
   @HostListener('document:click', ['$event'])
@@ -837,6 +1000,101 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     } else {
       this.toastrNotification.showError('Aucun CV disponible pour ce candidat', 'CV non trouvé');
     }
+  }
+
+  /**
+   * Consulte le CV dans un onglet du navigateur (rendu PDF natif) au lieu de le télécharger :
+   * le manager lit le CV avant de décider, il ne veut pas d'abord ouvrir le dossier Download.
+   * L'URL de blob n'est pas révoquée tout de suite — le visualiseur PDF la relit à chaque
+   * changement de page, la révoquer casserait la lecture au-delà de la première vue.
+   */
+  viewCV(candidate: Candidate): void {
+    if (!candidate.cv || !candidate.cv.fileUrl) {
+      this.toastrNotification.showError('Aucun CV disponible pour ce candidat', 'CV non trouvé');
+      return;
+    }
+    const fileName = candidate.cv.originalFilename || 'cv.pdf';
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      this.toastrNotification.showInfo(
+        'Les CV Word ne s\'affichent pas dans le navigateur : le fichier est téléchargé, ouvrez-le pour le lire.',
+        'Consultation indisponible');
+      this.downloadCV(candidate);
+      return;
+    }
+    this.cvService.downloadFile(candidate.cv.fileUrl).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+        const opened = window.open(url, '_blank');
+        if (!opened) {
+          this.toastrNotification.showWarning(
+            'Ouverture bloquée par le navigateur (filtre anti-popup). Le CV est téléchargé à la place.',
+            'Fenêtre bloquée');
+          this.downloadCV(candidate);
+        }
+      },
+      error: (error: any) => {
+        console.error('Erreur lors de la consultation du CV:', error);
+        if (error.status === 404) {
+          this.toastrNotification.showError('Le fichier CV n\'a pas été trouvé', 'Fichier introuvable');
+        } else {
+          this.toastrNotification.showError('Erreur lors de l\'ouverture du CV', 'Erreur de lecture');
+        }
+      }
+    });
+  }
+
+  /**
+   * Le manager programme lui-même son entretien : la popup « Nouvel entretien » s'ouvre avec
+   * son dossier déjà sélectionné. La planification fait avancer le dossier côté serveur
+   * (InterviewService → machine à états), l'UI n'écrase pas le statut.
+   */
+  planInterview(candidate: Candidate): void {
+    this.router.navigate(['/admin/interviews'], { queryParams: { newFor: candidate.id } });
+  }
+
+  toggleCvPreview(candidate: Candidate): void {
+    if (this.cvPreviewUrl || this.cvPreviewLoading) {
+      this.releaseCvPreview();
+      return;
+    }
+    this.loadCvPreview(candidate);
+  }
+
+  loadCvPreview(candidate: Candidate): void {
+    if (!candidate.cv || !candidate.cv.fileUrl) {
+      this.cvPreviewError = null;
+      return;
+    }
+    const fileName = candidate.cv.originalFilename || 'cv.pdf';
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      this.cvPreviewError = `Ce CV est au format Word (${fileName}) : le navigateur ne peut pas l'afficher ` +
+        'à l\'écran. Utilisez « Télécharger CV » puis ouvrez-le.';
+      return;
+    }
+    this.cvPreviewLoading = true;
+    this.cvPreviewError = null;
+    this.cvService.downloadFile(candidate.cv.fileUrl).subscribe({
+      next: (blob: Blob) => {
+        this.cvPreviewObjectUrl = window.URL.createObjectURL(
+          new Blob([blob], { type: 'application/pdf' }));
+        this.cvPreviewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.cvPreviewObjectUrl);
+        this.cvPreviewLoading = false;
+      },
+      error: () => {
+        this.cvPreviewLoading = false;
+        this.cvPreviewError = 'Le fichier CV n\'a pas pu être chargé. Réessayez ou téléchargez le CV.';
+      }
+    });
+  }
+
+  private releaseCvPreview(): void {
+    if (this.cvPreviewObjectUrl) {
+      window.URL.revokeObjectURL(this.cvPreviewObjectUrl);
+      this.cvPreviewObjectUrl = null;
+    }
+    this.cvPreviewUrl = null;
+    this.cvPreviewLoading = false;
+    this.cvPreviewError = null;
   }
 
   saveCandidate(): void {
@@ -939,10 +1197,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   updateCandidateStatus(candidate: Candidate, newStatus: string): void {
     const backendStatus = this.mapStatusToBackend(newStatus);
-    const preview = this.routingPreviews[candidate.id];
     this.candidateService.updateCandidateStatus(candidate.id, backendStatus).subscribe({
       next: (updated: Candidate) => {
-        const t = this.statusChangeToast(backendStatus, updated ?? candidate, preview);
+        const t = this.statusChangeToast(backendStatus);
         this.toastrNotification.showSuccess(t.message, t.title);
         Object.assign(candidate, updated ?? {});
         candidate.status = newStatus as Candidate['status'];
@@ -1003,8 +1260,10 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       case 'FINAL_INTERVIEW':
         return [accept, reject, withdraw];
       case 'ACCEPTED':
-        // Avis favorable du manager : le RH contresigne (embauche) ou tranche en refus.
-        return [hire, confirmReject, withdraw];
+        // Avis favorable du manager : le RH contresigne (embauche), confirme l'agenda de
+        // l'entretien avant de trancher, ou renverse l'avis en refus.
+        return [step('INTERVIEW_SCHEDULED', "Confirmer l'entretien planifié", 'fas fa-calendar-check text-info'),
+                hire, confirmReject, withdraw];
       case 'MANAGER_REJECTED':
         // Refus proposé par le manager : le RH le confirme ou remet le dossier dans le pipeline.
         return [confirmReject,
@@ -1042,18 +1301,19 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     else if (t.kind === 'reject') { this.rejectCandidate(candidate); }
     else if (t.kind === 'final-hire') { this.openFinalValidation(candidate, 'HIRED'); }
     else if (t.kind === 'final-reject') { this.openFinalValidation(candidate, 'REJECTED'); }
+    // La transmission au manager passe toujours par la modale : le destinataire est
+    // un choix du RH, jamais le résultat automatique de l'aiguillage.
+    else if (t.key === 'TECHNICAL_TEST') { this.openTransmissionModal(candidate); }
     else { this.updateCandidateStatus(candidate, t.key); }
   }
 
   /**
    * Message de toast (vert) spécifique au nouveau statut, pour informer clairement
-   * le RH/Admin de l'effet métier de son action — notamment le routage automatique
-   * du dossier vers le manager compétent lors de la validation du CV. Le nom affiché
-   * vient du backend (destinataires résolus, puis figés sur le dossier) : jamais
-   * d'une déduction côté client.
+   * le RH/Admin de l'effet métier de son action. La transmission au manager a sa propre
+   * modale et son propre toast (confirmTransmission) : elle n'est plus une simple
+   * transition de statut silencieuse.
    */
-  private statusChangeToast(backendStatus: string, candidate: Candidate,
-                            preview?: RoutingPreview): { message: string; title: string } {
+  private statusChangeToast(backendStatus: string): { message: string; title: string } {
     switch (backendStatus) {
       case 'CV_REVIEWED':
         return {
@@ -1062,15 +1322,6 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         };
       case 'PHONE_SCREENING':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien téléphonique.' };
-      case 'TECHNICAL_TEST': {
-        const names = this.routedNames(candidate, preview);
-        return {
-          title: 'Transmis au manager',
-          message: names
-            ? `Entretien téléphonique validé : le dossier a été transmis à ${names} pour la phase technique.`
-            : 'Entretien téléphonique validé : le dossier a été transmis pour la phase technique.'
-        };
-      }
       case 'INTERVIEW':
         return { title: 'Statut modifié', message: 'Candidat placé en entretien.' };
       case 'FINAL_INTERVIEW':
@@ -1157,11 +1408,14 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   acceptCandidate(candidate: Candidate): void {
     this.candidateService.managerDecision(candidate.id, 'ACCEPTED').subscribe({
-      next: () => {
+      next: (updated: Candidate) => {
         this.toastrNotification.showSuccess(
           'Avis favorable enregistré. Le RH est informé et valide la décision finale.',
           'Avis transmis au RH');
         candidate.status = 'ACCEPTED' as Candidate['status'];
+        // La mention « enregistré par … » vient de la ligne, pas du cache : sans cette
+        // mise à jour elle attribue l'avis au dernier auteur du statut précédent (le RH).
+        candidate.statusChangedBy = updated?.statusChangedBy ?? this.authService.getCurrentUser()?.username;
         this.rememberStatus(candidate.id, 'ACCEPTED');
         this.applyFilters();
         this.openStatusDropdownId = null;
@@ -1194,6 +1448,10 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         }
         const status = (updated?.status || (this.isManagerView ? 'MANAGER_REJECTED' : 'REJECTED')) as Candidate['status'];
         candidate.status = status;
+        // Comme pour l'avis favorable : la mention « enregistré par … » et le motif viennent de
+        // la ligne refusée par le serveur, pas de l'ancien état en cache.
+        candidate.statusChangedBy = updated?.statusChangedBy ?? this.authService.getCurrentUser()?.username;
+        candidate.statusReason = updated?.statusReason ?? candidate.statusReason;
         this.rememberStatus(candidate.id, status);
         this.applyFilters();
         this.openStatusDropdownId = null;
@@ -1554,10 +1812,6 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       'WITHDRAWN': 'Candidature retirée'
     };
     return statusLabels[status] || status;
-  }
-
-  openCV(url: string): void {
-    window.open(url, '_blank');
   }
 }
 

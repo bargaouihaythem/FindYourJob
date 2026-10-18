@@ -60,7 +60,7 @@ class CandidateStatusAnonymousSecurityTest {
     @DisplayName("clé n8n valide + CV_REVIEWED → 200")
     void validN8nKeyCanSetCvReviewed() throws Exception {
         when(n8nRequestAuthenticator.isValid("test-key")).thenReturn(true);
-        when(candidateService.updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED))
+        when(candidateService.updateCandidateStatus(1L, CandidateStatus.CV_REVIEWED, null, null))
                 .thenReturn(fakeResponse(1L, CandidateStatus.CV_REVIEWED));
 
         mockMvc.perform(patch("/api/candidates/1/status")

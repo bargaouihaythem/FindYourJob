@@ -47,10 +47,16 @@ export class CandidateService {
     const headers = this.authService.getAuthHeaders();
     return this.http.delete(`${this.apiUrl}/${id}`, { headers });
   }
-  updateCandidateStatus(id: number, status: string, reason?: string): Observable<Candidate> {
+  /**
+   * @param managerId manager destinataire désigné par le RH. Obligatoire pour la
+   * transmission (TECHNICAL_TEST) : le backend refuse sans lui.
+   */
+  updateCandidateStatus(id: number, status: string, reason?: string,
+                        managerId?: number | null): Observable<Candidate> {
     const headers = this.authService.getAuthHeaders();
     let params = new HttpParams().set('status', status);
     if (reason?.trim()) params = params.set('reason', reason.trim());
+    if (managerId) params = params.set('managerId', String(managerId));
     return this.http.patch<Candidate>(`${this.apiUrl}/${id}/status`, null, { params, headers });
   }
 

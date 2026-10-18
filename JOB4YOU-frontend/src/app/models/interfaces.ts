@@ -159,7 +159,7 @@ export interface RoutedManager {
 
 export interface RoutingPreview {
   managers: RoutedManager[];
-  basis?: 'OFFER_MANAGER' | 'DEPARTMENT' | 'JOB_FAMILY' | 'LEGACY_EMAIL' | 'UNRESOLVED' | null;
+  basis?: 'OFFER_MANAGER' | 'DEPARTMENT' | 'JOB_FAMILY' | 'LEGACY_EMAIL' | 'MANUAL' | 'UNRESOLVED' | null;
 }
 
 /** État de notification d'un destinataire, lu dans l'outbox n8n. */

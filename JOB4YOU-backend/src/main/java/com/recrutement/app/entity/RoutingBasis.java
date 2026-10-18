@@ -18,6 +18,13 @@ public enum RoutingBasis {
     /** Dernier filet : e-mail libre saisi sur l'offre (comportement historique). */
     LEGACY_EMAIL,
 
+    /**
+     * Le RH a désigné le destinataire lui-même au moment de la transmission, au lieu de
+     * laisser la chaîne structurelle décider : sert quand le département de l'offre est
+     * mal rattaché ou quand plusieurs managers sont éligibles.
+     */
+    MANUAL,
+
     /** Rien n'a pu être résolu : la transmission doit être bloquée, pas silencieuse. */
     UNRESOLVED
 }

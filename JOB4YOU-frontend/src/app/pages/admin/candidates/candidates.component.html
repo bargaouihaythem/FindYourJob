@@ -178,9 +178,15 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let candidate of getPaginatedCandidates()">
+            <ng-container *ngFor="let candidate of getPaginatedCandidates()">
+            <tr>
               <td>
                 <div class="d-flex align-items-center">
+                  <button class="btn btn-sm btn-link text-muted p-0 me-2"
+                          (click)="toggleRowDetails(candidate.id)"
+                          [title]="expandedCandidateId === candidate.id ? 'Masquer le détail du dossier' : 'Afficher le détail du dossier (score, compétences, analyse IA)'">
+                    <i class="fas" [ngClass]="expandedCandidateId === candidate.id ? 'fa-chevron-down' : 'fa-chevron-right'"></i>
+                  </button>
                   <div class="avatar avatar-sm rounded-circle bg-primary text-white me-3">
                     {{ candidate.firstName.charAt(0) }}{{ candidate.lastName.charAt(0) }}
                   </div>
@@ -191,13 +197,19 @@
                 </div>
               </td>
               <td>
-                <div>
-                  <div class="fw-bold">{{ candidate.email }}</div>
-                  <div class="text-muted small">{{ candidate.phone }}</div>
+                <!-- L'e-mail est déjà sous le nom : cette colonne porte le téléphone et la
+                     localisation, sinon la ligne se répète et le tableau dépasse l'écran. -->
+                <div class="text-muted small">
+                  <div><i class="fas fa-phone me-1"></i>{{ candidate.phone || 'Non renseigné' }}</div>
+                  <div *ngIf="candidate.address" class="text-truncate" style="max-width:180px"
+                       [title]="candidate.address">
+                    <i class="fas fa-location-dot me-1"></i>{{ candidate.address }}
+                  </div>
                 </div>
               </td>
               <td>
-                <span *ngIf="candidate.jobOfferTitle" class="badge bg-info">
+                <span *ngIf="candidate.jobOfferTitle" class="badge bg-info text-start"
+                      style="white-space: normal; max-width: 190px;">
                   {{ candidate.jobOfferTitle }}
                 </span>
                 <span *ngIf="!candidate.jobOfferTitle" class="text-muted">
@@ -222,6 +234,11 @@
                       <i class="fas fa-hourglass-half me-1"></i>{{ advice }}
                     </span>
                     <div class="btn-group btn-group-sm" role="group" *ngIf="!managerAdviceNote(candidate)">
+                      <button class="btn btn-outline-info" (click)="planInterview(candidate)"
+                              [disabled]="!canManagerAdvise(candidate)"
+                              title="Programmer l'entretien (date, heure, lien Meet) — le dossier passe à l'étape « Entretien »">
+                        <i class="fas fa-calendar-plus me-1"></i>Planifier l'entretien
+                      </button>
                       <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)"
                               [disabled]="!canManagerAdvise(candidate)"
                               title="Émettre un avis favorable — transmis au RH pour validation finale">
@@ -253,7 +270,9 @@
                                  : t.kind === 'final-reject' ? (candidate.status === 'AUTO_REJECTED'
                                      ? 'Confirmer la décision de l’IA après examen — motif obligatoire, le candidat a déjà été notifié'
                                      : 'Confirmer le refus — motif demandé, e-mail d\'envoi au candidat')
-                                 : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH' : ''">
+                                 : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH'
+                                 : t.key === 'TECHNICAL_TEST' ? 'Ouvre la modale de transmission — vous désignez le manager destinataire'
+                                 : ''">
                         <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
                       </a>
                     </li>
@@ -323,17 +342,24 @@
                     </button>
                     <span *ngIf="!canRecompute(candidate.status)"
                           class="small fst-italic text-muted"
-                          title="Le recalcul ferait revenir ce dossier sur une étape que la machine à états lui interdit de reprendre : lancer l'analyse le ferait échouer.">Dossier trop avancé pour relancer l’analyse</span>
+                          title="Dossier clos (refus validé, embauche ou retrait) : un nouveau score n'aurait plus de destinataire.">Dossier clos — analyse sans objet</span>
                   </div>
                 </ng-template>
               </td>
               <td>
-                <button *ngIf="candidate.cv && candidate.cv.fileUrl" 
-                        class="btn btn-sm btn-outline-primary" 
-                        (click)="downloadCV(candidate)"
-                        title="Télécharger le CV">
-                  <i class="fas fa-download"></i>
-                </button>
+                <div class="d-flex align-items-center gap-1"
+                     *ngIf="candidate.cv && candidate.cv.fileUrl">
+                  <button class="btn btn-sm btn-outline-info"
+                          (click)="viewCV(candidate)"
+                          title="Lire le CV à l'écran, sans le télécharger (ouvre le PDF dans un onglet)">
+                    <i class="fas fa-eye me-1"></i>Consulter
+                  </button>
+                  <button class="btn btn-sm btn-outline-primary"
+                          (click)="downloadCV(candidate)"
+                          title="Télécharger le CV">
+                    <i class="fas fa-download me-1"></i>Télécharger
+                  </button>
+                </div>
                 <span *ngIf="!candidate.cv || !candidate.cv.fileUrl" class="text-muted small">
                   Aucun CV
                 </span>
@@ -395,6 +421,71 @@
                 </div>
               </td>
             </tr>
+            <!-- Détail du dossier déplié dans la liste : le manager lit le dossier sans
+                 ouvrir la fiche, et rien n'est tronqué — tout le texte est revéléré ici. -->
+            <tr *ngIf="expandedCandidateId === candidate.id" class="row-details">
+              <td colspan="8">
+                <div class="p-3 rounded" style="background:#f8f9fc; border:1px solid #e5e9f2;">
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Contact</div>
+                      <div class="small">{{ candidate.email }}</div>
+                      <div class="small">{{ candidate.phone || 'Téléphone non renseigné' }}</div>
+                      <div class="small">{{ candidate.address || 'Adresse non renseignée' }}</div>
+                      <a *ngIf="candidate.linkedinProfile" [href]="candidate.linkedinProfile"
+                         target="_blank" class="small text-decoration-none">
+                        <i class="fab fa-linkedin me-1"></i>Profil LinkedIn
+                      </a>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Analyse IA du dossier</div>
+                      <div class="small">
+                        Technique {{ candidate.aiScoreTechnical ?? '—' }} ·
+                        Communication {{ candidate.aiScoreCommunication ?? '—' }} ·
+                        Séniorité {{ candidate.aiScoreSeniorityMatch ?? '—' }}
+                      </div>
+                      <div class="small text-muted" *ngIf="candidate.aiScoreSource">
+                        Source : {{ candidate.aiScoreSource }}
+                      </div>
+                      <div class="small mt-1" *ngIf="candidate.manualScore != null">
+                        <i class="fas fa-user-pen me-1 text-info"></i>
+                        Score porté à {{ candidate.manualScore }}/100 par {{ candidate.manualScoreBy || 'le RH' }}
+                        <span *ngIf="candidate.manualScoreReason"> — {{ candidate.manualScoreReason }}</span>
+                      </div>
+                      <div class="small mt-1" *ngIf="candidate.aiRecommendation">
+                        Recommandation : <strong>{{ candidate.aiRecommendation }}</strong>
+                      </div>
+                    </div>
+                    <div class="col-md-4">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Compétences</div>
+                      <div class="mb-1">
+                        <span *ngFor="let s of splitSkills(candidate.matchedSkills)"
+                              class="badge bg-success-subtle text-success me-1 mb-1">{{ s }}</span>
+                        <span *ngIf="!candidate.matchedSkills" class="small text-muted">
+                          Aucune compétence alignée relevée</span>
+                      </div>
+                      <div>
+                        <span *ngFor="let s of splitSkills(candidate.missingSkills)"
+                              class="badge bg-danger-subtle text-danger me-1 mb-1">{{ s }}</span>
+                      </div>
+                    </div>
+                    <div class="col-12" *ngIf="candidate.aiSummary">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Synthèse de l'analyse</div>
+                      <p class="small mb-0" style="white-space: pre-line;">{{ candidate.aiSummary }}</p>
+                    </div>
+                    <div class="col-12" *ngIf="candidate.coverLetter">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Lettre de motivation</div>
+                      <p class="small mb-0" style="white-space: pre-line;">{{ candidate.coverLetter }}</p>
+                    </div>
+                    <div class="col-12" *ngIf="candidate.statusReason">
+                      <div class="text-muted small text-uppercase fw-bold mb-1">Motif du statut</div>
+                      <p class="small mb-0">{{ candidate.statusReason }}</p>
+                    </div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            </ng-container>
           </tbody>
         </table>
       </div>
@@ -572,7 +663,7 @@
 
 <!-- Modal Détails Candidat -->
 <div *ngIf="showDetailsModal" class="modal fade show" style="display: block;" tabindex="-1">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
@@ -582,6 +673,43 @@
         <button type="button" class="btn-close" (click)="closeDetailsModal()"></button>
       </div>
       <div class="modal-body" *ngIf="selectedCandidate">
+        <!-- CV du candidat : la pièce sur laquelle le manager décide. Elle est ici, dans la
+             fiche, et non dans un onglet ou le dossier Téléchargements — c'est de cette carte
+             que partent « Planifier l'entretien » et « Refus proposé ». -->
+        <div class="mb-4" *ngIf="selectedCandidate.cv && selectedCandidate.cv.fileUrl">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <h6 class="text-primary mb-0">
+              <i class="fas fa-file-alt me-2"></i>CV du candidat
+            </h6>
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-info btn-sm"
+                      (click)="toggleCvPreview(selectedCandidate)">
+                <i class="fas me-1"
+                   [ngClass]="cvPreviewUrl || cvPreviewLoading ? 'fa-eye-slash' : 'fa-eye'"></i>
+                {{ cvPreviewUrl || cvPreviewLoading ? 'Masquer le CV' : 'Afficher le CV' }}
+              </button>
+              <button class="btn btn-outline-info btn-sm"
+                      (click)="viewCV(selectedCandidate)"
+                      title="Ouvre le CV dans un onglet du navigateur (lecture directe, sans téléchargement)">
+                <i class="fas fa-up-right-from-square me-1"></i>Plein écran
+              </button>
+              <button class="btn btn-outline-primary btn-sm"
+                      (click)="downloadCV(selectedCandidate)">
+                <i class="fas fa-download me-1"></i>Télécharger
+              </button>
+            </div>
+          </div>
+          <div *ngIf="cvPreviewLoading" class="text-center text-muted py-5"
+               style="background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px;">
+            <i class="fas fa-spinner fa-spin me-2"></i>Chargement du CV…
+          </div>
+          <div *ngIf="cvPreviewError" class="alert alert-warning mb-0 py-2 small">
+            <i class="fas fa-triangle-exclamation me-1"></i>{{ cvPreviewError }}
+          </div>
+          <iframe *ngIf="cvPreviewUrl" [src]="cvPreviewUrl" title="CV du candidat"
+                  class="w-100" style="height:62vh; border:1px solid #dee2e6; border-radius:8px; background:#fff;"></iframe>
+        </div>
+
         <div class="row">
           <!-- Informations personnelles -->
           <div class="col-md-6">
@@ -672,20 +800,14 @@
           </div>
         </div>
 
-        <!-- CV et documents -->
+        <!-- Documents du dossier : le CV se lit désormais en haut de la fiche. -->
         <div class="row mt-4">
           <div class="col-12">
             <h6 class="text-primary mb-3">
-              <i class="fas fa-file-alt me-2"></i>
+              <i class="fas fa-folder-open me-2"></i>
               Documents
             </h6>
-            <div class="d-flex gap-2">
-              <button *ngIf="selectedCandidate.cv && selectedCandidate.cv.fileUrl" 
-                      class="btn btn-outline-primary btn-sm"
-                      (click)="downloadCV(selectedCandidate)">
-                <i class="fas fa-download me-2"></i>
-                Télécharger CV
-              </button>
+            <div class="d-flex gap-2 flex-wrap">
               <span *ngIf="!selectedCandidate.cv || !selectedCandidate.cv.fileUrl" class="text-muted">
                 Aucun CV disponible
               </span>
@@ -967,6 +1089,11 @@
              calendrier n'ouvrirait qu'une fiche consultative sans action possible. -->
         <ng-container *ngIf="isManagerView; else rhFooterAction">
           <div class="btn-group btn-group-sm me-auto" role="group" *ngIf="!managerAdviceNote(selectedCandidate)">
+            <button class="btn btn-outline-info" (click)="planInterview(selectedCandidate)"
+                    [disabled]="!canManagerAdvise(selectedCandidate)"
+                    title="Programmer l'entretien (date, heure, lien Meet) — le dossier passe à l'étape « Entretien »">
+              <i class="fas fa-calendar-plus me-1"></i>Planifier l'entretien
+            </button>
             <button class="btn btn-outline-success" (click)="acceptCandidate(selectedCandidate)"
                     [disabled]="!canManagerAdvise(selectedCandidate)"
                     title="Émettre un avis favorable — transmis au RH pour validation finale">
@@ -1079,5 +1206,93 @@
 </app-email-composer>
 
 <!-- Modal Backdrop -->
-<div *ngIf="showCandidateModal || showDeleteModal || showDetailsModal || showFinalValidationModal" class="modal-backdrop fade show"></div>
+<!-- Transmission RH → manager : le RH désigne lui-même le destinataire -->
+<div *ngIf="showTransmissionModal && transmissionCandidate" class="modal fade show d-block" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-user-check me-2"></i>Transmettre le dossier au manager
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeTransmissionModal()"></button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-3">
+          Dossier de <strong>{{ transmissionCandidate.firstName }} {{ transmissionCandidate.lastName }}</strong>
+          — {{ transmissionCandidate.jobOfferTitle }}<br>
+          <span class="text-muted small">
+            Entretien téléphonique validé : le dossier passe en « Test technique ».
+          </span>
+        </p>
+
+        <div *ngIf="transmissionLoading" class="text-center py-4">
+          <span class="spinner-border spinner-border-sm me-2"></span>
+          Chargement des managers destinataires…
+        </div>
+
+        <ng-container *ngIf="!transmissionLoading">
+          <div *ngIf="transmissionProposal.length; else noRoutingProposal" class="alert alert-light border small">
+            <i class="fas fa-route me-1"></i>
+            L'aiguillage automatique ({{ transmissionProposalBasisLabel }}) propose
+            <strong>{{ transmissionProposal[0].fullName }}</strong><ng-container
+              *ngIf="transmissionProposal.length > 1">
+              et {{ transmissionProposal.length - 1 }} autre(s) manager(s) du même périmètre</ng-container>.
+            Vous pouvez confirmer ce choix ou en désigner un autre.
+          </div>
+          <ng-template #noRoutingProposal>
+            <div class="alert alert-warning small">
+              <i class="fas fa-triangle-exclamation me-1"></i>
+              Aucun destinataire n'est proposé : cette offre n'est rattachée à aucun manager repérable
+              automatiquement. Désignez le destinataire dans la liste.
+            </div>
+          </ng-template>
+
+          <label class="form-label">Manager destinataire <span class="text-danger">*</span></label>
+          <select class="form-select" name="transmissionManagerId" [(ngModel)]="transmissionSelectedId"
+                  [disabled]="transmitting">
+            <option [ngValue]="null" disabled>Sélectionner un manager…</option>
+            <optgroup *ngIf="transmissionProposal.length"
+                      label="Proposition de l'aiguillage automatique">
+              <option *ngFor="let m of transmissionProposal" [ngValue]="m.id">
+                {{ m.fullName }} — {{ m.email }}
+              </option>
+            </optgroup>
+            <optgroup *ngIf="transmissionOtherManagers.length" label="Autres managers">
+              <option *ngFor="let m of transmissionOtherManagers" [ngValue]="m.id">
+                {{ m.fullName }} — {{ m.email }}<ng-container
+                  *ngIf="m.departmentName"> ({{ m.departmentName }})</ng-container>
+              </option>
+            </optgroup>
+          </select>
+
+          <div *ngIf="transmissionIsOutsideProposal" class="alert alert-warning small mt-2 mb-0">
+            <i class="fas fa-triangle-exclamation me-1"></i>
+            Ce manager ne fait pas partie de la proposition : l'écart avec l'aiguillage automatique est
+            enregistré au journal d'audit du dossier.
+          </div>
+
+          <div class="alert alert-info small mt-3 mb-0">
+            <i class="fas fa-envelope me-1"></i>
+            Le manager désigné reçoit le dossier complet (CV, score et compétences repérées) et le candidat
+            est informé que son entretien téléphonique est validé.
+          </div>
+        </ng-container>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" (click)="closeTransmissionModal()">Annuler</button>
+        <button type="button" class="btn btn-success"
+                [disabled]="transmitting || !transmissionSelectedId"
+                (click)="confirmTransmission()">
+          <span *ngIf="transmitting" class="spinner-border spinner-border-sm me-2"></span>
+          <ng-container *ngIf="chosenTransmissionManager as m; else genericTransmit">
+            Transmettre à {{ m.fullName }}
+          </ng-container>
+          <ng-template #genericTransmit>Transmettre au manager</ng-template>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div *ngIf="showCandidateModal || showDeleteModal || showDetailsModal || showFinalValidationModal || showTransmissionModal" class="modal-backdrop fade show"></div>
 
