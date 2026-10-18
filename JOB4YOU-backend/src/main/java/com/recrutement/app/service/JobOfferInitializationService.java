@@ -416,9 +416,9 @@ public class JobOfferInitializationService implements ApplicationRunner {
             hrUsername
         );
 
-        // Offre 10 - Stage Marketing Digital
+        // Offre 10 - Marketing Digital
         createJobOffer(
-            "Stage Marketing Digital & Communication - 6 mois",
+            "Assistant Marketing Digital & Communication",
             "Rejoignez notre équipe marketing pour développer la visibilité de nos produits tech.\n\n" +
             "Missions du stage :\n" +
             "• Créer du contenu pour nos réseaux sociaux (LinkedIn, Twitter)\n" +
