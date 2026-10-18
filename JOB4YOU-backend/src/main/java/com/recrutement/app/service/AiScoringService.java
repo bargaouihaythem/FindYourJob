@@ -39,6 +39,13 @@ public class AiScoringService {
     public static final int GREY_ZONE_LOW = 55;
     public static final int GREY_ZONE_HIGH = 65;
 
+    /**
+     * Plafond appliqué quand le CV est très loin du minimum d'expérience exigé par l'offre
+     * (2 ans et plus sous la borne, pour un poste demandant au moins 3 ans). 45 laisse le
+     * dossier sous le seuil d'auto-rejet et hors zone grise : c'est le RH qui tranche.
+     */
+    public static final int SENIORITY_GATE_MAX_SCORE = 45;
+
     public static boolean isGreyZone(int score) {
         return score >= GREY_ZONE_LOW && score <= GREY_ZONE_HIGH;
     }
@@ -64,6 +71,9 @@ public class AiScoringService {
         public boolean needsHumanReview;
         public String humanReviewReason;
         public String detailedJustification;
+        /** Années lues dans le CV et minimum d'années exigé par l'offre (null = non chiffrable). */
+        public Integer candidateExperienceYears;
+        public Integer requiredExperienceMinYears;
     }
 
     public AiScoreResult computeScore(Candidate candidate, JobOffer jobOffer) {
@@ -76,6 +86,13 @@ public class AiScoringService {
         SkillNormalizationService.MatchingExplanation explanation =
                 skillNormalizationService.analyzeMatching(candidateText, requiredSkills, experienceLevel);
 
+        Integer candidateYears = explanation.getCandidateExperienceYears();
+        Integer requiredMinYears = explanation.getRequiredExperienceMinYears();
+        // Quand le CV et l'offre sont tous deux chiffrés, l'écart de séniorité est un fait,
+        // pas une impression du modèle : le calcul déterministe fait foi.
+        boolean seniorityMeasurable = candidateYears != null && requiredMinYears != null;
+        int deterministicSeniority = computeSeniorityScore(candidateText, experienceLevel, candidateYears, requiredMinYears);
+
         int technical;
         int communication;
         int seniorityMatch;
@@ -85,14 +102,14 @@ public class AiScoringService {
             CohereClient.ScoreBreakdown breakdown = cohereClient.scoreCandidate(candidateText, jobTitle, requiredSkills, experienceLevel);
             technical = breakdown.technical;
             communication = breakdown.communication;
-            seniorityMatch = breakdown.seniority;
+            seniorityMatch = seniorityMeasurable ? deterministicSeniority : breakdown.seniority;
             source = "COHERE";
         } catch (Exception e) {
             log.info("[AiScoringService] Mode simulé activé (Cohere indisponible) : {}", e.getMessage());
             // Calcul technique basé sur la normalisation fine des compétences
             technical = Math.max(30, (int) Math.round(explanation.getTechnicalMatchRate() * 100));
             communication = computeCommunicationScore(candidate, candidateText);
-            seniorityMatch = computeSeniorityScore(candidateText, experienceLevel);
+            seniorityMatch = deterministicSeniority;
             source = "SIMULATED";
         }
 
@@ -107,6 +124,15 @@ public class AiScoringService {
         );
         finalScore = Math.max(0, Math.min(100, finalScore));
 
+        // 2. Garde de séniorité : postuler deux ans et plus sous le minimum exigé par un poste
+        // expérimenté n'est pas une candidature « à transmettre », quoi qu'en disent les compétences.
+        // Le score est plafonné sous le seuil d'auto-rejet pour que l'arbitrage revienne au RH.
+        int seniorityGap = seniorityMeasurable ? requiredMinYears - candidateYears : 0;
+        boolean severeSeniorityGap = seniorityMeasurable && seniorityGap >= 2 && requiredMinYears >= 3;
+        if (severeSeniorityGap) {
+            finalScore = Math.min(finalScore, SENIORITY_GATE_MAX_SCORE);
+        }
+
         AiScoreResult result = new AiScoreResult();
         result.technicalScore = technical;
         result.communicationScore = communication;
@@ -116,8 +142,10 @@ public class AiScoringService {
         result.matchedSkills = String.join(", ", explanation.getMatchedSkills());
         result.missingSkills = String.join(", ", explanation.getMissingSkills());
         result.detailedJustification = explanation.getDetailedJustification();
+        result.candidateExperienceYears = candidateYears;
+        result.requiredExperienceMinYears = requiredMinYears;
 
-        // 2. Détection d'erreurs et cas nécessitant une intervention humaine (Remarque 2)
+        // 3. Détection d'erreurs et cas nécessitant une intervention humaine (Remarque 2)
         boolean hasParsingIssue = candidate.getCv() != null
                 && (candidate.getCv().getExtractedText() == null || candidate.getCv().getExtractedText().trim().length() < 50);
         boolean isGrayZone = isGreyZone(finalScore);
@@ -126,6 +154,12 @@ public class AiScoringService {
         if (hasParsingIssue) {
             result.needsHumanReview = true;
             result.humanReviewReason = "Échec d'extraction du texte du CV (scan, image ou fichier corrompu) : vérification manuelle obligatoire du document.";
+        } else if (severeSeniorityGap) {
+            result.needsHumanReview = true;
+            result.humanReviewReason = String.format(Locale.FRANCE,
+                    "Écart de séniorité : %d an(s) d'expérience détecté(s) dans le CV pour un minimum de %d an(s) exigé par l'offre (%s). "
+                            + "Score plafonné à %d/100 sous le seuil d'auto-rejet : le dossier reste à arbitrer par le RH et n'est pas transmis à un manager.",
+                    candidateYears, requiredMinYears, experienceLevel, SENIORITY_GATE_MAX_SCORE);
         } else if (isGrayZone) {
             result.needsHumanReview = true;
             result.humanReviewReason = String.format(Locale.FRANCE,
@@ -142,9 +176,13 @@ public class AiScoringService {
         String skillsResume = !explanation.getMatchedSkills().isEmpty()
                 ? " · Compétences validées : " + String.join(", ", explanation.getMatchedSkills())
                 : "";
+        String experienceResume = seniorityMeasurable
+                ? String.format(Locale.FRANCE, " · Expérience : %d an(s) côté candidat pour un minimum de %d an(s) côté offre",
+                        candidateYears, requiredMinYears)
+                : "";
         result.summary = String.format(Locale.FRANCE,
-                "Technique : %d/100 · Communication : %d/100 · Séniorité : %d/100 (source : %s)%s",
-                technical, communication, seniorityMatch, source, skillsResume);
+                "Technique : %d/100 · Communication : %d/100 · Séniorité : %d/100 (source : %s)%s%s",
+                technical, communication, seniorityMatch, source, experienceResume, skillsResume);
 
         result.recommendation = finalScore >= 85 ? "EXCELLENT_MATCH"
                 : finalScore >= 60 ? "GOOD_MATCH"
@@ -188,23 +226,45 @@ public class AiScoringService {
     }
 
     /**
-     * Adéquation séniorité en mode dégradé. Le nombre d'années est lu par
-     * SkillNormalizationService.extractExperienceYears, qui distingue « 5 ans d'expérience »
-     * des versions d'outils (« Java 17 », « Angular 16 ») et accepte l'apostrophe typographique
-     * des CV Word et PDF — un test sur « ans d'expérience » en ASCII passerait à côté.
+     * Adéquation séniorité. Quand l'offre chiffre un minimum d'années et que le CV en chiffre
+     * aussi, l'écart est calculé directement — les formulations libres (« 5-8 ans », « 5+ ans »,
+     * « à partir de 3 ans ») étaient auparavant ignorées et renvoyaient un 70 neutre, ce qui
+     * laissait un profil junior de 1 an remonter sur un poste Tech Lead.
+     *
+     * Les années du candidat sont lues par SkillNormalizationService.extractExperienceYears, qui
+     * distingue « 5 ans d'expérience » des versions d'outils (« Java 17 », « Angular 16 ») et
+     * accepte l'apostrophe typographique des CV Word et PDF.
      */
-    private int computeSeniorityScore(String candidateText, String requiredLevel) {
+    private int computeSeniorityScore(String candidateText, String requiredLevel,
+                                      Integer candidateYears, Integer requiredMinYears) {
         if (requiredLevel == null || requiredLevel.isBlank()) {
             return 70;
         }
+
+        if (candidateYears != null && requiredMinYears != null) {
+            if (requiredMinYears == 0) {
+                // Poste junior / stage : l'expérience ne peut pas disqualifier, la surqualification
+                // seulement (risque d'adéquation salariale et de départ rapide).
+                return candidateYears <= 2 ? 90 : 70;
+            }
+            int gap = requiredMinYears - candidateYears;
+            if (gap <= 0) return candidateYears > requiredMinYears * 2 ? 80 : 90;
+            if (gap == 1) return 65;
+            if (gap == 2) return 40;
+            return 20;
+        }
+        if (candidateYears == null && requiredMinYears != null && requiredMinYears > 0) {
+            // exigence chiffrée, CV muet sur les années : rien à affirmer
+            return 55;
+        }
+
         String text = candidateText == null ? "" : candidateText.toLowerCase(Locale.ROOT);
         String level = requiredLevel.toLowerCase(Locale.ROOT);
 
-        Integer years = skillNormalizationService.extractExperienceYears(text);
-        boolean seniorEvidence = (years != null && years >= 5)
+        boolean seniorEvidence = (candidateYears != null && candidateYears >= 5)
                 || text.contains("senior") || text.contains("lead")
                 || text.contains("manager") || text.contains("architect");
-        boolean juniorEvidence = (years != null && years <= 2)
+        boolean juniorEvidence = (candidateYears != null && candidateYears <= 2)
                 || text.contains("junior") || text.contains("stage")
                 || text.contains("débutant") || text.contains("étudiant");
 

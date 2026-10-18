@@ -242,9 +242,15 @@ public class JobOfferService {
         jobOffer.setTitle(request.getTitle());
         jobOffer.setDescription(request.getDescription());
         jobOffer.setRequiredSkills(request.getRequiredSkills());
-        jobOffer.setExperienceLevel(request.getExperienceLevel());
+        // Le barème (Junior 0-2 / Confirmé 2-4 / Senior 5-8 / Expert 8+) est appliqué à l'enregistrement :
+        // les deux champs restent cohérents entre eux, et le scoring de séniorité a une exigence
+        // lisible au lieu d'une saisie libre tantôt « senior », tantôt « 2-3 ans ».
+        String reconciledExperience = ExperienceLevelNorms.reconcileExperienceLabel(
+                request.getSeniorityLevel(), request.getExperienceLevel());
+        jobOffer.setExperienceLevel(reconciledExperience);
         jobOffer.setJobFamily(request.getJobFamily());
-        jobOffer.setSeniorityLevel(request.getSeniorityLevel());
+        jobOffer.setSeniorityLevel(ExperienceLevelNorms.reconcileSeniority(
+                request.getSeniorityLevel(), reconciledExperience));
         jobOffer.setContractType(request.getContractType());
         jobOffer.setLocation(request.getLocation());
         jobOffer.setSalaryRange(request.getSalaryRange());

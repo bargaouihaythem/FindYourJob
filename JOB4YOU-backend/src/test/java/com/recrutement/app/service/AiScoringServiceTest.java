@@ -126,6 +126,110 @@ class AiScoringServiceTest {
     }
 
     @Nested
+    @DisplayName("Garde de séniorité (écart entre le CV et le minimum exigé par l'offre)")
+    class SeniorityGateTests {
+
+        private Candidate juniorOnLeadOffer(String experienceSentence) {
+            Candidate candidate = new Candidate();
+            candidate.setCoverLetter(experienceSentence
+                    + " Java, Spring Boot, Angular, TypeScript, PostgreSQL, Docker, Git, CI/CD, Revue de code, Mentorat.");
+
+            JobOffer jobOffer = new JobOffer();
+            jobOffer.setTitle("Tech Lead Full Stack");
+            jobOffer.setRequiredSkills("Java, Spring Boot, Angular, Leadership, Architecture, Kubernetes, CI/CD, Mentorat");
+            jobOffer.setExperienceLevel("5-8 ans");
+            candidate.setJobOffer(jobOffer);
+            return candidate;
+        }
+
+        private void cohereSaysEverythingIsPerfect() {
+            CohereClient.ScoreBreakdown breakdown = new CohereClient.ScoreBreakdown();
+            breakdown.technical = 95;
+            breakdown.communication = 95;
+            breakdown.seniority = 95;
+            when(cohereClient.scoreCandidate(anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(breakdown);
+        }
+
+        @Test
+        @DisplayName("un CV de 1 an sur une offre « 5-8 ans » est plafonné sous le seuil et part en revue RH")
+        void shouldCapScoreWhenCandidateIsFarBelowRequiredExperience() {
+            cohereSaysEverythingIsPerfect();
+            Candidate candidate = juniorOnLeadOffer("Développeur avec 1 an d'expérience");
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            assertThat(result.candidateExperienceYears).isEqualTo(1);
+            assertThat(result.requiredExperienceMinYears).isEqualTo(5);
+            assertThat(result.seniorityMatchScore).isEqualTo(20);
+            assertThat(result.finalScore).isLessThanOrEqualTo(AiScoringService.SENIORITY_GATE_MAX_SCORE);
+            assertThat(result.needsHumanReview).isTrue();
+            assertThat(result.humanReviewReason).contains("Écart de séniorité");
+            assertThat(result.recommendation).isEqualTo("WEAK_MATCH");
+        }
+
+        @Test
+        @DisplayName("le calcul déterministe prime sur l'optimisme du modèle quand les deux sont chiffrables")
+        void deterministicSeniorityShouldOverrideCohereEstimate() {
+            cohereSaysEverythingIsPerfect();
+            Candidate candidate = juniorOnLeadOffer("Profil confirmé, 3 ans d’expérience en développement web");
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            // Cohere annonce 95 : l'écart chiffré (3 vs 5) fait foi, sinon la candidature
+            // remonterait au manager sur la seule foi d'un score optimiste du modèle.
+            assertThat(result.source).isEqualTo("COHERE");
+            assertThat(result.seniorityMatchScore).isEqualTo(40);
+            assertThat(result.finalScore).isLessThan(60);
+        }
+
+        @Test
+        @DisplayName("une expérience conforme au minimum n'est pas pénalisée")
+        void shouldNotPenalizeCandidateMeetingTheMinimum() {
+            cohereSaysEverythingIsPerfect();
+            Candidate candidate = juniorOnLeadOffer("Ingénieur avec 6 ans d'expérience sur des plateformes java");
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            assertThat(result.seniorityMatchScore).isEqualTo(90);
+            assertThat(result.finalScore).isGreaterThan(85);
+            assertThat(result.needsHumanReview).isFalse();
+        }
+
+        @Test
+        @DisplayName("un déficit d'un an reste une nuance, pas un rejet automatique")
+        void shouldTreatOneYearGapAsNuance() {
+            cohereSaysEverythingIsPerfect();
+            Candidate candidate = juniorOnLeadOffer("Développeur confirmé avec 4 ans d'expérience");
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            assertThat(result.seniorityMatchScore).isEqualTo(65);
+            assertThat(result.needsHumanReview).isFalse();
+            assertThat(result.finalScore).isGreaterThan(65);
+        }
+
+        @Test
+        @DisplayName("une exigence non chiffrable ne déclenche pas la garde")
+        void shouldNotGateWhenExperienceIsNotMeasurable() {
+            CohereClient.ScoreBreakdown breakdown = new CohereClient.ScoreBreakdown();
+            breakdown.technical = 90;
+            breakdown.communication = 70;
+            breakdown.seniority = 75;
+            when(cohereClient.scoreCandidate(anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(breakdown);
+
+            Candidate candidate = juniorOnLeadOffer(" Parcours sans année explicite mentionnée");
+            candidate.getJobOffer().setExperienceLevel("Profil autonome");
+
+            AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
+
+            assertThat(result.requiredExperienceMinYears).isNull();
+            assertThat(result.needsHumanReview).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("Mode simulé (fallback quand Cohere est indisponible)")
     class SimulatedModeTests {
 
@@ -204,8 +308,8 @@ class AiScoringServiceTest {
 
             AiScoringService.AiScoreResult result = aiScoringService.computeScore(candidate, candidate.getJobOffer());
 
-            // 10 ans >= 5 pour un poste SENIOR → preuve de séniorité côté candidat.
-            assertThat(result.seniorityMatchScore).isEqualTo(85);
+            // « SENIOR » vaut un minimum de 5 ans : 10 ans côté candidat couvre l'exigence.
+            assertThat(result.seniorityMatchScore).isEqualTo(90);
         }
 
         @Test

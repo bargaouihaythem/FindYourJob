@@ -147,6 +147,7 @@ public class SkillNormalizationService {
         private List<String> missingSkills = new ArrayList<>();
         private List<String> bonusSkills = new ArrayList<>();
         private Integer candidateExperienceYears;
+        private Integer requiredExperienceMinYears;
         private String seniorityMatchLabel;
         private double technicalMatchRate; // 0.0 - 1.0
         private String detailedJustification;
@@ -162,6 +163,9 @@ public class SkillNormalizationService {
 
         public Integer getCandidateExperienceYears() { return candidateExperienceYears; }
         public void setCandidateExperienceYears(Integer candidateExperienceYears) { this.candidateExperienceYears = candidateExperienceYears; }
+
+        public Integer getRequiredExperienceMinYears() { return requiredExperienceMinYears; }
+        public void setRequiredExperienceMinYears(Integer requiredExperienceMinYears) { this.requiredExperienceMinYears = requiredExperienceMinYears; }
 
         public String getSeniorityMatchLabel() { return seniorityMatchLabel; }
         public void setSeniorityMatchLabel(String seniorityMatchLabel) { this.seniorityMatchLabel = seniorityMatchLabel; }
@@ -233,6 +237,7 @@ public class SkillNormalizationService {
         // 4. Extraction des années d'expérience dans le texte
         Integer expYears = extractExperienceYears(textLower);
         explanation.setCandidateExperienceYears(expYears);
+        explanation.setRequiredExperienceMinYears(extractRequiredMinYears(requiredExperienceLevel));
 
         // 5. Évaluation adéquation séniorité
         String seniorityEval = evaluateSeniority(expYears, requiredExperienceLevel, textLower);
@@ -360,22 +365,42 @@ public class SkillNormalizationService {
         return maxYears > 0 ? maxYears : null;
     }
 
+    /**
+     * Minimum d'années exigé par une offre, lu dans son `experienceLevel` libre
+     * (« 5-8 ans », « 5+ ans », « à partir de 3 ans d'expérience », « Senior », « Étudiant »).
+     * La lecture est celle du barème métier (ExperienceLevelNorms) : c'est le même point
+     * d'appui que la normalisation des offres à la saisie, sinon l'offre et le scoring
+     * pourraient ne pas entendre la même exigence.
+     */
+    public Integer extractRequiredMinYears(String requiredLevel) {
+        return ExperienceLevelNorms.parseMinYears(requiredLevel);
+    }
+
     private String evaluateSeniority(Integer candidateYears, String requiredLevel, String textLower) {
         if (requiredLevel == null || requiredLevel.isBlank()) {
             return candidateYears != null ? candidateYears + " ans d'expérience" : "Niveau indéterminé";
         }
-        String req = requiredLevel.toLowerCase(Locale.ROOT);
-        if (candidateYears != null) {
-            if (req.contains("junior") || req.contains("étudiant") || req.contains("stage")) {
+        Integer requiredMin = extractRequiredMinYears(requiredLevel);
+        if (candidateYears != null && requiredMin != null) {
+            if (requiredMin == 0) {
                 return candidateYears <= 2 ? "Conforme aux attentes Junior" : "Surqualifié pour poste Junior";
             }
-            if (req.contains("2-4") || req.contains("3-5") || req.contains("mid") || req.contains("interm")) {
-                return candidateYears >= 2 && candidateYears <= 6 ? "Conforme au niveau recherché (Intermédiaire/Confirmé)"
-                        : candidateYears < 2 ? "Expérience inférieure au seuil demandé" : "Profil plus expérimenté que requis";
+            if (candidateYears >= requiredMin) {
+                return "Expérience conforme au minimum requis (" + requiredMin + " an(s) demandé, "
+                        + candidateYears + " an(s) détecté(s))";
             }
-            if (req.contains("5+") || req.contains("senior") || req.contains("lead")) {
-                return candidateYears >= 5 ? "Conforme au niveau Senior/Lead requis" : "Expérience insuffisante pour profil Senior (recommandé 5+ ans)";
-            }
+            int gap = requiredMin - candidateYears;
+            return gap == 1
+                    ? "Léger déficit d'expérience (" + candidateYears + " an(s) pour un minimum de " + requiredMin + ")"
+                    : "Expérience insuffisante (" + candidateYears + " an(s) pour un minimum de " + requiredMin + " an(s) exigé par l'offre)";
+        }
+        String req = requiredLevel.toLowerCase(Locale.ROOT);
+        if (candidateYears != null && (req.contains("mid") || req.contains("interm"))) {
+            return candidateYears >= 2 && candidateYears <= 6 ? "Conforme au niveau recherché (Intermédiaire/Confirmé)"
+                    : candidateYears < 2 ? "Expérience inférieure au seuil demandé" : "Profil plus expérimenté que requis";
+        }
+        if (candidateYears == null) {
+            return "Expérience du candidat non détectée dans le CV";
         }
 
         if (textLower.contains("senior") || textLower.contains("lead") || textLower.contains("architecte")) {

@@ -61,6 +61,30 @@ class SkillNormalizationServiceTest {
     }
 
     @Test
+    @DisplayName("Le minimum d'années exigé par une offre est lu dans ses formulations libres")
+    void extractsRequiredMinYearsFromOfferWording() {
+        assertThat(service.extractRequiredMinYears("5-8 ans")).isEqualTo(5);
+        assertThat(service.extractRequiredMinYears("2–4 ans")).isEqualTo(2);
+        assertThat(service.extractRequiredMinYears("8+ ans")).isEqualTo(8);
+        assertThat(service.extractRequiredMinYears("à partir de 3 ans d'expérience")).isEqualTo(3);
+        assertThat(service.extractRequiredMinYears("minimum 5 ans")).isEqualTo(5);
+        assertThat(service.extractRequiredMinYears("Seniors")).isEqualTo(5);
+        assertThat(service.extractRequiredMinYears("Confirmé")).isEqualTo(2);
+        assertThat(service.extractRequiredMinYears("Étudiant")).isZero();
+        assertThat(service.extractRequiredMinYears("Débutant")).isZero();
+        // Le palier Junior du barème doit rester mesurable : « 0-2 ans » exige 0 an, pas « aucun seuil ».
+        assertThat(service.extractRequiredMinYears("0-2 ans")).isZero();
+    }
+
+    @Test
+    @DisplayName("Une exigence non chiffrable ne doit inventer aucun seuil")
+    void doesNotInventRequiredYears() {
+        assertThat(service.extractRequiredMinYears(null)).isNull();
+        assertThat(service.extractRequiredMinYears("  ")).isNull();
+        assertThat(service.extractRequiredMinYears("Profil autonome et curieux")).isNull();
+    }
+
+    @Test
     @DisplayName("Un libellé de compétence inconnu est capitalisé, pas dénaturé")
     void normalizesKnownAndUnknownSkills() {
         assertThat(service.normalizeSkill("k8s")).isEqualTo("Kubernetes");
