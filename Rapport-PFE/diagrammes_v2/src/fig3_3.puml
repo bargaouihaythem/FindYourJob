@@ -1,0 +1,23 @@
+@startuml fig3_3
+!include skin.iuml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 6
+actor "RH / Manager" as RH
+participant ":InterviewService" as IS
+database "PostgreSQL\n(SGBD)" as DB
+participant "Spring Mail\n(SMTP)" as ML
+participant "Agent n8n 2" as N8N
+participant "Google Calendar" as GC
+
+RH -> IS : POST /api/interviews\nPlanifier un entretien
+IS -> IS : Garde-fous : dossier non clos, CV\ndéjà examiné par le RH, créneau libre\nà l'agenda de l'interviewer
+IS -> DB : Enregistrer l'entretien\net avancer le statut du dossier
+IS -> DB : Rappels : candidat J-1,\ninterviewer H-2
+IS -> ML : Convocation du candidat
+IS ->> N8N : Webhook « ENTRETIEN_PLANIFIE »\n(appel asynchrone)
+IS --> RH : Entretien planifié
+N8N -> GC : Créer l'événement
+GC --> N8N : Lien Meet
+N8N -> IS : PATCH /api/interviews/{id}/meet-link\n(callback authentifié, rôle N8N)
+IS -> DB : Mettre à jour l'entretien\n(lien Meet)
+@enduml

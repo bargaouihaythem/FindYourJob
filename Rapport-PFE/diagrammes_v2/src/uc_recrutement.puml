@@ -1,0 +1,59 @@
+@startuml uc_recrutement
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Responsable RH" as RH
+actor "Manager" as MGR
+
+rectangle "Plateforme JOB4YOU — Processus de Recrutement & Évaluation" {
+  usecase "Publier / gérer une\noffre d'emploi" as UC_OFFRE
+  usecase "Consulter et filtrer\nles candidatures" as UC_FILTRER
+  usecase "Corriger le score IA\n(surcharge justifiée)" as UC_SCORE
+  usecase "Conduire l'entretien\ntéléphonique" as UC_PHONE
+  usecase "Planifier un entretien" as UC_PLANIF
+  usecase "Saisir un feedback\nd'entretien" as UC_FEEDBACK
+  usecase "Valider et transmettre\nun feedback" as UC_VALIDFB
+  usecase "Émettre un avis\n(favorable ou refus proposé)" as UC_AVIS
+  usecase "Contresigner la décision finale\n(HIRED / REJECTED)" as UC_DECISION
+  usecase "Valider l'éligibilité du dossier\net la transition de statut\n(garde-fou serveur)" as UC_CHECK
+  usecase "Notifier les acteurs\npar e-mail" as UC_NOTIF
+}
+
+RH --> UC_OFFRE
+RH --> UC_FILTRER
+RH --> UC_SCORE
+RH --> UC_PHONE
+RH --> UC_PLANIF
+RH --> UC_FEEDBACK
+RH --> UC_VALIDFB
+RH --> UC_DECISION
+
+MGR --> UC_FILTRER
+MGR --> UC_PLANIF
+MGR --> UC_FEEDBACK
+MGR --> UC_AVIS
+
+UC_PLANIF ..> UC_CHECK : <<include>>
+UC_AVIS ..> UC_CHECK : <<include>>
+UC_DECISION ..> UC_CHECK : <<include>>
+UC_PLANIF ..> UC_NOTIF : <<include>>
+UC_DECISION ..> UC_NOTIF : <<include>>
+UC_VALIDFB ..> UC_NOTIF : <<include>>
+
+note top of UC_DECISION
+  La saisie d'un feedback (POST /api/feedbacks) est ouverte
+  au RH, au Manager et à l'Administrateur ; sa validation
+  (/approve, /reject, /send-to-candidate) est réservée au RH
+  et à l'Admin. Le manager n'écrit qu'un avis sur un dossier
+  déjà en évaluation (refus proposé dès CV_REVIEWED, avis
+  favorable à partir de PHONE_SCREENING) : il alerte le RH,
+  seul à trancher. Le contreseing (HIRED avec date de
+  présentation des documents, REJECTED avec motif) est ouvert
+  au RH et à l'Administrateur et déclenche l'e-mail de
+  décision au candidat — sauf lorsque le RH se borne à
+  confirmer un refus déjà notifié par l'IA, qui n'entraîne
+  pas second envoi. La surcharge du score IA
+  (PATCH /ai-score/override) est également ouverte à l'Admin.
+end note
+@enduml

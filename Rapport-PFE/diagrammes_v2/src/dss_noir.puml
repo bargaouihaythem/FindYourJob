@@ -1,0 +1,24 @@
+@startuml dss_noir
+!include skin.iuml
+!pragma layout smetana
+hide footbox
+
+actor "Candidat" as CAND
+participant "Système JOB4YOU" as SYS
+
+CAND -> SYS : soumettreCandidature(formulaire, CV.pdf)
+activate SYS
+SYS --> CAND : Confirmation (HTTP 201 Created,\nstatut APPLIED)
+deactivate SYS
+
+note over SYS
+  Traitements synchrones, dans la même requête :
+  stockage du CV et extraction de son texte.
+  Traitements asynchrones en arrière-plan : la
+  candidature est placée dans la file d'attente
+  (outbox) et l'Agent 1 n8n la reprend — appel du
+  scoring IA puis e-mail de confirmation au
+  candidat. Sans Agent 1 configuré, Spring Boot
+  envoie lui-même l'accusé de réception.
+end note
+@enduml

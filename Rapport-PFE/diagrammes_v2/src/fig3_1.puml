@@ -1,0 +1,31 @@
+@startuml fig3_1
+!include skin.iuml
+!pragma layout smetana
+package "job4you-frontend (Angular)" as FE
+
+package "com.recrutement.app" {
+  package "controller" as CTRL
+  package "dto" as DTO
+  package "service" as SVC
+  package "repository" as REPO
+  package "entity" as ENT
+  package "security" {
+    package "jwt" as JWT
+    package "services" as SECSVC
+  }
+  package "config" as CFG
+  package "exception" as EXC
+}
+
+CTRL --> DTO : échange
+CTRL --> SVC : délègue
+CTRL --> EXC : lève / traduit
+SVC --> REPO : persiste
+SVC --> ENT : manipule
+REPO --> ENT : mappe
+SECSVC --> REPO : charge l'utilisateur
+JWT --> SECSVC : résout le principal
+CFG --> JWT : enregistre les filtres
+CFG --> SECSVC : authentification
+FE --> CTRL : HTTP REST (JSON)
+@enduml

@@ -1,0 +1,98 @@
+@startuml fig3_2a
+!include skin.iuml
+!pragma layout smetana
+hide circle
+skinparam classAttributeIconSize 0
+
+class Department {
+  id : Long
+  name : String
+  code : String
+}
+class JobOffer {
+  id : Long
+  title : String
+  description : String
+  requiredSkills : String
+  jobFamily : JobFamily
+  seniorityLevel : SeniorityLevel
+  status : JobStatus
+  deadline : LocalDateTime
+}
+class User {
+  id : Long
+  username : String
+  email : String
+  jobFamily : JobFamily
+}
+class Candidate {
+  id : Long
+  firstName : String
+  lastName : String
+  email : String
+  phone : String
+  status : CandidateStatus
+  statusReason : String
+  presentationDate : LocalDateTime
+  applicationDate : LocalDateTime
+  aiScore : Integer
+  aiSummary : String
+  aiRecommendation : String
+  aiScoreTechnical : Integer
+  aiScoreCommunication : Integer
+  aiScoreSeniorityMatch : Integer
+  aiScoreSource : String
+  matchedSkills : String
+  missingSkills : String
+  needsHumanReview : Boolean
+  humanReviewReason : String
+  manualScore : Integer
+  manualScoreReason : String
+  routedManagerEmails : String
+  routingBasis : RoutingBasis
+  routedAt : LocalDateTime
+}
+class CV {
+  id : Long
+  originalFilename : String
+  filePath : String
+  extractedText : String
+}
+class Interview {
+  id : Long
+  interviewDate : LocalDateTime
+  durationMinutes : Integer
+  type : InterviewType
+  status : InterviewStatus
+  meetLink : String
+}
+class Feedback {
+  id : Long
+  content : String
+  rating : Integer
+  type : FeedbackType
+  status : FeedbackStatus
+  isSentToCandidate : Boolean
+}
+class ScoringWeightProfile {
+  id : Long
+  jobFamily : JobFamily
+  seniorityLevel : SeniorityLevel
+  weightTechnical : Double
+  weightCommunication : Double
+  weightSeniority : Double
+}
+
+Department "1" -- "0..*" JobOffer : rattache
+JobOffer "1" -- "0..*" Candidate : reçoit
+Candidate "1" -- "0..1" CV : dépose
+Candidate "1" -- "0..*" Interview : passe
+Interview "0..1" -- "0..*" Feedback : donne lieu à
+Candidate "1" -- "0..*" Feedback : concerne
+
+User "1" -- "0..*" JobOffer : crée
+User "1" -- "0..*" Interview : mène
+User "1" -- "0..*" Feedback : rédige
+
+ScoringWeightProfile ..> JobOffer : pondère selon\njobFamily + seniorityLevel
+@enduml

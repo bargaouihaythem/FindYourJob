@@ -1,0 +1,92 @@
+@startuml fig3_2g
+!include skin.iuml
+!pragma layout smetana
+hide circle
+skinparam classAttributeIconSize 0
+
+class AuditLog {
+  id : Long
+  entityType : String
+  entityId : Long
+  action : String
+  performedAt : LocalDateTime
+}
+class Department {
+  id : Long
+  name : String
+  code : String
+}
+class User {
+  id : Long
+  username : String
+  email : String
+  firstName : String
+  lastName : String
+  jobFamily : JobFamily
+}
+class Role {
+  id : Long
+  name : ERole
+}
+class JobOffer {
+  id : Long
+  title : String
+  jobFamily : JobFamily
+  seniorityLevel : SeniorityLevel
+  status : JobStatus
+  deadline : LocalDateTime
+}
+class Candidate {
+  id : Long
+  firstName : String
+  lastName : String
+  email : String
+  status : CandidateStatus
+  statusReason : String
+  presentationDate : LocalDateTime
+  aiScore : Integer
+  aiSummary : String
+  matchedSkills : String
+  needsHumanReview : Boolean
+}
+class CV {
+  id : Long
+  originalFilename : String
+  filePath : String
+  extractedText : String
+}
+class Interview {
+  id : Long
+  interviewDate : LocalDateTime
+  type : InterviewType
+  status : InterviewStatus
+  meetLink : String
+}
+class Feedback {
+  id : Long
+  content : String
+  rating : Integer
+  status : FeedbackStatus
+  isSentToCandidate : Boolean
+}
+
+Department "1" -- "0..*" JobOffer : rattache
+Department "0..1" -- "0..*" User : affecte
+User "0..*" -- "1..*" Role : possède\n(user_roles)
+User "1" -- "0..*" JobOffer : crée
+User "0..1" -- "0..*" JobOffer : hiringManager
+User "0..1" -- "0..*" Candidate : routedToManager
+User "1" -- "0..*" Interview : mène
+User "1" -- "0..*" Feedback : rédige
+JobOffer "1" -- "0..*" Candidate : reçoit
+Candidate "1" -- "0..1" CV : dépose
+Candidate "1" -- "0..*" Interview : passe
+Candidate "1" -- "0..*" Feedback : concerne
+Interview "0..1" -- "0..*" Feedback : donne lieu à
+
+note right of AuditLog
+  Journalisation transverse :
+  référence par entityType + entityId
+  (aucune association JPA)
+end note
+@enduml

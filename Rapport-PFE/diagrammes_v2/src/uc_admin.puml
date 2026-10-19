@@ -1,0 +1,37 @@
+@startuml uc_admin
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Administrateur" as ADM
+actor "Responsable RH" as RH
+
+rectangle "Plateforme JOB4YOU — Administration & Paramétrage" {
+  usecase "Gérer les comptes\net les rôles" as UC_ROLES
+  usecase "Rattacher un utilisateur à un\ndépartement / famille de métier" as UC_RATTACH
+  usecase "Paramétrer le scoring IA\n(profils de pondération)" as UC_SCORING
+  usecase "Consulter le journal\nd'audit" as UC_AUDIT
+  usecase "Trancher la décision\nen l'absence du manager" as UC_DEBLOC
+}
+
+ADM --> UC_ROLES
+ADM --> UC_RATTACH
+ADM --> UC_SCORING
+ADM --> UC_AUDIT
+ADM --> UC_DEBLOC
+RH --> UC_AUDIT
+RH --> UC_SCORING
+
+note bottom of UC_AUDIT
+  Le journal d'audit et les profils de pondération du
+  scoring IA sont réservés à l'Administrateur et au
+  Responsable RH : gardés par les gardes de route
+  Angular, puis vérifiés côté serveur par
+  @PreAuthorize ADMIN ou HR sur /api/audit et
+  /api/scoring-profiles — la garde API fait foi.
+  Le référentiel n'est pas administrable : les
+  départements sont créés au démarrage et exposés en
+  lecture seule (/api/departments), les familles de
+  métier sont un énuméré figé dans le code.
+end note
+@enduml

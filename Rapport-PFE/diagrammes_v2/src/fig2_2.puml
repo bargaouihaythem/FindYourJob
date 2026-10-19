@@ -1,0 +1,23 @@
+@startuml fig2_2
+!include skin.iuml
+actor "Candidat" as C
+participant "Frontend\n(Angular)" as FE
+participant "Backend\n(Spring Boot)" as BE
+database "PostgreSQL\n(SGBD)" as DB
+participant "Agent n8n 1\n(CV Parser)" as N8N
+participant "API Cohere" as COH
+
+C -> FE : Formulaire + CV
+FE -> BE : POST /api/candidates/apply
+BE -> DB : Vérifier unicité et enregistrer\nla candidature + le CV
+DB --> BE : Candidature persistée (id)
+BE -> DB : File d'attente n8n (outbox)\névénement PENDING
+BE --> FE : 201 Created
+FE --> C : Confirmation de soumission
+BE -> N8N : N8nOutboxService, tâche planifiée (5 s) :\nwebhook « nouvelle candidature »
+N8N -> BE : POST /api/candidates/{id}/ai-score/recompute\n(X-N8N-API-Key)
+BE -> COH : Analyse du CV (scoring IA)
+COH --> BE : Sous-scores et synthèse
+BE -> DB : Mise à jour score et statut
+DB --> BE : Confirmation de la mise à jour
+@enduml

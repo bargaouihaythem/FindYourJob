@@ -1,0 +1,30 @@
+@startuml fig3_4
+!include skin.iuml
+skinparam maxMessageSize 150
+skinparam ParticipantPadding 6
+actor "Manager" as MGR
+actor "RH" as RH
+participant ":CandidateController" as CC
+participant ":CandidateService" as CS
+database "PostgreSQL" as DB
+participant ":NotificationService" as NS
+
+== Avis du manager (non définitif) ==
+MGR -> CC : PATCH /api/candidates/{id}/manager-decision\ndécision = ACCEPTED ou REJECTED (+ motif)
+CC -> CS : managerDecision()
+CS -> CS : Avis réservé aux dossiers transmis\n(TECHNICAL_TEST, INTERVIEW,\nFINAL_INTERVIEW)
+CS -> DB : Enregistrer l'avis ACCEPTED\nou MANAGER_REJECTED
+CS -> NS : notifier le RH
+NS --> RH : Décision à contre-signer
+CC --> MGR : Avis enregistré
+
+== Contre-signature RH (décision finale) ==
+RH -> CC : PATCH /api/candidates/{id}/final-validation\ndécision = HIRED (+ date) ou REJECTED (+ motif)
+CC -> CS : hrFinalValidation()
+CS -> CS : Garde-fous : avis de manager en\nattente, date (HIRED) ou motif exigés,\ncompte purement manager exclu
+CS -> DB : Décision finale et journal d'audit
+CS -> NS : notifier le candidat
+NS -> NS : E-mail de décision au candidat
+CC --> RH : Statut synchronisé dans la liste RH
+
+@enduml

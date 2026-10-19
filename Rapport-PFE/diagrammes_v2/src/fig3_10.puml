@@ -1,0 +1,47 @@
+@startuml fig3_10
+!include skin.iuml
+!pragma layout smetana
+package "Frontend Angular" {
+  [Module Candidat] as MC
+  [Module RH / Admin] as MRH
+  [Module Manager] as MM
+  [Guards & intercepteurs (RoleGuard, JWT)] as GD
+}
+package "Backend Spring Boot" {
+  [Contrôleurs REST] as REST
+  [Services métier] as SVC
+  [Sécurité JWT / Auth] as SEC
+  [Intégration n8n & outbox] as N8NC
+  [Scoring IA (Cohere)] as AI
+  [Chatbot (OpenRouter)] as CHAT
+  [Stockage des CV\n(système de fichiers)] as FS
+  [Repositories JPA] as JPA
+  [Journal d'audit (AuditLog)] as AUD
+}
+database "PostgreSQL" as DB
+cloud "n8n" as N8N
+cloud "API externes (Cohere, OpenRouter,\nSMTP, Google Calendar)" as EXT
+
+MC --> GD
+MRH --> GD
+MM --> GD
+MC --> REST
+MRH --> REST
+MM --> REST
+REST --> SEC
+REST --> SVC
+SVC --> JPA
+SVC --> AI
+SVC --> CHAT
+SVC --> FS : dépôt et lecture du CV
+SVC --> N8NC
+SVC --> AUD : journalise
+AUD --> JPA
+JPA --> DB
+N8NC --> N8N
+N8N --> REST
+note on link: callbacks
+AI --> EXT
+CHAT --> EXT
+N8NC --> EXT
+@enduml

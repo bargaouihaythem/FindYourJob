@@ -1,0 +1,48 @@
+@startuml uc_portail
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Visiteur" as VIS
+actor "Candidat" as CAND
+
+rectangle "Plateforme JOB4YOU — Portail Candidat & Visiteur" {
+  usecase "Consulter et rechercher\nles offres d'emploi" as UC_OFFRES
+  usecase "Obtenir des suggestions\n« Job idéal » (matching CV)" as UC_MATCHING
+  usecase "Échanger avec l'assistant\nconversationnel" as UC_CHATBOT
+  usecase "Postuler à une offre" as UC_POSTULER
+  usecase "Suivre l'état de\nses candidatures" as UC_SUIVRE
+  usecase "Retirer une candidature\nnon close" as UC_RETRAIT
+  usecase "Consulter le détail\nd'une offre active" as UC_DETAIL
+  usecase "Créer un compte\ncandidat" as UC_INSC
+  usecase "Consulter ses entretiens\nplanifiés" as UC_MYINT
+  usecase "S'authentifier\n(JWT)" as UC_AUTH
+  usecase "Déposer un CV\n(PDF, DOC, DOCX — 5 Mo\ndans le formulaire)" as UC_CV
+}
+
+CAND --|> VIS
+VIS --> UC_OFFRES
+VIS --> UC_MATCHING
+VIS --> UC_INSC
+CAND --> UC_POSTULER
+CAND --> UC_SUIVRE
+CAND --> UC_RETRAIT
+CAND --> UC_MYINT
+CAND --> UC_CHATBOT
+
+UC_OFFRES ..> UC_DETAIL : <<include>>
+UC_POSTULER ..> UC_CV : <<include>>
+UC_POSTULER ..> UC_AUTH : <<include>>
+UC_SUIVRE   ..> UC_AUTH : <<include>>
+UC_RETRAIT  ..> UC_AUTH : <<include>>
+UC_MYINT    ..> UC_AUTH : <<include>>
+UC_CHATBOT  ..> UC_AUTH : <<include>>
+
+note bottom of UC_AUTH
+  L'assistant conversationnel et le suivi des
+  candidatures sont réservés au compte candidat
+  (ROLE_USER) ; la création de compte précède
+  toute candidature, le visiteur étant renvoyé
+  vers le formulaire d'inscription.
+end note
+@enduml

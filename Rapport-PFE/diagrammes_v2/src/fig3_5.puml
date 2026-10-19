@@ -1,0 +1,39 @@
+@startuml fig3_5
+!include skin.iuml
+participant "Agent n8n 1" as N8N
+participant ":CandidateController" as CC
+participant ":CandidateService" as CS
+participant ":AiScoringService" as AIS
+participant ":SkillNormalizationService" as SNS
+database "PostgreSQL\n(SGBD)" as DB
+participant ":CohereClient" as COHC
+participant "API Cohere" as COH
+
+N8N -> CC : POST /{id}/ai-score/recompute\n(X-N8N-API-Key)
+CC -> CS : recomputeAiScore()
+CS -> AIS : computeScore()
+AIS -> SNS : analyzeMatching()
+SNS --> AIS : compétences matchées / manquantes\ntaux de recouvrement technique
+AIS -> COHC : scoreCandidate()
+COHC -> COH : POST /v2/chat
+COH --> COHC : Sous-scores et synthèse
+COHC --> AIS : Scores technique / communication / séniorité
+AIS -> DB : Lire le profil de pondération
+DB --> AIS : Poids des critères
+AIS -> AIS : Score global pondéré,\ngarde de séniorité (plafond 45)
+AIS --> CS : Score, source et needsHumanReview
+CS -> DB : Enregistrer score, sous-scores\net explication
+CS -> CS : needsHumanReview ou score de 60 et plus :\nCV_REVIEWED, sinon AUTO_REJECTED
+CS --> CC : Résultat du scoring
+CC --> N8N : 200 OK
+note right of AIS
+  Seuil 60 et zone grise 55-65 :
+  le dossier signalé rejoint
+  CV_REVIEWED, jamais AUTO_REJECTED.
+  La séniorité est calculée de façon
+  déterministe dès que les années sont
+  chiffrées des deux côtés.
+  Le plancher de 30 ne vaut qu'en
+  mode dégradé.
+end note
+@enduml

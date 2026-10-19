@@ -1,0 +1,33 @@
+@startuml fig3_7
+!include skin.iuml
+skinparam ranksep 14
+skinparam nodesep 10
+hide empty description
+
+[*] --> APPLIED : candidature soumise
+APPLIED --> AUTO_REJECTED : score IA < 60, hors arbitrage
+APPLIED --> CV_REVIEWED : score >= 60 ou needsHumanReview
+APPLIED --> WITHDRAWN : retrait
+
+CV_REVIEWED --> PHONE_SCREENING : présélection
+PHONE_SCREENING --> TECHNICAL_TEST : test technique
+TECHNICAL_TEST --> INTERVIEW : entretien technique
+INTERVIEW --> FINAL_INTERVIEW : entretien final
+
+TECHNICAL_TEST --> MANAGER_REJECTED : refus proposé par le manager
+TECHNICAL_TEST --> ACCEPTED : avis favorable du manager
+FINAL_INTERVIEW --> ACCEPTED : avis favorable du manager
+AUTO_REJECTED -[dashed]-> CV_REVIEWED : override RH justifié
+AUTO_REJECTED --> REJECTED : refus confirmé par le RH\n(motif obligatoire, pas de second e-mail)
+
+ACCEPTED --> INTERVIEW_SCHEDULED : agenda confirmé
+ACCEPTED --> HIRED : validation finale du RH
+ACCEPTED --> REJECTED : refus final du RH
+MANAGER_REJECTED --> REJECTED : contreseing du refus
+MANAGER_REJECTED -[dashed]-> CV_REVIEWED : avis renversé par le RH
+INTERVIEW_SCHEDULED --> HIRED : validation finale du RH
+
+HIRED --> [*]
+REJECTED --> [*]
+WITHDRAWN --> [*]
+@enduml

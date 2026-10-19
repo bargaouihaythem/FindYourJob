@@ -1,0 +1,42 @@
+@startuml fig3_9
+!include skin.iuml
+!pragma layout smetana
+node "Poste client" as CLIENT {
+  artifact "Navigateur web" as NAV
+}
+node "Poste / serveur local" as HOST {
+  artifact "Application Angular (SPA)\nhttp://localhost:4200" as ANG
+  artifact "API REST Spring Boot\nhttp://localhost:8080/api" as API
+  artifact "Stockage fichiers CV (volume)" as FS
+  artifact "n8n (Agents 1, 2, 3)\nhttp://localhost:5678" as N8N
+  database "PostgreSQL\nlocalhost:5432 / job4you_db" as DB
+}
+cloud "Services externes" {
+  artifact "API Cohere (scoring IA)" as COH
+  artifact "API OpenRouter (chatbot)" as LLM
+  artifact "Google Calendar / Meet" as GC
+  artifact "Serveur SMTP" as SMTP
+}
+
+NAV --> ANG : HTTP local
+ANG --> API : REST + JWT
+API --> DB : JDBC
+API --> FS : écriture CV
+API --> N8N : webhooks (port 5678)
+N8N --> API : callbacks (recompute,\nlien d'entretien)
+N8N --> GC : événement + lien Meet
+N8N --> SMTP : e-mails candidats,\nRH et managers (nodes emailSend)
+
+API --> COH : scoring IA
+API --> LLM : chatbot
+
+note bottom of GC
+  L'agent 2 crée l'événement Google Calendar,
+  en extrait le lien Meet et le renvoie au
+  back-end, qui le persiste sur l'entretien.
+  L'appel part de l'outbox Spring et reste
+  conditionné à la validité de la connexion
+  Google (jeton d'actualisation).
+end note
+API --> SMTP : e-mails transactionnels\n(EmailService / JavaMailSender)
+@enduml

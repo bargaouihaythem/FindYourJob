@@ -1,0 +1,30 @@
+@startuml fig3_6
+!include skin.iuml
+skinparam maxMessageSize 215
+actor "RH" as RH
+actor "Manager" as MGR
+participant ":CandidateController" as CC
+participant ":CandidateService" as CS
+participant ":ManagerRoutingService" as MRS
+database "PostgreSQL" as DB
+participant ":N8nService" as N8N
+
+RH -> CC : ouvrir la modale : GET routing-preview
+CC -> CS : routingPreview()
+CS -> MRS : resolve(offre)
+MRS --> CS : proposition\n(quatre niveaux par priorité)
+CS --> RH : proposition pré-sélectionnée
+RH -> CC : GET /api/job-offers/manager-candidates
+CC --> RH : liste des comptes MANAGER
+RH -> CC : PATCH /{id}/status : statut évaluation\ntechnique + managerId désigné
+CC -> CS : updateCandidateStatus(…, managerId)
+CS -> MRS : resolveManual(managerId)
+alt destinataire absent, sans rôle MANAGER ou sans\ne-mail (400), ou compte introuvable (404)
+  CS --> RH : erreur, dossier inchangé
+else désignation valide
+  CS -> DB : gel (base MANUAL) et ROUTING,\nROUTING_MANUAL si écart
+  CS -> N8N : triggerAgent3HrValidation()
+  N8N --> MGR : e-mail « dossier à évaluer »
+  CS --> RH : dossier transmis,\ndestinataire nommé
+end
+@enduml

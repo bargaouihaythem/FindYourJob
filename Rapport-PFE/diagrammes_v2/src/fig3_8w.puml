@@ -1,0 +1,214 @@
+@startuml fig3_8w
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+hide circle
+skinparam classAttributeIconSize 0
+
+entity "users" as users {
+  * id : bigint <<PK>>
+  --
+  username : varchar
+  email : varchar
+  password : varchar
+  first_name : varchar
+  last_name : varchar
+  job_family : varchar
+  department_id : bigint <<FK>>
+}
+entity "roles" as roles {
+  * id : bigint <<PK>>
+  --
+  name : varchar
+}
+entity "user_roles" as user_roles {
+  * user_id : bigint <<FK>>
+  * role_id : bigint <<FK>>
+}
+entity "departments" as departments {
+  * id : bigint <<PK>>
+  --
+  name : varchar
+  code : varchar
+}
+entity "job_offers" as job_offers {
+  * id : bigint <<PK>>
+  --
+  title : varchar
+  description : text
+  required_skills : varchar
+  job_family : varchar
+  seniority_level : varchar
+  status : varchar
+  manager_email : varchar
+  deadline : timestamp
+  department_id : bigint <<FK>>
+  created_by : bigint <<FK>>
+  hiring_manager_id : bigint <<FK>>
+}
+entity "candidates" as candidates {
+  * id : bigint <<PK>>
+  --
+  first_name : varchar
+  last_name : varchar
+  email : varchar
+  phone : varchar
+  address : text
+  linkedin_profile : varchar
+  cover_letter : text
+  status : varchar
+  status_reason : text
+  status_changed_by : varchar
+  ai_score : integer
+  ai_score_source : varchar
+  ai_summary : text
+  ai_recommendation : varchar
+  manual_score : integer
+  manual_score_reason : text
+  manual_score_by : varchar
+  application_date : timestamp
+  presentation_date : timestamp
+  last_updated : timestamp
+  job_offer_id : bigint <<FK>>
+  routed_to_manager_id : bigint <<FK>>
+  routed_manager_emails : text
+  routing_basis : varchar
+  routed_at : timestamp
+}
+note bottom of candidates
+  Colonnes principales ; les sous-scores IA
+  (technique, communication, adéquation) et
+  les horodatages de la surcharge manuelle
+  sont générés par Hibernate avec le schéma.
+  Les quatre dernières colonnes gèlent la
+  destination du dossier au moment de sa
+  transmission : le manager qui a reçu le
+  dossier le voit, même si l'offre est
+  rattachée ailleurs depuis.
+end note
+entity "cvs" as cvs {
+  * id : bigint <<PK>>
+  --
+  original_filename : varchar
+  stored_filename : varchar
+  file_path : varchar
+  extracted_text : text
+  * candidate_id : bigint <<FK>>
+}
+entity "interviews" as interviews {
+  * id : bigint <<PK>>
+  --
+  interview_date : timestamp
+  type : varchar
+  status : varchar
+  meet_link : varchar
+  * candidate_id : bigint <<FK>>
+  * interviewer_id : bigint <<FK>>
+}
+entity "feedbacks" as feedbacks {
+  * id : bigint <<PK>>
+  --
+  content : text
+  rating : integer
+  status : varchar
+  is_sent_to_candidate : boolean
+  * candidate_id : bigint <<FK>>
+  * author_id : bigint <<FK>>
+  interview_id : bigint <<FK>>
+}
+entity "internal_notes" as internal_notes {
+  * id : bigint <<PK>>
+  --
+  content : text
+  candidate_id : bigint
+  created_by : varchar
+  created_at : timestamp
+  updated_at : timestamp
+  is_pinned : boolean
+}
+entity "scoring_weight_profiles" as swp {
+  * id : bigint <<PK>>
+  --
+  job_family : varchar
+  seniority_level : varchar
+  weight_technical : double
+  weight_communication : double
+  weight_seniority : double
+}
+entity "audit_logs" as audit_logs {
+  * id : bigint <<PK>>
+  --
+  entity_type : varchar
+  action : varchar
+  entity_id : bigint
+  old_value / new_value : text
+  performed_by : varchar
+  performed_at : timestamp
+}
+entity "n8n_outbox_events" as outbox {
+  * id : bigint <<PK>>
+  --
+  event_key : varchar
+  webhook_url : varchar
+  agent_name : varchar
+  payload_json : text
+  status : varchar
+  attempts : integer
+  next_attempt_at : timestamp
+  sent_at : timestamp
+  last_error : varchar
+}
+entity "password_reset_tokens" as prt {
+  * id : bigint <<PK>>
+  --
+  reset_code : varchar
+  email : varchar
+  expiry_date : timestamp
+  used : boolean
+  created_at : timestamp
+}
+entity "reminders" as reminders {
+  * id : bigint <<PK>>
+  --
+  title : varchar
+  message : text
+  reminder_date : timestamp
+  related_type : varchar
+  related_id : bigint
+  recipient_email : varchar
+  is_sent : boolean
+  sent_at : timestamp
+  created_at : timestamp
+}
+
+users ||--o{ user_roles
+roles ||--o{ user_roles
+departments |o--o{ users
+departments |o--o{ job_offers
+users |o--o{ job_offers : created_by
+users |o--o| job_offers : hiring_manager
+job_offers |o--o{ candidates
+users |o--o{ candidates : routed_to_manager
+candidates ||--o| cvs
+candidates ||--o{ interviews
+users ||--o{ interviews : interviewer
+candidates ||--o{ feedbacks
+users ||--o{ feedbacks : author
+interviews |o--o{ feedbacks
+candidates ||..o{ internal_notes : concerne\n(sans contrainte)
+outbox -[hidden]down- reminders
+reminders -[hidden]right- prt
+note left of reminders
+  Trois tables sans clé étrangère : internal_notes
+  référence son dossier par une simple colonne
+  candidate_id (liée par @Column, non par
+  @ManyToOne), les rappels visent un objet désigné
+  par related_type / related_id, et le jeton de
+  réinitialisation est rattaché au compte par
+  l'adresse e-mail.
+end note
+users -[hidden]down- swp
+swp -[hidden]right- audit_logs
+audit_logs -[hidden]right- outbox
+candidates -[hidden]down- outbox
+@enduml

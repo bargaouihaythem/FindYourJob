@@ -1,0 +1,88 @@
+@startuml fig3_2b
+!include skin.iuml
+!pragma layout smetana
+hide circle
+skinparam classAttributeIconSize 0
+
+class User {
+  id : Long
+  username : String
+  email : String
+  password : String
+  firstName : String
+  lastName : String
+  jobFamily : JobFamily
+}
+class Role {
+  id : Long
+  name : ERole
+}
+enum ERole {
+  ROLE_USER
+  ROLE_HR
+  ROLE_MANAGER
+  ROLE_ADMIN
+  ROLE_TEAM_LEAD
+  ROLE_SENIOR_DEV
+  ROLE_TEAM
+}
+class Department {
+  id : Long
+  name : String
+  code : String
+}
+class AuditLog {
+  id : Long
+  entityType : String
+  entityId : Long
+  action : String
+  oldValue : String
+  newValue : String
+  performedBy : String
+  performedAt : LocalDateTime
+}
+class ManagerRoutingService {
+  resolve(offre) : proposition
+  resolveManual(managerId)
+}
+class ManagerScopeService {
+  recipientsOf(dossier)
+  isRecipient(dossier, manager)
+}
+
+User "0..*" -- "0..*" Role : rôles (table user_roles)
+Role ..> ERole : type du rôle
+User "0..*" -- "0..1" Department : département
+ManagerRoutingService --> User : managers destinataires
+ManagerRoutingService ..> ManagerScopeService : liste gelée\nsur le dossier
+
+note right of ERole
+  ROLE_TEAM_LEAD, ROLE_SENIOR_DEV et ROLE_TEAM
+  sont des rôles techniques de lecture seule
+  (entretiens, CV), sans écran dédié.
+  ROLE_N8N n’est pas un ERole : autorité accordée
+  par N8nApiKeyAuthenticationFilter (en-tête
+  X-N8N-API-Key) pour les callbacks machine
+  vers /status, /ai-score et /meet-link.
+end note
+
+note bottom of AuditLog
+  Journal d'audit : trace les actions
+  sensibles (entité, identifiant,
+  auteur, horodatage).
+end note
+note bottom of User
+  Les rôles sont stockés dans la table de
+  jointure user_roles (@ManyToMany).
+  ManagerRoutingService ne fait que proposer
+  un manager destinataire (manager désigné
+  sur l'offre, puis département, puis famille
+  de métier, puis e-mail de l'offre) : le RH
+  désigne le destinataire dans la modale de
+  transmission. La destination est alors gelée
+  sur le dossier (base MANUAL) et c'est elle —
+  non le département courant de l'offre — dont
+  ManagerScopeService fait foi pour la
+  visibilité du manager.
+end note
+@enduml

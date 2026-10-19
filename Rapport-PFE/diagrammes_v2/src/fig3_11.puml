@@ -1,0 +1,83 @@
+@startuml fig3_11
+!include skin.iuml
+!pragma layout smetana
+
+|Candidat|
+start
+:Consulter les offres et postuler
+(dépôt du CV) — statut APPLIED;
+note right
+  Le candidat peut se retirer
+  (statut WITHDRAWN) à tout
+  moment du processus.
+end note
+
+|Système|
+:Extraction du texte du CV (Spring Boot,
+à la soumission) puis calcul du score IA
+sur 100 (Agent 1 n8n + Cohere);
+if (Révision humaine requise\nou score ≥ 60 ?) then (oui)
+  :statut CV_REVIEWED;
+
+  |Responsable RH|
+  :Examiner le dossier et le score IA;
+  :Présélection téléphonique
+— statut PHONE_SCREENING;
+  :Passer en évaluation technique et
+désigner le manager destinataire
+— statut TECHNICAL_TEST;
+
+  |Manager|
+  :Test technique;
+  :Entretien puis entretien final
+— INTERVIEW / FINAL_INTERVIEW;
+  :Rédiger les feedbacks;
+  if (Avis du manager ?) then (favorable)
+    :statut ACCEPTED;
+  else (défavorable)
+    :statut MANAGER_REJECTED
+— motif obligatoire;
+  endif
+  note right
+    Le manager n'émet qu'un avis :
+    aucun e-mail de décision n'est
+    envoyé au candidat. Le RH est
+    averti par e-mail et dans sa
+    liste de candidats. L'étape
+    INTERVIEW_SCHEDULED (agenda
+    confirmé) reste possible avant
+    la validation finale.
+  end note
+
+  |Responsable RH|
+  if (Décision finale du RH ?) then (acceptation)
+    :statut HIRED — date de présentation
+des documents exigée;
+    :Convocation adressée au candidat;
+  else (refus)
+    :statut REJECTED — motif exigé;
+    :Refus motivé adressé au candidat;
+  endif
+else (non)
+  |Système|
+  :statut AUTO_REJECTED;
+  :e-mail de refus automatique;
+  note right
+    Rejet automatique non définitif :
+    le RH confirme le refus après examen
+    (REJECTED motivé, sans second e-mail
+    au candidat) ou corrige le score et
+    réintègre le dossier, qui repasse en
+    CV_REVIEWED — les deux sorties de la
+    transition « AUTO_REJECTED » de la
+    Figure 3.8.
+  end note
+endif
+
+|Système|
+:Journaliser la décision\n(audit de statut);
+
+|Candidat|
+:Recevoir la décision;
+stop
+@enduml

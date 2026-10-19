@@ -1,0 +1,73 @@
+@startuml uc_macro
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Visiteur" as VIS
+actor "Candidat" as CAND
+actor "Responsable RH" as RH
+actor "Manager" as MGR
+actor "Administrateur" as ADM
+
+rectangle "Plateforme JOB4YOU" {
+  usecase "Consulter et rechercher\nles offres d'emploi" as UC_OFFRES
+  usecase "Obtenir des suggestions\n« Job idéal »" as UC_MATCHING
+  usecase "Postuler à une offre\n(dépôt de CV)" as UC_POSTULER
+  usecase "Suivre l'état de\nsa candidature" as UC_SUIVRE
+  usecase "Échanger avec l'assistant\nconversationnel" as UC_CHATBOT
+  usecase "Publier / gérer une\noffre d'emploi" as UC_OFFRE_RH
+  usecase "Consulter et filtrer\nles candidatures" as UC_FILTRER
+  usecase "Conduire l'entretien\ntéléphonique" as UC_PHONE
+  usecase "Planifier un entretien" as UC_ENTRETIEN
+  usecase "Saisir un feedback\nd'entretien" as UC_FEEDBACK
+  usecase "Émettre un avis\n(favorable ou refus proposé)" as UC_AVIS
+  usecase "Contresigner la décision finale\n(HIRED / REJECTED)" as UC_DECIDER
+  usecase "Créer un compte\ncandidat" as UC_INSC
+  usecase "Consulter ses entretiens\nplanifiés" as UC_MYINT
+  usecase "Gérer les utilisateurs\net les rôles" as UC_ROLES
+  usecase "Paramétrer le scoring IA" as UC_SCORING
+  usecase "Consulter le journal\nd'audit" as UC_AUDIT
+  usecase "S'authentifier" as UC_AUTH
+}
+
+CAND --|> VIS
+VIS --> UC_OFFRES
+VIS --> UC_MATCHING
+VIS --> UC_INSC
+CAND --> UC_POSTULER
+CAND --> UC_SUIVRE
+CAND --> UC_MYINT
+CAND --> UC_CHATBOT
+RH --> UC_OFFRE_RH
+RH --> UC_FILTRER
+RH --> UC_PHONE
+RH --> UC_ENTRETIEN
+RH --> UC_FEEDBACK
+RH --> UC_DECIDER
+MGR --> UC_FILTRER
+MGR --> UC_ENTRETIEN
+MGR --> UC_FEEDBACK
+MGR --> UC_AVIS
+ADM --> UC_ROLES
+ADM --> UC_SCORING
+ADM --> UC_AUDIT
+ADM --> UC_DECIDER
+UC_POSTULER ..> UC_AUTH : <<include>>
+UC_SUIVRE  ..> UC_AUTH : <<include>>
+UC_MYINT   ..> UC_AUTH : <<include>>
+UC_CHATBOT ..> UC_AUTH : <<include>>
+UC_FILTRER ..> UC_AUTH : <<include>>
+UC_DECIDER ..> UC_AUTH : <<include>>
+UC_ROLES   ..> UC_AUTH : <<include>>
+
+note bottom of UC_AUTH
+  Session JWT exigée pour postuler, suivre
+  une candidature, consulter ses entretiens,
+  utiliser l'assistant et pour tout l'espace
+  interne (RH, Manager, Admin). Seules la
+  consultation des offres et les suggestions
+  « Job idéal » sont ouvertes au visiteur.
+end note
+
+
+@enduml

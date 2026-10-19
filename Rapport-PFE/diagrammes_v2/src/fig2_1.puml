@@ -1,0 +1,79 @@
+@startuml fig2_1
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Visiteur" as VIS
+actor "Candidat\n(compte ROLE_USER)" as CAND
+actor "Responsable RH" as RH
+actor "Manager" as MGR
+actor "Administrateur" as ADM
+
+rectangle "Plateforme JOB4YOU" {
+  usecase "Consulter les offres\nd'emploi (public)" as UC_OFFRES
+  usecase "Obtenir des suggestions\n« Job idéal » (matching CV)" as UC_MATCHING
+  usecase "Postuler à une offre\n(dépôt de CV)" as UC_POSTULER
+  usecase "Suivre l'état de\nsa candidature" as UC_SUIVRE
+  usecase "Assistant conversationnel\n(chatbot)" as UC_CHATBOT
+
+  usecase "Publier / gérer une\noffre d'emploi" as UC_OFFRE_RH
+  usecase "Consulter et filtrer\nles candidatures" as UC_FILTRER
+  usecase "Planifier un entretien" as UC_ENTRETIEN
+  usecase "Envoyer une notification\npar e-mail" as UC_NOTIF
+  usecase "Paramétrer le scoring IA\n(profils de pondération)" as UC_SCORING
+  usecase "Consulter le journal\nd'audit" as UC_AUDIT
+
+  usecase "Consulter les dossiers\ndu périmètre manager" as UC_VALIDES
+  usecase "Décider Accepter / Refuser\n(décision finale)" as UC_DECIDER
+  usecase "Donner un feedback\nd'entretien" as UC_FEEDBACK
+
+  usecase "Gérer les utilisateurs\net les rôles" as UC_ROLES
+  usecase "S'authentifier\n(JWT)" as UC_AUTH
+}
+
+VIS --> UC_OFFRES
+VIS --> UC_MATCHING
+CAND --> UC_OFFRES
+CAND --> UC_MATCHING
+CAND --> UC_POSTULER
+CAND --> UC_SUIVRE
+CAND --> UC_CHATBOT
+
+RH --> UC_OFFRE_RH
+RH --> UC_FILTRER
+RH --> UC_ENTRETIEN
+RH --> UC_NOTIF
+RH --> UC_SCORING
+RH --> UC_AUDIT
+RH --> UC_FEEDBACK
+
+MGR --> UC_VALIDES
+MGR --> UC_DECIDER
+MGR --> UC_FEEDBACK
+
+ADM --> UC_ROLES
+ADM --> UC_SCORING
+ADM --> UC_AUDIT
+
+UC_POSTULER   ..> UC_AUTH : <<include>>
+UC_SUIVRE     ..> UC_AUTH : <<include>>
+UC_CHATBOT    ..> UC_AUTH : <<include>>
+UC_OFFRE_RH   ..> UC_AUTH : <<include>>
+UC_FILTRER    ..> UC_AUTH : <<include>>
+UC_ENTRETIEN  ..> UC_AUTH : <<include>>
+UC_NOTIF      ..> UC_AUTH : <<include>>
+UC_SCORING    ..> UC_AUTH : <<include>>
+UC_AUDIT      ..> UC_AUTH : <<include>>
+UC_VALIDES    ..> UC_AUTH : <<include>>
+UC_DECIDER    ..> UC_AUTH : <<include>>
+UC_FEEDBACK   ..> UC_AUTH : <<include>>
+UC_ROLES      ..> UC_AUTH : <<include>>
+
+note right of UC_AUTH
+  Seules la consultation des
+  offres et le matching
+  « Job idéal » sont ouvertes
+  au visiteur non authentifié ;
+  postuler exige un compte.
+end note
+@enduml
