@@ -1,0 +1,234 @@
+% !TeX program = pdflatex
+
+%========= File containing the main LaTex document ========%
+%                                                          %
+% Copyright (C) ISI - All Rights Reserved                  %
+% Proprietary                                              %
+% Written by Med Hossam <med.hossam@gmail.com>, April 2016 %
+%                                                          %
+% @author: HEDHILI Med Houssemeddine                       %
+% @linkedin: http://tn.linkedin.com/in/medhossam           %
+%==========================================================%
+
+%\documentclass[pfe]{./tpl/isipfe}
+\documentclass[]{./tpl/isipfe}
+\graphicspath{{./img/}{./img/rapport/}}
+
+%\usepackage{hyperref}
+
+\input{./tpl/new_commands}
+
+%===== Listes autonomes (contournement de l'incident enumitem) =====%
+% Sur l'installation en ligne, un hook active a \begin{document} remplace
+% \itemize par une version etrangere a enumitem, alors que \enditemize reste
+% celle d'enumitem : les deux moities d'une liste ne s'apparient plus et
+% \end{itemize} echoue (\enit@after undefined, puis une cascade d'erreurs).
+% Plutot que de retablir la version d'enumitem — dont l'appariement depend
+% encore d'un tiers — on redefinit \itemize et \enditemize ensemble, a partir
+% de l'environnement brut \list. Les sept listes du rapport sont ecrites sans
+% option, ce contournement suffit a les rendre toutes.
+\newcommand{\jobFixLists}[1]{%
+  \long\def\itemize{\ifhmode\par\fi
+    \list{\labelitemi}{%
+      \setlength{\leftmargin}{2.2em}%
+      \setlength{\labelsep}{0.6em}%
+      \setlength{\labelwidth}{1.0em}%
+      \setlength{\itemsep}{2pt}%
+      \setlength{\parsep}{0pt}%
+      \setlength{\topsep}{4pt}%
+      \setlength{\partopsep}{0pt}}}%
+  \long\def\enditemize{\endlist}%
+  \typeout{JOBFIX-#1: itemize = liste autonome (list/endlist)}}
+%===== Fin listes autonomes =====%
+
+%===== Quatrieme de couverture : pied de page du modele ISI conserve =====%
+% Le style « backcover » du modele (tpl/isipfe.cls, ligne 350) imprime le
+% bandeau TEK-UP sous le resume. Il avait ete redefini vide ici, au motif que
+% ces coordonnees sont celles d'une societe tierce. Decision inverse : le
+% rapport de PFE livre par l'ecole (Amio, 65 p.) termine exactement sur ce
+% bandeau, a la meme place. On laisse donc le style du modele s'exprimer, et
+% ces deux lignes ne sont qu'un filet de securite : \textLR et \textAR sont
+% fournis par le support bidi de babel, et une installation qui ne les définit
+% pas ferait echouer toute la compilation sur un controle de commande
+% inexistante. Avec un equivalent, au pire la ligne arabe reste vide, la ligne
+% francaise « Z.I Chotrana 2 ... Email : @tek-up.de » s'imprime.
+\providecommand{\textLR}[1]{\textlatin{#1}}
+\providecommand{\textAR}[1]{\foreignlanguage{arabic}{#1}}
+%===== Fin quatrieme de couverture =====%
+
+%===== Bibliographie : format des URL et des DOI =====%
+% Le style ieee precede chaque URL de la chaine localisee « adresse : »,
+% redondante quand l'URL suit directement la reference. Le lien est donc
+% imprime nu, et le DOI est developpe en lien complet.
+\DeclareFieldFormat{url}{\url{#1}}
+\DeclareFieldFormat{doi}{\url{https://doi.org/#1}}
+%===== Fin bibliographie =====%
+
+%===== Plans de chapitre : minitoc, comme le modele =====%
+% Rien n est reecrit ici. La classe appelle \minitocsection dans
+% \@makechapterhead (tpl/isipfe.cls, ligne 227) et lui donne son titre par
+% \mtcsettitle{minitoc}{Plan} ; le plan vient des fichiers .mtc, alimentes par
+% la commande \dominitoc placee avant le sommaire.
+% Les deux \adjustmtc (apres le sommaire, apres l'introduction generale) sont
+% indispensables : ils alignent le decompte des fentes .mtc sur le numero du
+% chapitre courant. Verification build du 20-10-2026 (104 p.) : les quatre plans
+% sont justes. Ne pas les retirer. Apres un changement de structure, faire
+% « Clear cached files » sur Overleaf, sinon les .mtc gardes reforment le
+% decalage.
+%===== Fin plans de chapitre =====%
+
+%===== Pagination : numero centre sous le corps de texte =====%
+% Le modele ecrit \rfoot{\centering \thepage} (isipfe.cls:290) et selectionne le
+% style fancy avant (cls:288) : les reglages de cases faits ensuite dans le
+% preambule ne sont plus relus. Le style est donc rededefini ici, avec ses
+% regles d'origine (0,3 pt en tete et en pied, marque \leftmark a gauche) et le
+% numero dans la part centrale du pied, puis reselectionne.
+% VERIFIE AU PDF, build du 20-10-2026 (104 p.), page 20 imprimee : le stream
+% d'objet rend « /F42 10.9091 Tf 286.545 43.506 Td [(20)]TJ » et la regle de
+% pied « 0.299 w 0 0 m 470.551 0 l S ». Le rapport livre par l'ecole (Amio,
+% 65 p.) rend sa page 19 a x = 286.5, 10.9 pt, avec la meme regle : position,
+% taille et regle identiques au quart de point. La marque « Chapitre N. … » est
+% bien rendue en tete sur les pages de corps, et les ouvertures de \chapter*
+% (bibliographie, resume) tombent a x = 287.4 en 9 pt comme les pages 52-53 de
+% l'ecole.
+% Garde-fou de mesure : ne conclure sur un x de pied de page qu'apres avoir lu
+% les operateurs bruts du stream. Une paire de translations « cm » puis son
+% inverse (le cas ici, autour du bloc de legende) doit etre annulee par la pile
+% q/Q ; mal suivie, elle deplace le numero a x = 518 et lui prete la taille du
+% \Tf precedent, ce qui a fait annoncer a tort un defaut.
+% Les autres styles gardent leur regle propre : « plain » = centre,
+% « frontmatter » = numero a droite en romain comme le rapport de l'ecole,
+% ouverture d'un chapitre numéroté = aucun numero (cls:244), derniere page =
+% bandeau sans numero.
+\fancypagestyle{fancy}{%
+  \fancyhf{}%
+  \renewcommand{\headrulewidth}{0.3pt}%
+  \renewcommand{\footrulewidth}{0.3pt}%
+  \lhead{\nouppercase{\leftmark}}%
+  \cfoot{\thepage}%
+}
+\pagestyle{fancy}
+%===== Fin pagination =====%
+
+% @author: Stoufa
+% the command `\makeindex` is mandatory to create the index file main.idx
+% https://tex.stackexchange.com/questions/9913/input-index-file-not-found
+% \makeindex : aucun \printindex ni \index{} dans ce document,
+% le laisser lancer makeindex est un passe-programme inutile (limite 20 s du plan gratuit).
+% \makeindex
+
+\begin{document}
+    \jobFixLists{debut}
+%===== DEBUT configuration du rapport (global_config inlie) =====%
+%=== Informations du rapport (remplit le template ISI/SESAME) ===%
+% Les types de colonnes utilises par les tableaux (P) sont declares dans
+% tpl/new_commands.tex, dans le preambule.
+
+\title{Conception et développement d'une plateforme web de gestion du processus de recrutement --- JOB4YOU}
+\author{Haythem Bargaoui}
+\diplomaName{Diplôme National d'Ingénieur}
+\speciality{Génie logiciel}
+
+\proFramerName{M. Mones Ben Mabrouk}
+\proFramerSpeciality{Sopra HR Software Tunisie}
+\academicFramerName{M. Malek Bouzaiene}
+\academicFramerSpeciality{SESAME}
+
+\companyName{Sopra HR Software Tunisie}
+\collegeYear{2025 - 2026}
+
+\proSignSentence{J'autorise l'étudiant à faire le dépôt de son rapport de projet de fin d'études en vue d'une soutenance.}
+\academicSignSentence{J'autorise l'étudiant à faire le dépôt de son rapport de projet de fin d'études en vue d'une soutenance.}
+
+% Le template prevoit un resume arabe : non renseigne ici.
+\arabicAbstract{}
+\arabicAbstractKeywords{}
+
+\frenchAbstract{Mené chez Sopra HR Software Tunisie, ce projet de fin d'études consistait à concevoir et développer JOB4YOU, une plateforme web destinée à centraliser et automatiser le cycle de recrutement interne de l'entreprise, de la publication des offres d'emploi jusqu'à la décision finale, en passant par le suivi des candidatures, la planification des entretiens et la collecte des feedbacks des managers.\par J'ai construit la solution autour d'une architecture trois-tiers découplée : un back-end Java/Spring Boot expose des API REST sécurisées par JWT et gère finement les rôles (Administrateur, RH, Manager, Candidat), un front-end Angular assure une interface moderne et responsive, et PostgreSQL sert de base de données relationnelle. Des agents d'automatisation n8n, couplés à un service de scoring par intelligence artificielle (API de Cohere), prennent en charge l'analyse automatique des CV, en complément d'un système de notifications par e-mail à chaque étape clé du processus. Un assistant conversationnel (chatbot) fondé sur un modèle de langage via l'API OpenRouter permet en outre au candidat de suivre ses candidatures en langage naturel, à partir de ses seules données réelles, le contexte transmis au modèle étant constitué côté serveur par une liste blanche de champs qui exclut les informations internes du dossier.\par Ce rapport présente successivement le cadre général du projet, l'analyse et la spécification des besoins, la conception de la solution, sa réalisation, puis un bilan de cette expérience et les perspectives d'évolution de la plateforme.}
+\frenchAbstractKeywords{recrutement, plateforme web, Spring Boot, Angular, PostgreSQL, API REST, JWT, intelligence artificielle, automatisation, n8n, chatbot.}
+
+\englishAbstract{During my final-year project at Sopra HR Software Tunisia, I designed and built JOB4YOU, a web platform for managing the company's internal recruitment process end-to-end --- from publishing job offers through application tracking, interview scheduling, manager feedback collection, and the final hiring decision.\par The solution rests on a decoupled three-tier architecture: a Java/Spring Boot back-end exposes REST APIs secured by JWT authentication with fine-grained role management (Admin, HR, Manager, Candidate), an Angular front-end delivers a modern, responsive interface, and PostgreSQL handles relational storage. n8n automation agents, paired with an AI-based scoring service built on the Cohere API, handle automatic resume analysis, alongside an e-mail notification system triggered at each key step. A conversational assistant (chatbot), based on a language model accessed via the OpenRouter API, also lets candidates track their applications in natural language, drawing on their own real data through a server-side allowlist of fields that excludes internal case details.\par The report walks through the general project framework, requirements analysis and specification, the solution's design and implementation, before closing with an assessment of the experience and the platform's future development perspectives.}
+\englishAbstractKeywords{recruitment, web platform, Spring Boot, Angular, PostgreSQL, REST API, JWT, artificial intelligence, automation, n8n, chatbot.}
+
+% Adresse de l'entreprise non demandee par l'ecole : pied de page rendu vierge.
+\setboolean{wantToTypeCompanyAddress}{false}
+%===== FIN configuration du rapport =====%
+
+
+    % Toutes les references sont declarees pour conserver la
+    % numerotation de la bibliographie.
+    \nocite{*}
+    
+    \frontmatter
+       \input{tpl/title_page}
+        \input{tpl/signatures}
+        
+        \setcounter{page}{1}
+        \input{dedicaces}
+        \thispagestyle{frontmatter}
+        \input{remerciement}
+        \thispagestyle{frontmatter}
+        
+        \setcounter{secnumdepth}{3}
+        \setcounter{tocdepth}{2}
+        % Les pages preliminaires heritent de la marque \leftmark de la page
+        % precedente, d'ou un titre courant date (le sommaire s'affichait avec
+        % « Remerciements » en tete). Ce style global retire l'en-tete de
+        % toutes les pages du tome preliminaire, pas seulement de la derniere,
+        % et \mainmatter retabli ensuite le style fancy (marque de chapitre en
+        % tete, numero centre en pied) pour les pages du corps.
+        \pagestyle{frontmatter}
+        \jobFixLists{toc}
+        \dominitoc
+        \tableofcontents
+        \adjustmtc
+        \thispagestyle{frontmatter}
+        
+        \listoffigures
+        \thispagestyle{frontmatter}
+        \listoftables
+        \thispagestyle{frontmatter}
+        
+        \jobFixLists{abreviations}
+        \input{acronymes}
+        \thispagestyle{frontmatter}
+    
+    \mainmatter
+        \input{introduction}
+        \clearpage
+        
+        \jobFixLists{chap01}
+        \input{chap_01}
+        \clearpage
+        
+        \jobFixLists{chap02}
+        \input{chap_02}
+        \clearpage
+        
+        \jobFixLists{chap03}
+        \input{chap_03}
+        \clearpage
+        \jobFixLists{chap04}
+        \input{chap_04}
+        \clearpage
+        
+        \input{conclusion}
+        \clearpage
+
+   
+        \clearpage
+        \printbibliography[title={Bibliographie}]
+        % Pas d'annexes : le rapport s'arrete sur la bibliographie, comme dans le
+        % rapport de PFE livre par l'ecole en exemple. annexes.tex, vide, etait
+        % malgre tout inclus et imprimait une page sans contenu.
+        \clearpage
+    \backmatter
+        \input{./tpl/resume}
+    
+% Le style « backcover » du modele ne se pose qu'ici : \thispagestyle vise la
+% page en cours de composition, c'est-a-dire, a cet endroit, la derniere page
+% du document. Le resume s'etale sur deux pages ; avec \pagestyle la bandeau
+% TEK-UP tombait aussi sur l'avant-derniere.
+\thispagestyle{backcover}
+
+\end{document}

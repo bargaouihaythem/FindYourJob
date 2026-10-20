@@ -1,0 +1,106 @@
+
+\thispagestyle{cover}%
+\newgeometry{bottom=25mm,left=20mm,top=15mm,right=20mm}
+\hspace{-47pt}
+\begin{minipage}[l]{0.2\columnwidth}
+\vspace{6mm}
+\includegraphics[width=0.8\columnwidth]{tpl/Sesame_logo.png}\\
+\end{minipage}
+\hfill
+\begin{minipage}[l]{0.5\columnwidth}
+\centering
+\footnotesize
+\textbf{{République Tunisienne}}\\
+\vspace{1.5mm}
+\textbf{{Ministère de l'Enseignement Supérieur\\
+et de la Recherche Scientifique}}\\
+\vspace{1.5mm}
+%\textbf{{Université de Tunis El Manar}}\\
+%\vspace{1.5mm}
+%\textbf{{Institut Supérieur d'Informatique d’El Manar}}
+\end{minipage}
+\hfill
+\begin{minipage}[l]{0.02\columnwidth}
+\end{minipage}
+\hfill
+\begin{minipage}[l]{0.22\columnwidth}
+\vspace{6mm}
+\includegraphics[width=1.1\columnwidth]{img/logo_soprahr_software.png}\\
+\end{minipage}
+\vskip1.5cm
+
+\begin{center}
+{\LARGE{\textbf{\textsc{Rapport de Projet de Fin d'\'Etudes}}}}\\
+\vskip0.5cm
+\large
+
+{\textbf{Présenté en vue de l'obtention du}}\\
+\vskip2mm
+{\textbf{\@diplomaName}}\\
+{\textbf{Spécialité : \@speciality}}\\
+{}
+\end{center}
+
+\begin{center}
+\textrm{Par}\\
+\vskip0.3cm
+{\ifthenelse{\boolean{isBinomal}}
+    {% IF TRUE
+        \begin{center}
+            \large\textbf{\@author}~~~~~ et ~~~~~
+            \large\textbf{\@secondAuthor}
+        \end{center}
+    }
+    {\Large\textbf{\@author}}% FALSE
+}
+\vskip12mm
+
+\definecolor{isiBlue}{RGB}{31, 78, 121}
+
+\begin{changemargin}{-9mm}{0cm}
+\begin{minipage}[l]{1.1\columnwidth}
+\begin{tcolorbox}[colframe=isiBlue,colback=white,boxrule=0pt,toprule=3pt,bottomrule=3pt,arc=0pt,top=0mm,right=0mm,left=0mm,bottom=0mm,boxsep=0.5mm]{
+    \begin{tcolorbox}[colframe=isiBlue,colback=white, boxrule=0pt,toprule=1pt,bottomrule=1pt,arc=0pt,enlarge bottom by=-0.9mm, auto outer arc]
+        \centering
+        {\huge\textbf{\@title}}
+    \end{tcolorbox}
+}
+\end{tcolorbox}
+\end{minipage}
+\end{changemargin}
+
+\end{center}
+\vskip8mm%
+
+\begin{center}
+\large
+% Trois minipages cote a cote ne s'alignaient pas : « Encadrant professionnel : »
+% et « Sopra HR Software Tunisie » ne tenaient pas dans leur colonne et
+% passaient a la ligne, ce qui rendait ces boites plus hautes que les autres.
+% Comme elles etaient centrees verticalement ([c]), leurs lignes se retrouvaient
+% plus haut que le libelle correspondant. Un tabular a trois colonnes de largeur
+% naturelle supprime les deux problemes : chaque valeur est sur la meme ligne que
+% son libelle, et rien ne revient a la ligne.
+\begin{tabular}{@{}l@{\hspace{1.4em}}l@{\hspace{2.2em}}l@{}}
+Encadrant professionnel : & \textbf{\@proFramerName} & \@proFramerSpeciality \\[5pt]
+Encadrant académique : & \textbf{\@academicFramerName} & \@academicFramerSpeciality
+\end{tabular}
+\end{center}
+\vskip16mm
+
+\begin{center}
+\large
+Réalisé au sein de \@companyName\\
+\vskip0.4cm
+\begin{figure}[h]
+\centering
+{\color{isiBlue}{\fboxrule=2.5pt\fbox{\includegraphics[width=0.4\columnwidth]{logoSoprahr}}}}
+\end{figure}
+\end{center}
+
+\begin{center}
+\vskip0.4cm
+    A.U : 2025-2026
+\end{center}
+
+\afterpage{\blankpage}

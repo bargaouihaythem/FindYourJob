@@ -1,0 +1,36 @@
+\chapter*{Liste des abréviations}
+\addcontentsline{toc}{chapter}{Liste des abréviations}
+\markboth{Liste des abréviations}{}
+
+% Reprise fidele de la mise en page de l'environnement acronyms du classe
+% (isipfe.cls) : sigle en gras, signe =, puis definition. L'environnement
+% d'origine s'appuie sur datatool + enumitem et leve une erreur \enit@after
+% a la compilation, d'ou cette version directe.
+\newcommand{\abrev}[2]{%
+  \par\vspace{3pt}\noindent
+  \begin{minipage}[t]{0.155\columnwidth}\textbf{#1}\end{minipage}%
+  \begin{minipage}[t]{0.045\columnwidth}=\end{minipage}%
+  \begin{minipage}[t]{0.79\columnwidth}#2\end{minipage}}
+
+\abrev{API}{Application Programming Interface — interface permettant à deux systèmes logiciels de communiquer.}
+\abrev{BCrypt}{algorithme de hachage adaptatif utilisé pour le stockage sécurisé des mots de passe.}
+\abrev{CI/CD}{Continuous Integration / Continuous Delivery, intégration et livraison continues.}
+\abrev{Cohere}{fournisseur d’API d’intelligence artificielle utilisé pour l’analyse sémantique et le scoring des CV.}
+\abrev{IA}{Intelligence Artificielle.}
+\abrev{JPA}{Java Persistence API — spécification Java pour la persistance des objets en base de données relationnelle.}
+\abrev{JWT}{JSON Web Token — jeton signé utilisé pour authentifier les requêtes entre le front-end et le back-end.}
+\abrev{Kanban}{méthode de visualisation du flux de travail sous forme de colonnes représentant les étapes d’un processus.}
+\abrev{LLM}{Large Language Model — modèle de langage de grande taille.}
+\abrev{n8n}{plateforme d’automatisation permettant de construire des workflows interconnectant différents services et API via des webhooks.}
+\abrev{ORM}{Object-Relational Mapping, correspondance entre objets applicatifs et tables relationnelles (via JPA/Hibernate).}
+\abrev{Outbox}{file d’attente interne garantissant la livraison fiable des événements (webhooks n8n), avec journalisation et nouvelles tentatives en cas d’échec.}
+\abrev{OWASP}{Open Worldwide Application Security Project — référentiel des principaux risques de sécurité applicatifs.}
+\abrev{RBAC}{Role-Based Access Control — contrôle d’accès basé sur les rôles des utilisateurs.}
+\abrev{REST}{Representational State Transfer — style d’architecture pour les API web.}
+\abrev{RGPD}{Règlement Général sur la Protection des Données (règlement (UE) 2016/679).}
+\abrev{SGBD}{Système de Gestion de Base de Données.}
+\abrev{SMTP}{Simple Mail Transfer Protocol — protocole d’envoi de courriel.}
+\abrev{SPA}{Single Page Application — application web monopage.}
+\abrev{Spring Security}{module du framework Spring assurant l’authentification et le contrôle d’accès des applications Java.}
+\abrev{UML}{Unified Modeling Language — langage de modélisation graphique utilisé pour la conception logicielle.}
+\abrev{Webhook}{mécanisme par lequel une application notifie automatiquement une autre via une requête HTTP déclenchée par un événement.}

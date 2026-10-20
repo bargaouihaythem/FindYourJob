@@ -1,0 +1,167 @@
+
+%=========== File containing some new commands ============%
+%                                                          %
+% Copyright (C) ISI - All Rights Reserved                  %
+% Proprietary                                              %
+% Written by Med Hossam <med.hossam@gmail.com>, April 2016 %
+%                                                          %
+% @author: HEDHILI Med Houssemeddine                       %
+% @linkedin: http://tn.linkedin.com/in/medhossam           %
+%==========================================================%
+
+\newenvironment{changemargin}[2]{%
+\begin{list}{}{%
+\setlength{\leftmargin}{#1}%
+\setlength{\rightmargin}{#2}%
+}%
+\item[]}
+{\end{list}}
+
+\makeatletter
+
+%================= front cover variables =================%
+
+\newcommand{\secondAuthor}[1]{\gdef\@secondAuthor{#1}}%
+\newcommand{\@secondAuthor}{\@latex@warning@no@line{No \noexpand\secondAuthor given}}
+
+\newcommand{\diplomaName}[1]{\gdef\@diplomaName{#1}}%
+\newcommand{\@diplomaName}{\@latex@warning@no@line{No \noexpand\diplomaName given}}
+
+\newcommand{\speciality}[1]{\gdef\@speciality{#1}}%
+\newcommand{\@speciality}{\@latex@warning@no@line{No \noexpand\speciality given}}
+
+\newcommand{\proFramerName}[1]{\gdef\@proFramerName{#1}}%
+\newcommand{\@proFramerName}{\@latex@warning@no@line{No \noexpand\proFramerName given}}
+
+\newcommand{\proFramerSpeciality}[1]{\gdef\@proFramerSpeciality{#1}}%
+\newcommand{\@proFramerSpeciality}{\@latex@warning@no@line{No \noexpand\proFramerSpeciality given}}
+
+\newcommand{\academicFramerName}[1]{\gdef\@academicFramerName{#1}}%
+\newcommand{\@academicFramerName}{\@latex@warning@no@line{No \noexpand\academicFramerName given}}
+
+\newcommand{\academicFramerSpeciality}[1]{\gdef\@academicFramerSpeciality{#1}}%
+\newcommand{\@academicFramerSpeciality}{\@latex@warning@no@line{No \noexpand\academicFramerSpeciality given}}
+
+\newcommand{\collegeYear}[1]{\gdef\@collegeYear{#1}}%
+\newcommand{\@collegeYear}{\@latex@warning@no@line{No \noexpand\collegeYear given}}
+
+\newcommand{\companyName}[1]{\gdef\@companyName{#1}}%
+\newcommand{\@companyName}{\@latex@warning@no@line{No \noexpand\companyName given}}
+
+%================== Signatures variables ==================%
+
+\newcommand{\proSignSentence}[1]{\gdef\@proSignSentence{#1}}%
+\newcommand{\@proSignSentence}{\@latex@warning@no@line{No \noexpand\proSignSentence given}}
+
+\newcommand{\academicSignSentence}[1]{\gdef\@academicSignSentence{#1}}%
+\newcommand{\@academicSignSentence}{\@latex@warning@no@line{No \noexpand\academicSignSentence given}}
+
+%================== Backcover variables ==================%
+
+\newcommand{\arabicAbstract}[1]{\gdef\@arabicAbstract{#1}}%
+\newcommand{\@arabicAbstract}{\@latex@warning@no@line{No \noexpand\arabicAbstract given}}
+
+\newcommand{\arabicAbstractKeywords}[1]{\gdef\@arabicAbstractKeywords{#1}}%
+\newcommand{\@arabicAbstractKeywords}{\@latex@warning@no@line{No \noexpand\arabicAbstractKeywords given}}
+
+\newcommand{\frenchAbstract}[1]{\gdef\@frenchAbstract{#1}}%
+\newcommand{\@frenchAbstract}{\@latex@warning@no@line{No \noexpand\frenchAbstract given}}
+
+\newcommand{\frenchAbstractKeywords}[1]{\gdef\@frenchAbstractKeywords{#1}}%
+\newcommand{\@frenchAbstractKeywords}{\@latex@warning@no@line{No \noexpand\frenchAbstractKeywords given}}
+
+\newcommand{\englishAbstract}[1]{\gdef\@englishAbstract{#1}}%
+\newcommand{\@englishAbstract}{\@latex@warning@no@line{No \noexpand\englishAbstract given}}
+
+\newcommand{\englishAbstractKeywords}[1]{\gdef\@englishAbstractKeywords{#1}}%
+\newcommand{\@englishAbstractKeywords}{\@latex@warning@no@line{No \noexpand\englishAbstractKeywords given}}
+
+\newcommand{\companyEmail}[1]{\gdef\@companyEmail{#1}}%
+\newcommand{\@companyEmail}{\@latex@warning@no@line{No \noexpand\companyEmail given}}
+
+\newcommand{\companyTel}[1]{\gdef\@companyTel{#1}}%
+\newcommand{\@companyTel}{\@latex@warning@no@line{No \noexpand\companyTel given}}
+
+\newcommand{\companyFax}[1]{\gdef\@companyFax{#1}}%
+\newcommand{\@companyFax}{\@latex@warning@no@line{No \noexpand\companyFax given}}
+
+\newcommand{\companyAddressFR}[1]{\gdef\@companyAddressFR{#1}}%
+\newcommand{\@companyAddressFR}{\@latex@warning@no@line{No \noexpand\companyAddressFR given}}
+
+\newcommand{\companyAddressAR}[1]{\gdef\@companyAddressAR{#1}}%
+\newcommand{\@companyAddressAR}{\@latex@warning@no@line{No \noexpand\companyAddressAR given}}
+
+%============= cmd for inserting blank page =============%
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+
+%================ document main language ================%
+%\selectlanguage{english}
+\selectlanguage{french}
+
+%================== required packages ===================%
+
+\usepackage{tcolorbox}
+\usepackage{afterpage}
+\usepackage{array,longtable,multirow}% http://ctan.org/pkg/{array,longtable,multirow}
+\usepackage{pifont}
+
+\usepackage{pdflscape}
+\usepackage{rotating}
+\usepackage{wrapfig}
+%=========== Ajoutes pour le contenu du rapport (code, URLs, tableaux) ===========%
+\newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
+\usepackage{listings}
+\usepackage{url}
+\lstdefinestyle{CodePFE}{
+  inputencoding=utf8,
+  literate={é}{{\'e}}1 {è}{{\`e}}1 {à}{{\`a}}1 {ê}{{\^e}}1 {î}{{\^i}}1
+           {ô}{{\^o}}1 {û}{{\^u}}1 {ç}{{\c{c}}}1 {É}{{\'E}}1 {À}{{\`A}}1
+           {«}{{\guillemotleft}}1 {»}{{\guillemotright}}1 {—}{{---}}1,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{isiBlue}\bfseries,
+% Une seule listing de 24 lignes dans ce rapport. Declarer « language=Java »
+% force listings a parser lstlang1.sty (environ 100 ko de definitions de mots-cles)
+% a CHAQUE passe de compilation, soit trois fois pour un seul extrait : c'est le
+% poste fixe le plus couteux du document et il fait depasser la limite de 20 s du
+% plan gratuit. On garde le gras colore en enumerant ici les seuls mots-cles que
+% contient l'extrait ; le rendu de l'extrait est identique.
+  morekeywords={public,private,protected,class,interface,extends,implements,import,void,new,return,this,true,false},
+  columns=fullflexible,
+  breaklines=true,
+  breakatwhitespace=true,
+  keepspaces=true,
+  showstringspaces=false,
+  frame=single,
+  rulecolor=\color{black!25},
+  numbers=left,
+  numberstyle=\tiny\color{black!45},
+  numbersep=6pt,
+  xleftmargin=2em,
+  aboveskip=10pt,
+  belowskip=10pt
+}
+
+%=========== Les identifiants techniques ne debordent plus de la marge ===========%
+% « MANAGER\_REJECTED », « AUTO\_REJECTED »… tiennent rarement sur une ligne et
+% sont restes bloques, car un souligne interdit normalement la césure. On autorise
+% ici un retour à la ligne juste apres chaque souligne, sans trait d'union.
+\def\_{\textunderscore\allowbreak}
+
+% Dernier filet : autoriser un leger etirement extra-ligne plutot que de laisser
+% une ligne depasser la marge droite.
+\setlength{\emergencystretch}{1em}
+
+%=========== Floats : eviter que LaTeX gaspille des pages ===========%
+% 16 figures en paysage + 27 en portrait : sans ces seuils, LaTeX refuse les
+% pages hautes et repousse les flottants, ce qui cree des trous et rallonge la
+% compilation (limite 20 s du plan gratuit Overleaf).
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.85}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{totalnumber}{3}
+%=========== Fin floats ======%

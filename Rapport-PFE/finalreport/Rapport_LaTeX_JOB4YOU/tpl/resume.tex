@@ -1,0 +1,62 @@
+%===== File containing the back cover of the document =====%
+%                                                          %
+% Copyright (C) ISI - All Rights Reserved                  %
+% Proprietary                                              %
+% Written by Med Hossam <med.hossam@gmail.com>, April 2016 %
+%                                                          %
+% @author: HEDHILI Med Houssemeddine                       %
+% @linkedin: http://tn.linkedin.com/in/medhossam           %
+%==========================================================%
+
+%== It's advised to not modify the content of this file ===%
+% To set your information, go to global_config.tex file    %
+%==========================================================%
+
+% Adaptation JOB4YOU : le resume (francais + anglais) depasse la page.
+% Le bloc etait rendu dans une minipage, qui ne se coupe pas : le texte
+% trop long etait purement et simplement retranche en bas de page. La
+% minipage est donc remplacee par un paragraphe courant, qui pagine
+% normalement. L'en-tete courant herite de la bibliographie, d'ou \markboth
+% vide. Le bandeau TEK-UP du modele, lui, ne doit tomber que sur la toute
+% derniere page, comme dans le rapport livre par l'ecole. Or \pagestyle
+% {backcover} le posait aussi sur l'avant-derniere : le resume s'etale sur
+% deux pages et le style s'applique a toutes celles qui suivent. Le bloc
+% reste donc en style vide, et le style du modele n'est pose qu'a la fin,
+% avant \end{document} (voir main.tex).
+\pagestyle{empty}
+\markboth{}{}
+\newgeometry{bottom=15mm,left=15mm,top=17mm,right=15mm}
+
+\begin{changemargin}{3mm}{0cm}
+    \selectlanguage{french}
+
+    \vskip1mm
+    {\LARGE\textbf{Résumé}}
+    \vskip1mm
+    \begingroup
+        \large
+        \@frenchAbstract
+    \endgroup
+    \vskip1mm
+    {\textbf{Mots-clés : }
+        \begingroup
+            \@frenchAbstractKeywords
+        \endgroup
+    }
+
+    \vskip8mm
+
+    \selectlanguage{english}
+    {\LARGE\textbf{Abstract}}
+    \vskip1mm
+    \begingroup
+        \large
+        \@englishAbstract
+    \endgroup
+    \vskip1mm
+    {\textbf{Keywords : }
+        \begingroup
+            \@englishAbstractKeywords
+        \endgroup
+    }
+\end{changemargin}

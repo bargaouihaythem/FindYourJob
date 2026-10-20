@@ -1,0 +1,150 @@
+\chapter{Cadre général du projet}
+
+J’ai rejoint Sopra HR Software Tunisie avec pour mission de digitaliser un processus de recrutement resté, jusque-là, largement manuel. Ce chapitre revient sur le point de départ de ce travail : l’entreprise qui m’a accueilli, les lacunes que j’ai concrètement constatées dans l’existant, la problématique qui en découle, et la manière dont j’ai organisé mon travail sur toute la période de développement de ce Projet de Fin d’Études.
+
+\section{Introduction}
+\label{sec_1_1}
+Je situe d’abord le cadre organisationnel du projet JOB4YOU, avant de détailler la démarche qui m’a mené à la solution finalement retenue.
+
+\section{Présentation de l’organisme d’accueil}
+\label{sec_1_2}
+\subsection{Le groupe Sopra Steria}
+\label{sec_1_2_1}
+Sopra Steria est un groupe européen de conseil, de services numériques et d’édition de logiciels, reconnu pour son expertise sectorielle et son approche de bout en bout sur les projets de transformation numérique. Né du rapprochement entre Sopra Group et Steria en 2014 \cite{ref01}, il rassemble plusieurs dizaines de milliers de collaborateurs répartis dans de nombreux pays, et intervient auprès de grands comptes et d’administrations publiques dans des secteurs variés — finance, télécommunications, énergie, secteur public, ou encore ressources humaines.
+
+\subsection{Sopra HR Software}
+\label{sec_1_2_2}
+Sopra HR Software est la filiale du groupe spécialisée dans l’édition de solutions logicielles pour la gestion des ressources humaines : paie, gestion administrative du personnel, gestion des talents et gestion du recrutement. En Tunisie, l’entité constitue un centre de développement et de compétences qui contribue à la conception, au développement et à la maintenance des solutions du groupe, tout en gérant en interne ses propres processus, dont le recrutement.
+
+C’est précisément pour répondre à ce besoin interne de digitalisation que le projet JOB4YOU m’a été proposé.
+
+\section{Étude de l’existant}
+\label{sec_1_3}
+Avant la mise en place du projet, le processus de recrutement au sein de Sopra HR Software reposait sur une combinaison d’outils disparates et de tâches manuelles :
+
+\begin{itemize}
+\item La publication des offres d’emploi et leur diffusion s’effectuaient de manière peu centralisée, sans visibilité unifiée sur l’ensemble des postes ouverts.
+\item La réception des candidatures et des CV se faisait principalement par messagerie électronique, rendant leur classement, leur archivage et leur consultation fastidieux.
+\item Le suivi de l’avancement d’une candidature (CV reçu, examiné, entretien planifié, décision) n’était pas formalisé dans un outil unique, ce qui entraînait une perte d’information entre les différents intervenants (RH, managers).
+\item La planification des entretiens et la collecte des feedbacks des managers se faisaient de manière informelle, sans traçabilité ni historique structuré.
+\item Aucune notification automatique n’informait les candidats de l’état d’avancement de leur candidature, ce qui pouvait nuire à leur expérience et à l’image de l’entreprise.
+\item L’évaluation initiale des candidatures reposait entièrement sur l’analyse manuelle des CV par les équipes RH, un processus chronophage à mesure que le volume de candidatures augmente.
+\end{itemize}
+
+Il existe sur le marché des logiciels de suivi des candidatures (ATS, Applicant Tracking System) tels que Workday Recruiting, SAP SuccessFactors Recruiting, Greenhouse ou les modules de recrutement des grands SIRH. Ces outils couvrent la diffusion d’offres, le suivi des candidatures et la planification d’entretiens, mais ils sont pensés pour de grands groupes, coûteux à licencier et à paramétrer, et rarement adaptés au périmètre et aux contraintes d’une entité locale. JOB4YOU se positionne comme une alternative interne, sur mesure et maîtrisée : il reprend les fonctions essentielles d’un ATS (pipeline de candidatures, entretiens, feedbacks, décision finale) tout en y ajoutant un scoring IA des CV paramétrable par famille de métier, un matching inverse « Job idéal » et un assistant conversationnel candidat, le tout intégré aux processus et aux rôles propres à Sopra HR Software Tunisie.
+
+\section{Critique de l’existant et problématique}
+\label{sec_1_4}
+Cette analyse de l’existant fait ressortir plusieurs limites majeures. Sans outil centralisé, l’information se disperse entre plusieurs canaux — e-mails, fichiers, échanges oraux — ce qui complique la collaboration entre responsables RH et managers impliqués dans la décision de recrutement. Le manque de traçabilité des décisions et des statuts rend le suivi de chaque candidature difficile et allonge les délais de traitement. L’absence d’automatisation, enfin, que ce soit dans la présélection des candidats ou dans la communication avec eux, freine l’efficacité et la scalabilité du processus, surtout à mesure que le volume de candidatures grandit.
+
+De ces constats découle la problématique suivante : comment centraliser, sécuriser et automatiser l’ensemble du processus de recrutement — de la publication d’une offre jusqu’à la décision finale — tout en offrant une visibilité en temps réel à tous les acteurs concernés (administrateurs, RH, managers et candidats) ?
+
+\section{Objectifs du projet}
+\label{sec_1_5}
+Pour répondre à cette problématique, les objectifs suivants ont été fixés pour ce Projet de Fin d’Études :
+
+\begin{itemize}
+\item Concevoir et développer une plateforme web unique regroupant l’ensemble des étapes du processus de recrutement.
+\item Mettre en place une gestion des rôles et des accès (Administrateur, RH, Manager, Candidat) garantissant que chaque acteur dispose des fonctionnalités et de la visibilité correspondant à son périmètre.
+\item Sécuriser les échanges et les accès à la plateforme via un mécanisme d’authentification robuste (JSON Web Token).
+\item Automatiser la pré-analyse des candidatures grâce à un système de scoring assisté par intelligence artificielle, afin d’accélérer le tri initial des CV tout en laissant la décision finale aux équipes RH et managers.
+\item Intégrer un système de notifications automatiques par e-mail informant les candidats et les parties prenantes internes à chaque étape clé du processus.
+\item Fournir aux équipes RH des outils de pilotage (tableau Kanban, tableau de bord, indicateurs) permettant un suivi visuel et en temps réel de l’avancement des recrutements.
+\end{itemize}
+
+\section{Présentation de la solution proposée : JOB4YOU}
+\label{sec_1_6}
+La solution proposée, baptisée JOB4YOU, est une plateforme web de gestion du processus de recrutement structurée autour de cinq profils d’utilisateurs :
+
+\begin{itemize}
+\item Le Visiteur, utilisateur non authentifié, qui consulte et recherche les offres d’emploi publiées et obtient des suggestions « Job idéal » en déposant son CV.
+\item Le Candidat, utilisateur authentifié, qui soumet une candidature accompagnée de son CV, suit l’état d’avancement de son dossier et peut échanger avec l’assistant conversationnel.
+\item Le Responsable RH, qui publie et gère les offres d’emploi, examine les candidatures reçues, valide les dossiers, planifie les entretiens et contresigne la décision finale — embauche (avec date de présentation des documents) ou refus motivé —, seule étape qui déclenche l’e-mail de réponse au candidat.
+\item Le Manager, qui intervient à partir de l’entrée du dossier en évaluation technique (statut TECHNICAL\_TEST), mène ou participe aux entretiens, fournit un feedback structuré et émet un avis — favorable (ACCEPTED) ou refus proposé (MANAGER\_REJECTED) — sur les dossiers de son périmètre ; cet avis est tracé dans le journal d’audit et transmis au RH, qui le contresigne.
+\item L’Administrateur, qui supervise la plateforme dans son ensemble, gère les comptes utilisateurs, les rôles et les paramètres globaux du système, notamment ceux liés au scoring par intelligence artificielle.
+\end{itemize}
+
+Techniquement, la plateforme s’appuie sur une architecture découplée : un back-end Spring Boot expose des API REST sécurisées, un front-end Angular porte l’interface utilisateur, PostgreSQL sert de base de données relationnelle, et des agents d’automatisation n8n prennent en charge l’analyse des CV par intelligence artificielle (via l’API de Cohere) ainsi que l’envoi des notifications aux différents acteurs. Le chapitre consacré à la conception détaille cette architecture.
+
+\section{Méthodologie de travail adoptée}
+\label{sec_1_7}
+Les besoins évoluant au fil du stage, et les retours réguliers de mon encadrant entreprise étant essentiels, j’ai adopté une démarche itérative et incrémentale inspirée des principes Agile/Scrum \cite{ref02}. Le développement s’est organisé en cycles courts (sprints de 2 à 3 semaines), chacun débutant par la sélection et le dimensionnement des user stories prioritaires du Product Backlog, puis enchaînant analyse, conception, implémentation et tests unitaires et fonctionnels. Chaque sprint se clôturait par une revue d’itération (Sprint Review) et une démonstration à mon encadrant entreprise, suivies d’une rétrospective visant à ajuster priorités et spécifications. S’agissant d’un projet mené seul, j’ai endossé les trois rôles Scrum : Product Owner (priorisation du backlog avec l’encadrant), Scrum Master (respect des cérémonies et du rythme des itérations) et équipe de développement (conception, code et tests). Git/GitHub a servi tout du long à assurer la traçabilité du code, faciliter les retours en arrière et documenter l’évolution du projet à travers l’historique des commits. Le rythme de ces itérations et le contenu du backlog associé sont retracés en section~\ref{sec_1_8} (figure~\ref{fig_1_1} et tableau~\ref{tab_1_2}).
+
+\section{Planification du projet}
+\label{sec_1_8}
+Le développement du projet a été réparti en grandes phases sur toute la période de réalisation de ce Projet de Fin d’Études. Afin de concilier la souplesse de la démarche agile en sprints avec les jalons de suivi académiques et industriels, la macro-planification de ces phases est résumée dans le tableau~\ref{tab_1_1}.
+
+% tableau 1.1
+\setcounter{table}{0}
+\begin{table}[!ht]
+\centering
+\caption{Macro-planification des phases du projet}
+\label{tab_1_1}
+\renewcommand{\arraystretch}{1.25}\footnotesize
+\setlength{\tabcolsep}{4pt}%
+\begin{tabular}{|P{0.197\textwidth}|P{0.103\textwidth}|P{0.646\textwidth}|}
+\hline
+\textbf{Phase} & \textbf{Repère mensuel} & \textbf{Activités principales} \\
+\hline
+Prise en main et cadrage & Février 2026 & Intégration au sein de l’équipe, étude de l’existant, analyse du besoin, rédaction du cahier des charges \\
+\hline
+Analyse et conception & Mars 2026 & Spécification des besoins, modélisation UML \cite{ref03} (cas d’utilisation, séquence, classes), conception de la base de données \\
+\hline
+Développement — Socle applicatif & Avril – Mai 2026 & Mise en place de l’architecture back-end/front-end, authentification JWT, gestion des rôles, gestion des offres et des candidatures \\
+\hline
+Développement — Fonctionnalités avancées & Juin – Juillet 2026 & Gestion des entretiens et des feedbacks, scoring IA, agents n8n, notifications e-mail, tableau Kanban \\
+\hline
+Tests, corrections et finalisation & Août 2026 & Tests fonctionnels, corrections de bugs, améliorations UX et sécurité, rédaction du rapport \\
+\hline
+\end{tabular}
+\end{table}
+La figure~\ref{fig_1_1} reprend cette macro-planification sur un calendrier mensuel, d’après les repères mensuels du tableau~\ref{tab_1_1}.
+
+% figure 1.1
+\setcounter{figure}{0}
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig1_1}
+\caption{Diagramme de Gantt — Planification mensuelle des phases du projet}
+\label{fig_1_1}
+\end{sidewaysfigure}
+
+Le tableau~\ref{tab_1_2} reconstitue les user stories des principales fonctionnalités livrées, par acteur et par phase du tableau~\ref{tab_1_1}.
+
+% tableau 1.2
+\setcounter{table}{1}
+\begin{table}[!ht]
+\centering
+\caption{Backlog reconstitué des user stories par phase}
+\label{tab_1_2}
+\renewcommand{\arraystretch}{1.25}\footnotesize
+\setlength{\tabcolsep}{4pt}%
+\begin{tabular}{|P{0.481\textwidth}|P{0.150\textwidth}|P{0.315\textwidth}|}
+\hline
+\textbf{User story} & \textbf{Acteur bénéficiaire} & \textbf{Phase de réalisation} \\
+\hline
+Créer un compte et postuler à une offre (dépôt du CV) & Candidat & Développement — socle applicatif \\
+\hline
+Suivre l’avancement de sa candidature à chaque étape & Candidat & Développement — socle applicatif \\
+\hline
+Publier et gérer les offres d’emploi du périmètre RH & Responsable RH & Développement — socle applicatif \\
+\hline
+Faire présélectionner les CV par un score IA paramétrable & Responsable RH & Développement — fonctionnalités avancées \\
+\hline
+Planifier les entretiens, émettre un avis et le contresigner & RH et Manager & Développement — fonctionnalités avancées \\
+\hline
+Consulter le tableau Kanban et le journal d’audit & Responsable RH & Développement — fonctionnalités avancées \\
+\hline
+Disposer d’un calendrier d’entretiens avec rappels & Manager & Développement — fonctionnalités avancées \\
+\hline
+Bénéficier des suggestions « Job idéal » et du chatbot & Candidat & Développement — fonctionnalités avancées \\
+\hline
+Évaluer, corriger et expliquer le scoring IA & Responsable RH & Tests, corrections et finalisation \\
+\hline
+\end{tabular}
+\end{table}
+Backlog reconstitué a posteriori à partir de l’historique Git, non tenu en temps réel durant le projet.
+
+\section{Conclusion}
+\label{sec_1_9}
+Les limites du processus existant chez Sopra HR Software sont maintenant posées, tout comme la méthodologie suivie pendant le stage. Reste à entrer dans le vif du sujet : quels besoins précis JOB4YOU devait-il couvrir ? C’est l’objet du chapitre suivant.
