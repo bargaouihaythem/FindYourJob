@@ -59,7 +59,7 @@
                   <span *ngIf="interview.location"> · {{ interview.location }}</span>
                 </p>
                 <a *ngIf="canJoin(interview)" [href]="interview.meetLink" target="_blank" rel="noopener" class="small">
-                  <i class="fas fa-video me-1"></i>Rejoindre le lien Google Meet
+                  <i class="fas fa-video me-1"></i>Rejoindre la salle de visio
                 </a>
                 <p *ngIf="closedReasonLabel(interview) as why" class="small text-muted mb-0 mt-1">
                   <i class="fas fa-lock me-1"></i>{{ why }}

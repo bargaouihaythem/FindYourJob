@@ -779,7 +779,7 @@
                   <strong>Lieu :</strong> {{ selectedInterview.location || 'N/A' }}
                 </p>
                 <p class="mb-2" *ngIf="selectedInterview.meetLink">
-                  <strong>Lien Google Meet :</strong>
+                  <strong>Lien de visio :</strong>
                   <a *ngIf="selectedInterview.status !== 'COMPLETED' && selectedInterview.status !== 'CANCELLED'"
                      [href]="selectedInterview.meetLink" target="_blank" rel="noopener">{{ selectedInterview.meetLink }}</a>
                   <span *ngIf="selectedInterview.status === 'COMPLETED' || selectedInterview.status === 'CANCELLED'"
