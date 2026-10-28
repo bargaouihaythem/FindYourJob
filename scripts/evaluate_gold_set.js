@@ -1,7 +1,7 @@
 /**
  * JOB4YOU — Script d'évaluation & Benchmark du Gold Set de CV (Remarque 1 & 3)
  *
- * Exécute l'évaluation des 12 CVs du Gold Set sur les 3 familles métiers Sopra HR Software :
+ * Exécute l'évaluation des 20 CVs du Gold Set sur les 3 familles métiers Sopra HR Software :
  * 1. Développeur Java/Spring Boot (R&D)
  * 2. DevOps Engineer (ProdOps)
  * 3. Business Analyst / SIRH (Consulting Services)

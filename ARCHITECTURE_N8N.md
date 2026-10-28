@@ -61,37 +61,71 @@ Email de confirmation n8n
 
 Le workflow n8n ne réalise pas lui-même l’extraction ni le calcul principal du score ; il déclenche le traitement backend et exploite sa réponse.
 
-### Agent 2 — Planification des entretiens
+### Agent 2 — Sélection, entretien, Google Calendar et lien Meet
 
 **Fichier :** `n8n-workflows/agent2-entretien.json`.
 
 ```text
-Création d’un entretien
+Création d'un entretien (RH ou manager)
         │
         ▼
 Webhook n8n Agent 2
         │
-        ├── Email de convocation au candidat
-        └── Email de confirmation à l’intervieweur
+        ▼
+Profil sélectionné (pré-entretien) ?
+        ├── oui ──► Email « Votre profil a été retenu »
+        └── non ──► Préparer données entretien
+                            │
+                            ▼
+                  Créer événement Google Calendar
+                  (n8n-nodes-base.googleCalendar, credential
+                   googleCalendarOAuth2Api, continueOnFail)
+                            │
+                            ▼
+                  Extraire lien Meet ──► Lien Meet disponible ?
+                            ├── oui ──► POST /api/interviews/{id}/meet-link
+                            └── non ──► Journaliser l'absence de lien Meet
+                            │
+                            ▼
+        Email de convocation au candidat
+        Email de confirmation à l'intervieweur
 ```
 
-La planification et les rappels sont enregistrés par le backend. Le workflow prépare actuellement un lien de démonstration pour un entretien vidéo. **Aucun événement Google Calendar authentifié n’est créé par le workflow actuel.** L’intégration Google Calendar/Meet est une évolution prévue.
+Le workflow **crée bien un événement Google Calendar authentifié** et en récupère le lien de
+visioconférence : c'est Google qui fabrique la salle, n8n ne l'invente pas. Le lien est renvoyé
+au backend par `POST /api/interviews/{id}/meet-link`, stocké sur l'entretien, puis exposé dans
+l'application par l'icône d'entretien, côté manager comme côté candidat.
+
+Deux garde-fous sont en place. Le nœud Calendar est en `continueOnFail` (tolérance d'erreur),
+et la branche « Lien Meet disponible ? » journalise l'absence de lien au lieu d'interrompre la
+chaîne. La convocation et la confirmation sont donc envoyées même si la création de l'événement
+échoue — certificat OAuth Google expiré, compte indisponible : l'entretien reste planifié côté
+backend, simplement sans lien de visio. Une fois l'entretien marqué effectué, le créneau est
+verrouillé par le backend et le lien rendu inerte.
 
 ### Agent 3 — Routage RH vers manager et décision finale
 
 **Fichier :** `n8n-workflows/agent3-rh-manager.json`.
 
 ```text
-Dossier transmis au manager ou décision finale
+Dossier validé par le RH (webhook)
         │
         ▼
-Webhook n8n Agent 3
+Préparer données dossier
         │
-        ├── Transmission de la notification au manager
-        └── Email de décision au candidat
+        ▼
+Rejeté ou Validé ?
+        ├── oui (rejet) ──► Email « Résultat de votre candidature » (refus motivé)
+        └── non ──────────► Accepté (décision finale) ?
+                                 ├── oui ──► Email « Félicitations » + documents à fournir
+                                 └── non ──► Transmis à un manager ?
+                                                 └── oui ──► Email « Nouveau dossier à examiner »
 ```
 
-Le backend détermine le périmètre du manager, valide la transition d’état et sélectionne les destinataires. n8n orchestre l’envoi des emails.
+Le backend détermine le périmètre du manager (`ManagerRoutingService`), valide la transition
+d'état et sélectionne les destinataires ; n8n n'orchestre que l'envoi des e-mails. Les trois
+envois d'e-mails de ce workflow sont en `continueOnFail` : un échec SMTP journalise l'incident
+dans la outbox et ne modifie pas le statut de la candidature.
 
 ## Déclencheurs backend
 
@@ -112,4 +146,9 @@ Les endpoints de diagnostic n8n sont destinés à l’environnement de développ
 
 ## Limites connues
 
-L’architecture actuelle ne démontre pas une intégration Google Calendar/Google Meet complète. Le stockage des CV est local et doit être durci avant une production : contrôle d’accès par dossier, analyse antivirus, validation du contenu, politique de conservation et sauvegarde. Les secrets présents dans les configurations historiques doivent être révoqués et retirés de l’historique Git.
+L'intégration Google Calendar / Google Meet est fonctionnelle (événement réellement créé, lien
+Meet réellement stocké sur l'entretien), mais elle reste dépendante du certificat OAuth Google
+configuré sur l'instance n8n : sa révocation casse la branche Calendar sans casser la chaîne
+d'e-mails, grâce à la tolérance d'erreur. Les identifiants de calendrier et les adresses de
+destination sont encore écrits en dur dans les définitions de workflow et doivent passer en
+variables d'environnement n8n avant une mise en production. Le stockage des CV est local et doit être durci avant une production : contrôle d'accès par dossier, analyse antivirus, validation du contenu, politique de conservation et sauvegarde. Les secrets présents dans les configurations historiques doivent être révoqués et retirés de l'historique Git.

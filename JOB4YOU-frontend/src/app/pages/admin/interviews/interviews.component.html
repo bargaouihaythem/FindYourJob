@@ -780,7 +780,13 @@
                 </p>
                 <p class="mb-2" *ngIf="selectedInterview.meetLink">
                   <strong>Lien Google Meet :</strong>
-                  <a [href]="selectedInterview.meetLink" target="_blank" rel="noopener">{{ selectedInterview.meetLink }}</a>
+                  <a *ngIf="selectedInterview.status !== 'COMPLETED' && selectedInterview.status !== 'CANCELLED'"
+                     [href]="selectedInterview.meetLink" target="_blank" rel="noopener">{{ selectedInterview.meetLink }}</a>
+                  <span *ngIf="selectedInterview.status === 'COMPLETED' || selectedInterview.status === 'CANCELLED'"
+                        class="text-muted">
+                    <s>{{ selectedInterview.meetLink }}</s>
+                    — salle fermée : entretien {{ getStatusText(selectedInterview.status).toLowerCase() }}
+                  </span>
                 </p>
                 <p class="mb-2">
                   <strong>Statut :</strong>

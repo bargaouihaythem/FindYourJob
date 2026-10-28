@@ -1363,6 +1363,33 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Le dossier reste « Entretien » tant que l'avis n'est pas rendu : seul le statut de
+   * l'entretien dit si le rendez-vous a déjà eu lieu. Sans cette précision, la liste
+   * propose « Planifier l'entretien » sur un entretien terminé et le manager croit avoir
+   * raté une étape — ou planifie un doublon.
+   */
+  interviewAlreadyHeld(candidate: Candidate): boolean {
+    return candidate.lastInterviewStatus === 'COMPLETED';
+  }
+
+  planInterviewLabel(candidate: Candidate): string {
+    return this.interviewAlreadyHeld(candidate) ? 'Planifier un autre entretien' : 'Planifier l’entretien';
+  }
+
+  interviewFollowUpLabel(candidate: Candidate): string | null {
+    if (!candidate.lastInterviewDate) return null;
+    const date = new Date(candidate.lastInterviewDate)
+      .toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (candidate.lastInterviewStatus === 'COMPLETED') {
+      return `Entretien du ${date} effectué — votre avis est attendu`;
+    }
+    if (['INTERVIEW', 'FINAL_INTERVIEW', 'TECHNICAL_TEST'].includes(candidate.status)) {
+      return `Entretien planifié le ${date}`;
+    }
+    return null;
+  }
+
+  /**
    * Un avis est-il déjà posé sur ce dossier ? Si oui, le manager n'a plus rien à
    * saisir — le contreseing appartient au RH. Sans ce message, les deux boutons
    * simplement grisés laissaient croire à une interface en panne.

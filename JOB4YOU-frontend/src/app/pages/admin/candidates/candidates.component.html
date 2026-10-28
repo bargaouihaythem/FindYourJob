@@ -236,8 +236,10 @@
                     <div class="btn-group btn-group-sm" role="group" *ngIf="!managerAdviceNote(candidate)">
                       <button class="btn btn-outline-info" (click)="planInterview(candidate)"
                               [disabled]="!canManagerAdvise(candidate)"
-                              title="Programmer l'entretien (date, heure, lien Meet) — le dossier passe à l'étape « Entretien »">
-                        <i class="fas fa-calendar-plus me-1"></i>Planifier l'entretien
+                              [title]="interviewAlreadyHeld(candidate)
+                                ? 'Un premier entretien est déjà terminé : planifier une seconde rencontre'
+                                : 'Programmer l\'entretien (date, heure, lien Meet) — le dossier passe à l\'étape « Entretien »'">
+                        <i class="fas fa-calendar-plus me-1"></i>{{ planInterviewLabel(candidate) }}
                       </button>
                       <button class="btn btn-outline-success" (click)="acceptCandidate(candidate)"
                               [disabled]="!canManagerAdvise(candidate)"
@@ -250,6 +252,10 @@
                         <i class="fas fa-times me-1"></i>Refus proposé
                       </button>
                     </div>
+                    <p *ngIf="interviewFollowUpLabel(candidate) as followUp"
+                       class="small text-muted mb-0 w-100">
+                      <i class="fas fa-video me-1"></i>{{ followUp }}
+                    </p>
                   </div>
 
                   <!-- RH/ADMIN : statut en cours, dropdown modifiable -->
@@ -1091,8 +1097,10 @@
           <div class="btn-group btn-group-sm me-auto" role="group" *ngIf="!managerAdviceNote(selectedCandidate)">
             <button class="btn btn-outline-info" (click)="planInterview(selectedCandidate)"
                     [disabled]="!canManagerAdvise(selectedCandidate)"
-                    title="Programmer l'entretien (date, heure, lien Meet) — le dossier passe à l'étape « Entretien »">
-              <i class="fas fa-calendar-plus me-1"></i>Planifier l'entretien
+                    [title]="interviewAlreadyHeld(selectedCandidate)
+                      ? 'Un premier entretien est déjà terminé : planifier une seconde rencontre'
+                      : 'Programmer l\'entretien (date, heure, lien Meet) — le dossier passe à l\'étape « Entretien »'">
+              <i class="fas fa-calendar-plus me-1"></i>{{ planInterviewLabel(selectedCandidate) }}
             </button>
             <button class="btn btn-outline-success" (click)="acceptCandidate(selectedCandidate)"
                     [disabled]="!canManagerAdvise(selectedCandidate)"
@@ -1105,6 +1113,9 @@
               <i class="fas fa-times me-1"></i>Refus proposé
             </button>
           </div>
+          <span *ngIf="interviewFollowUpLabel(selectedCandidate) as followUp" class="small text-muted me-auto">
+            <i class="fas fa-video me-1"></i>{{ followUp }}
+          </span>
           <span *ngIf="managerAdviceNote(selectedCandidate) as advice" class="small text-muted me-auto"
                 [title]="advice">
             <i class="fas fa-hourglass-half me-1"></i>{{ advice }}

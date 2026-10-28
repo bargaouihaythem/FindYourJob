@@ -242,6 +242,20 @@ export class ManagerCalendarComponent implements OnInit {
     return 'badge bg-light text-dark';
   }
 
+  /**
+   * Une salle ne se rejoint que pendant son créneau. Une fois l'entretien effectué, annulé,
+   * le dossier tranché ou l'horaire dépassé, le lien reste affiché pour la trace mais n'est
+   * plus cliquable : la popup « terminé » qui proposerait encore d'entrer en salle se
+   * contredirait elle-même.
+   */
+  linkClosedReason(interview: Interview): string | null {
+    if (!interview.meetLink || this.canJoin(interview)) return null;
+    if (interview.status === 'COMPLETED') return 'Entretien terminé : la salle est fermée.';
+    if (interview.status === 'CANCELLED') return 'Entretien annulé : la salle n’a pas été ouverte.';
+    if (this.isDossierClosed(interview)) return 'Dossier déjà tranché : la salle est fermée.';
+    return 'Créneau dépassé : la salle est fermée.';
+  }
+
   markAsCompleted(interview: Interview): void {
     this.interviewService.updateInterviewStatus(interview.id, 'COMPLETED').subscribe({
       next: (updated: Interview) => {

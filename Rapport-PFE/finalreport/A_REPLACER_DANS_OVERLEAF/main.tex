@@ -128,8 +128,72 @@
 \usepackage{array,longtable,multirow}% http://ctan.org/pkg/{array,longtable,multirow}
 \usepackage{pifont}
 
+%===== Grandes figures : vraie page paysage =====%
+% Les 28 grandes figures etaient dans un environnement sidewaysfigure (paquet
+% rotating). Mesure sur le build du 20-10-2026 (104 p.) : les 104 pages ont une
+% MediaBox portrait 595 x 842 et le PDF ne porte AUCUNE cle /Rotate, alors que
+% 28 pages donnent l'image en 0 1 -1 0 cm, c'est-a-dire pivotee a l interieur
+% d une page portrait : il fallait tourner la feuille pour lire. Elles sont
+% desormais en \begin{landscape}...\end{landscape} : le paquet pdflscape, deja
+% charge par le modele, compose la page avec les dimensions permutees
+% (\textwidth = 731,2 pt, \textheight = 483,7 pt) et marque cette page
+% /Rotate 90, donc le visionneuse l affiche en paysage reel.
+% Bilan : 25 figures en page paysage, 3 repassees en portrait (2.3, 3.1, 3.4) ;
+% leur ratio de 1,17 a 1,25 ne faisait gagner que 5 a 13 % de texte, pour une
+% page pleine et une coupure de paragraphe chacune.
+% Le \clearpage place AVANT \end{landscape} est indispensable : sans lui le
+% float [p] peut etre emis apres la sortie du bloc, sur une page portrait.
+% \pagestyle{lscape} est le style que la classe reserve a ces pages
+% (tpl/isipfe.cls:301). Quand lscape permute le texte, fancyhdr ne permute ni
+% l'en-tete ni le pied : la classe en tient compte elle-meme, elle repositionne
+% le numero et le titre courant le long du grand cote puis les contre-pivote
+% (cls:305-306). Ces deux lignes sont reactivees telles quelles plus bas, sous
+% \usepackage{pdflscape}, puisque isipfe.cls ne doit pas etre modifie. Le style
+% reste local au bloc : les pages voisines gardent fancy.
+% Taille conservee : 0,98\linewidth x 0,90\textheight rendent 716 x 435 pt,
+% soit la taille deja imprimee (mesure 713,9 x 444,5 pt pour la figure 2.1).
+% Les 0,95/0,82 du retour d'audit donneraient 694 x 396 pt, donc 11 % de moins
+% sur les diagrammes deja juges petits (3.9, 3.10, 3.11).
 \usepackage{pdflscape}
 \usepackage{rotating}
+%===== Numero et titre courant sur les pages paysage =====%
+% Ce sont les deux lignes que la classe ecrit elle-meme (tpl/isipfe.cls:305-306)
+% dans son style lscape, et qu'elle a laissees en commentaire. isipfe.cls devant
+% rester intact, elles sont reprises ici aux valeurs corrigees. fancyhdr ne permute pas
+% l'en-tete et le pied quand lscape permute le texte : le \rotatebox{90} remet
+% les glyphes droits une fois la page tournee par /Rotate, et un \raisebox les
+% deplace le long du grand cote. Les trois builds, en abscisse LUE :
+% build 9, vspace du modele (+12cm / -88mm) = numero a 819, titre a -163 rogne
+% hors papier ; build 10, vspace -2,2cm des deux cotes = numero a 755, titre
+% inchange ; build 11, raisebox -11,9cm = numero a 481, titre a 270 et entier.
+% Le raisebox est lineaire et la case de tete a sa baseline naturelle en
+% x = 819,6 : 481 = 819,6 - 338,6 (11,9cm) et 755 = 819,6 - 62,4 (2,2cm). Le
+% \vspace, lui, sature des qu'il monte au-dessus de la boite de \headheight
+% (+12cm rend 819 comme rien du tout) : d'ou le raisebox, seul reglable au pt.
+% Le folio ne peut PAS etre centre sur le grand cote bas, ni meme pose au
+% milieu : la legende de la figure occupe toute cette bande. Mesure build 11 :
+% la legende est centree sous l'image (centre x = 435), donc sa portee se lit a
+% partir de son ancre — la plus longue court de x = 140 a x = 730 (p. 84,
+% legende de deux lignes), les plus courtes de 351 a 519, et sa baseline est a
+% y = 74, 75 ou 76 quand celle du folio est a y = 68, six points plus bas. Pose
+% a x = 481, comme centre a 421, le nombre s'imprime donc dans la legende — 15
+% des 25 pages sont signalees par le controle. Il ne reste que le coin :
+% x >= 770 pour laisser 40 pt apres la legende la plus longue, et x + 14 <= 797
+% pour rester a plus de 1,5 cm du bord de papier (la page lue fait 842 pt de
+% large). x = 775 retenu, soit 819,6 - 44,1 pt = -1,55cm. Le folio reste ainsi
+% dans le meme bandeau bas que les pages portrait, au coin droit, et la classe
+% n'est pas touchee.
+% Le titre courant, dans la bande haute (la case de pied permute), est a
+% y = 531, au-dessus de l'image (y = 524 au plus) ; son depart x = 270 est le
+% meme sur les 25 pages et sa longueur ne depasse pas 200 pt, rien ne sort du
+% papier. Sans regle : la classe les annule (cls:303-304) et on la suit.
+\fancypagestyle{lscape}{%
+  \fancyhf{}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \rhead{\raisebox{-1.55cm}[0pt][0pt]{\rotatebox{90}{\footnotesize \thepage}}}%
+  \lfoot{\raisebox{8cm}[0pt][0pt]{\rotatebox{90}{\nouppercase{\leftmark}}}}%
+}
 \usepackage{wrapfig}
 %=========== Ajoutes pour le contenu du rapport (code, URLs, tableaux) ===========%
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}
@@ -256,14 +320,17 @@
 % pied « 0.299 w 0 0 m 470.551 0 l S ». Le rapport livre par l'ecole (Amio,
 % 65 p.) rend la page 19 a x = 286.5, 10.9 pt, avec la meme regle : position,
 % taille et regle identiques au quart de point. La marque « Chapitre N. … » est
-% bien rendue en tete sur les pages de corps, et les ouvertures de \chapter*
-% (bibliographie, resume) tombent a x = 287.4 en 9 pt comme les pages 52-53 de
-% l'ecole.
+% bien rendue en tete sur les pages de corps — non : le build suivant (117 p.)
+% montre que le corps heritait du style « frontmatter » et n'imprimait aucune
+% marque. La redefinition est donc reposee explicitement apres \mainmatter et
+% \backmatter. Les ouvertures de \chapter* (bibliographie, resume) tombent en
+% revanche bien a x = 287.4 en 9 pt comme les pages 52-53 de l'ecole.
 % Garde-fou de mesure : ne conclure sur un x de pied de page qu'apres avoir lu
-% les operateurs bruts du stream. Une paire de translations « cm » puis son
-% inverse (le cas ici, autour du bloc de legende) doit etre annulee par la
-% pile q/Q ; mal suivie, elle deplace le numero a x = 518 et lui prete la
-% taille du \Tf precedent, ce qui a fait annoncer a tort un defaut.
+% les operateurs bruts du stream, hors de toute concatenation. Controle fait le
+% 20-10-2026 : le BT du numero est « 518.031 43.506 Td » dans le stream, la
+% valeur est donc reelle et ne vient pas d'une paire de « cm » mal annulee par la
+% pile q/Q. Ce qui etait faux, c'etait la conclusion tiree sur la page 20
+% imprimee seulement, ou le style fancy etait bien en vigueur.
 % Les autres styles gardent leur regle propre : « plain » = centre,
 % « frontmatter » = numero a droite en romain comme le rapport de l'ecole,
 % ouverture d'un chapitre numéroté = aucun numero (isipfe.cls, ligne 244),
@@ -300,7 +367,7 @@
 \proFramerName{M. Mones Ben Mabrouk}
 \proFramerSpeciality{Sopra HR Software Tunisie}
 \academicFramerName{M. Malek Bouzaiene}
-\academicFramerSpeciality{SESAME}
+\academicFramerSpeciality{Université SESAME}
 
 \companyName{Sopra HR Software Tunisie}
 \collegeYear{2025 - 2026}
@@ -508,9 +575,10 @@ Enfin, je remercie les membres du jury pour l’honneur qu’ils me font en acce
         % Les pages preliminaires heritent de la marque \leftmark de la page
         % precedente, d'ou un titre courant date (le sommaire s'affichait avec
         % « Remerciements » en tete). Ce style global retire l'en-tete de
-        % toutes les pages du tome preliminaire, pas seulement de la derniere,
-        % et \mainmatter retabli ensuite le style fancy (marque de chapitre en
-        % tete, numero centre en pied) pour les pages du corps.
+        % toutes les pages du tome preliminaire, pas seulement de la derniere.
+        % Attention : \mainmatter NE retablit pas fancy (mesure du build 117 p. :
+        % les 62 pages de corps portaient ce numero de pied droite en 8,97 pt). Le
+        % style de corps est donc repose a la main apres \mainmatter et \backmatter.
         \pagestyle{frontmatter}
         \jobFixLists{toc}
         \dominitoc
@@ -566,6 +634,17 @@ Enfin, je remercie les membres du jury pour l’honneur qu’ils me font en acce
         \thispagestyle{frontmatter}
     
     \mainmatter
+%===== Le style de corps doit etre pose ici, pas seulement au preambule =====%
+% Mesure du build 20-10-2026 (117 p.), lue dans le stream brut, sans concatenation
+% de matrices : « /F54 8.9664 Tf 518.031 43.506 Td [(18)]TJ » et un seul filet, a
+% y = 55.4. Numero a 518 = aligne a droite, 8.97 pt = \footnotesize, aucune marque
+% en tete, filet de pied mais pas de tete : c'est le style « frontmatter » pose
+% plus haut (ligne 556) qui court sur les 62 pages de corps, \mainmatter ne l'a
+% pas remplace. Le rapport livre par l'ecole rend sur ces memes pages la marque
+% « Chapitre N. … » a x = 57 en 10.9 pt et le numero centre a x = 287.3, y = 43.5,
+% en 10.9 pt. Le retablir explicitement, apres \mainmatter, pour que ce soit
+% notre ligne qui gagne.
+\pagestyle{fancy}
         % ======== introduction ========
 \chapter*{Introduction générale}
 \addcontentsline{toc}{chapter}{Introduction générale}
@@ -660,18 +739,66 @@ Techniquement, la plateforme s’appuie sur une architecture découplée : un ba
 
 \section{Méthodologie de travail adoptée}
 \label{sec_1_7}
-Les besoins évoluant au fil du stage, et les retours réguliers de mon encadrant entreprise étant essentiels, j’ai adopté une démarche itérative et incrémentale inspirée des principes Agile/Scrum \cite{ref02}. Le développement s’est organisé en cycles courts (sprints de 2 à 3 semaines), chacun débutant par la sélection et le dimensionnement des user stories prioritaires du Product Backlog, puis enchaînant analyse, conception, implémentation et tests unitaires et fonctionnels. Chaque sprint se clôturait par une revue d’itération (Sprint Review) et une démonstration à mon encadrant entreprise, suivies d’une rétrospective visant à ajuster priorités et spécifications. S’agissant d’un projet mené seul, j’ai endossé les trois rôles Scrum : Product Owner (priorisation du backlog avec l’encadrant), Scrum Master (respect des cérémonies et du rythme des itérations) et équipe de développement (conception, code et tests). Git/GitHub a servi tout du long à assurer la traçabilité du code, faciliter les retours en arrière et documenter l’évolution du projet à travers l’historique des commits. Le rythme de ces itérations et le contenu du backlog associé sont retracés en section~\ref{sec_1_8} (figure~\ref{fig_1_1} et tableau~\ref{tab_1_2}).
+\subsection{Cadres méthodologiques envisagés}
+\label{sec_1_7_1}
+Trois cadres sont couramment rencontrés dans les projets de développement. Le modèle en cascade ordonne strictement les phases — analyse, conception, implémentation, tests, déploiement —, chaque phase ne commençant qu’après validation de la précédente ; il convient lorsque le périmètre est stabilisé d’avance, mais encaisse mal l’évolution des besoins, une erreur de conception n’étant généralement découverte qu’en fin de cycle. Le cycle en V conserve cette séquentialité en y adjoignant, pour chaque niveau de conception, un niveau de vérification correspondant, ce qui renforce la traçabilité des tests au prix d’une exigence identique : figer les spécifications très tôt. Scrum \cite{ref02} découpe au contraire le projet en sprints courts à l’issue desquels un incrément potentiellement livrable est présenté ; les exigences y sont portées par un backlog produit priorisé en continu, et le cadre s’appuie sur des rôles — Product Owner, Scrum Master, équipe de développement — et des cérémonies — planification de sprint, mêlée quotidienne, revue de sprint, rétrospective — formalisés.
 
-\section{Planification du projet}
-\label{sec_1_8}
-Le développement du projet a été réparti en grandes phases sur toute la période de réalisation de ce Projet de Fin d’Études. Afin de concilier la souplesse de la démarche agile en sprints avec les jalons de suivi académiques et industriels, la macro-planification de ces phases est résumée dans le tableau~\ref{tab_1_1}.
+\subsection{Cadre retenu et transposition au travail individuel}
+\label{sec_1_7_2}
+J’ai retenu Scrum comme cadre de référence, pour une raison tenant au contenu du projet : son périmètre n’était pas stabilisable d’avance. Le barème de scoring par intelligence artificielle — seuil de décision, zone d’incertitude laissée autour de lui, place de l’arbitrage humain — et la part confiée aux agents d’automatisation n8n ont été arbitrés au fil de l’eau, entre le printemps et l’automne 2026. Un cycle en V aurait exigé de figer dès mars 2026 des règles de décision qui ne sont devenues opérationnelles que plusieurs mois plus tard ; la cascade aurait, elle, repoussé la confrontation au réel de la plateforme jusqu’à la fin du stage. Le cadre agile impose en outre un point de validation à chaque fin de cycle, ce qui correspondait exactement au rythme des suivis assurés par mon encadrant entreprise.
+
+Restait à transposer dans un projet mené par une seule personne un cadre conçu pour des équipes de trois à neuf développeurs. Plutôt que de déclarer une adhésion formelle à Scrum ou de l’écarter, j’en ai repris les éléments qui ont un équivalent réel dans ce contexte et assumé l’absence des autres ; le tableau~\ref{tab_1_1} explicite cette transposition, élément par élément.
 
 % tableau 1.1
 \setcounter{table}{0}
 \begin{table}[!ht]
 \centering
-\caption{Macro-planification des phases du projet}
+\caption{Transposition du cadre Scrum au projet}
 \label{tab_1_1}
+\renewcommand{\arraystretch}{1.25}\footnotesize
+\setlength{\tabcolsep}{4pt}%
+\begin{tabular}{|P{0.235\textwidth}|P{0.695\textwidth}|}
+\hline
+\textbf{Élément du cadre Scrum} & \textbf{Transposition retenue dans le projet} \\
+\hline
+Product Owner & Mon encadrant entreprise : il exprime le besoin, arbitre les priorités à chaque point d’avancement et accepte l’incrément lors de la démonstration \\
+\hline
+Scrum Master & Sans équivalent formel : à une seule personne, la facilitation — cadrage du sprint, arbitrage des dépendances techniques — est confondue avec le rôle de développeur \\
+\hline
+Équipe de développement & Une seule personne (l’auteur de ce rapport) : conception, développement, tests et déploiement sur l’environnement de développement \\
+\hline
+Sprint & Cycle d’environ quatre semaines d’avril à septembre 2026, puis deux sprints resserrés à deux semaines en octobre (tableau~\ref{tab_1_3}) \\
+\hline
+Backlog produit & Liste ordonnée des user stories issues de l’analyse de l’existant et des retours de démonstration (tableau~\ref{tab_1_4}) \\
+\hline
+Planification de sprint & En début de cycle, sélection des user stories à traiter, chacune étant assortie d’un critère de sortie vérifiable en démonstration \\
+\hline
+Revue de sprint & Démonstration de l’incrément fonctionnel à l’encadrant entreprise en fin de cycle ; ses retours déterminent le contenu du cycle suivant \\
+\hline
+Rétrospective & Point d’ajustement à l’issue de chaque démonstration : ce qui bloque, ce qui est reporté, ce qui doit être repris \\
+\hline
+Mêlée quotidienne & Remplacée, en travail individuel, par un suivi d’avancement hebdomadaire avec l’encadrant entreprise \\
+\hline
+Incrément et définition de « fini » & Incrément compilé, testé (tests unitaires et fonctionnels), déployé sur l’environnement de développement et démontrable sans échec visible \\
+\hline
+Vélocité et diagramme de burndown & Non produits : aucune mesure de vélocité n’a été tenue pendant le stage ; le suivi s’est fait par jalons de démonstration \\
+\hline
+\end{tabular}
+\end{table}
+Cette transposition a une limite, qu’il vaut poser ici plutôt que de la laisser deviner : le backlog et la vélocité n’ont pas été tenus en temps réel. Le tableau~\ref{tab_1_4} présente un backlog reconstitué à partir du code livré et des comptes rendus de démonstration, et la décomposition en sprints du tableau~\ref{tab_1_3} suit les repères mensuels du stage, non un relevé de charge quotidien. Git/GitHub a servi d’outil de versionnage et de retour en arrière ; son historique, plus dense sur la seconde moitié de la période, n’atteste pas le rythme de développement et n’est donc pas invoqué comme preuve méthodologique.
+
+\section{Planification du projet}
+\label{sec_1_8}
+\subsection{Macro-planification des phases}
+\label{sec_1_8_1}
+La période de réalisation s’étend de février à octobre 2026. Elle a d’abord été planifiée par grandes phases, alignées sur les jalons de suivi académiques et industriels du stage, afin de concilier la souplesse des sprints avec des repères communicables à l’école et à l’entreprise. Ces phases sont résumées dans le tableau~\ref{tab_1_2}.
+
+% tableau 1.2
+\setcounter{table}{1}
+\begin{table}[!ht]
+\centering
+\caption{Macro-planification des phases du projet}
+\label{tab_1_2}
 \renewcommand{\arraystretch}{1.25}\footnotesize
 \setlength{\tabcolsep}{4pt}%
 \begin{tabular}{|P{0.197\textwidth}|P{0.103\textwidth}|P{0.646\textwidth}|}
@@ -682,61 +809,108 @@ Prise en main et cadrage & Février 2026 & Intégration au sein de l’équipe, 
 \hline
 Analyse et conception & Mars 2026 & Spécification des besoins, modélisation UML \cite{ref03} (cas d’utilisation, séquence, classes), conception de la base de données \\
 \hline
-Développement — Socle applicatif & Avril – Mai 2026 & Mise en place de l’architecture back-end/front-end, authentification JWT, gestion des rôles, gestion des offres et des candidatures \\
+Développement — socle applicatif (release 1) & Avril – Mai 2026 & Mise en place de l’architecture back-end/front-end, authentification JWT, gestion des rôles, gestion des offres et des candidatures \\
 \hline
-Développement — Fonctionnalités avancées & Juin – Juillet 2026 & Gestion des entretiens et des feedbacks, scoring IA, agents n8n, notifications e-mail, tableau Kanban \\
+Développement — fonctionnalités avancées (release 2) & Juin – Août 2026 & Scoring IA des CV, agents n8n et notifications e-mail, entretiens et feedbacks, tableau Kanban, calendrier, suggestions « Job idéal » et assistant conversationnel \\
 \hline
-Tests, corrections et finalisation & Août 2026 & Tests fonctionnels, corrections de bugs, améliorations UX et sécurité, rédaction du rapport \\
+Fiabilisation et durcissement (release 3) & Septembre 2026 & Tests fonctionnels de bout en bout, corrections de bugs, reprise des erreurs des agents d’automatisation, améliorations UX et sécurité \\
+\hline
+Évaluation, recette et soutenance (release 4) & Octobre 2026 & Évaluation du scoring sur Gold Set et calibrage du seuil, jeu de démonstration, relecture du rapport avec l’encadrant, préparation de la soutenance \\
 \hline
 \end{tabular}
 \end{table}
-La figure~\ref{fig_1_1} reprend cette macro-planification sur un calendrier mensuel, d’après les repères mensuels du tableau~\ref{tab_1_1}.
+La figure~\ref{fig_1_1} reprend ces phases sur le calendrier mensuel de février à octobre 2026 ; ses deux bandes inférieures superposent les quatre releases et les huit sprints qui en découlent.
 
 % figure 1.1
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig1_1}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig1_1}
 \caption{Diagramme de Gantt — Planification mensuelle des phases du projet}
 \label{fig_1_1}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
-Le tableau~\ref{tab_1_2} reconstitue les user stories des principales fonctionnalités livrées, par acteur et par phase du tableau~\ref{tab_1_1}.
+\subsection{Découpage en sprints et en releases}
+\label{sec_1_8_2}
+La période de développement — d’avril à octobre 2026 — a été découpée en huit sprints : six sprints d’environ quatre semaines d’avril à septembre, puis deux sprints resserrés à deux semaines en octobre, à l’approche de la soutenance. Les deux premiers mois du stage sont restés hors sprint, consacrés à la prise en main de l’environnement, à l’analyse du besoin et à la conception UML : aucun incrément démontrable n’y était attendu. Chaque sprint regroupait les user stories prioritaires restantes et se terminait par une revue avec l’encadrant entreprise ; le détail en est donné au tableau~\ref{tab_1_3}.
 
-% tableau 1.2
-\setcounter{table}{1}
+Quatre releases agrègent ces sprints, chacune correspondant à un incrément complet du point de vue de l’utilisateur : la release 1 rend le cycle de candidature opérationnel, la release 2 dote la plateforme de son aide à la décision, la release 3 fiabilise l’ensemble et la release 4 l’évalue avant sa présentation finale.
+
+% tableau 1.3
+\setcounter{table}{2}
 \begin{table}[!ht]
 \centering
-\caption{Backlog reconstitué des user stories par phase}
-\label{tab_1_2}
+\caption{Découpage en sprints et en releases (avril – octobre 2026)}
+\label{tab_1_3}
 \renewcommand{\arraystretch}{1.25}\footnotesize
 \setlength{\tabcolsep}{4pt}%
-\begin{tabular}{|P{0.481\textwidth}|P{0.150\textwidth}|P{0.315\textwidth}|}
+\begin{tabular}{|P{0.050\textwidth}|P{0.125\textwidth}|P{0.400\textwidth}|P{0.325\textwidth}|}
 \hline
-\textbf{User story} & \textbf{Acteur bénéficiaire} & \textbf{Phase de réalisation} \\
+\textbf{Sprint} & \textbf{Période} & \textbf{Objectif du sprint} & \textbf{Critère validé en revue} \\
 \hline
-Créer un compte et postuler à une offre (dépôt du CV) & Candidat & Développement — socle applicatif \\
+S1 & Avril 2026 & Mettre en place le socle technique : architecture back-end Spring Boot et front-end Angular, schéma PostgreSQL, authentification JWT et gestion des rôles & Les applications démarrent ensemble ; un compte par rôle se connecte et n’accède qu’à son périmètre \\
 \hline
-Suivre l’avancement de sa candidature à chaque étape & Candidat & Développement — socle applicatif \\
+S2 & Mai 2026 & Cycle de base candidat–offre : publication et gestion des offres, dépôt de candidature avec CV, suivi de l’état du dossier & Une candidature est créée, déposée et suivie de bout en bout par le candidat et par le RH — clôture la release 1 \\
 \hline
-Publier et gérer les offres d’emploi du périmètre RH & Responsable RH & Développement — socle applicatif \\
+S3 & Juin 2026 & Présélection assistée : extraction du texte du CV, scoring sur 100 via l’API de Cohere, agents n8n et notifications e-mail & Un CV déposé est noté, la règle de décision appliquée et tracée dans le journal d’audit ; les notifications partent \\
 \hline
-Faire présélectionner les CV par un score IA paramétrable & Responsable RH & Développement — fonctionnalités avancées \\
+S4 & Juillet 2026 & Pipeline RH/manager : planification des entretiens, feedbacks structurés, avis du manager contre-signé par le RH, tableau Kanban & Un dossier traverse présélection, entretiens et décision finale avec ses notifications \\
 \hline
-Planifier les entretiens, émettre un avis et le contresigner & RH et Manager & Développement — fonctionnalités avancées \\
+S5 & Août 2026 & Fonctions d’accompagnement : suggestions « Job idéal » (matching inverse), assistant conversationnel côté candidat, calendrier d’entretiens avec rappels & Les trois fonctions sont utilisables par un candidat et par un manager — clôture la release 2 \\
 \hline
-Consulter le tableau Kanban et le journal d’audit & Responsable RH & Développement — fonctionnalités avancées \\
+S6 & Septembre 2026 & Fiabilisation : tests fonctionnels de bout en bout, corrections de bugs, reprise des erreurs des agents d’automatisation, durcissement de la sécurité et de l’UX & Le scénario complet de démonstration s’exécute sans échec visible — clôture la release 3 \\
 \hline
-Disposer d’un calendrier d’entretiens avec rappels & Manager & Développement — fonctionnalités avancées \\
+S7 & Octobre (1re quinzaine) & Évaluation du scoring : constitution du Gold Set de vingt CV, mesure à trois seuils, zone d’incertitude et réévaluation manuelle par le RH & Matrice de confusion et métriques produites, commentées puis intégrées au chapitre~4 \\
 \hline
-Bénéficier des suggestions « Job idéal » et du chatbot & Candidat & Développement — fonctionnalités avancées \\
-\hline
-Évaluer, corriger et expliquer le scoring IA & Responsable RH & Tests, corrections et finalisation \\
+S8 & Octobre (2e quinzaine) & Recette finale et préparation de la soutenance : jeu de démonstration, enregistrement vidéo, relecture du rapport avec l’encadrant & Rapport et support de soutenance validés par l’encadrant entreprise — clôture la release 4 \\
 \hline
 \end{tabular}
 \end{table}
-Backlog reconstitué a posteriori à partir de l’historique Git, non tenu en temps réel durant le projet.
 
+\subsection{Backlog reconstitué des user stories}
+\label{sec_1_8_3}
+Le tableau~\ref{tab_1_4} rattache les user stories des principales fonctionnalités livrées à leur acteur bénéficiaire et à la release qui les a vues aboutir.
+
+% tableau 1.4
+\setcounter{table}{3}
+\begin{table}[!ht]
+\centering
+\caption{Backlog reconstitué des user stories par release}
+\label{tab_1_4}
+\renewcommand{\arraystretch}{1.25}\footnotesize
+\setlength{\tabcolsep}{4pt}%
+\begin{tabular}{|P{0.430\textwidth}|P{0.140\textwidth}|P{0.375\textwidth}|}
+\hline
+\textbf{User story} & \textbf{Acteur bénéficiaire} & \textbf{Release (période 2026)} \\
+\hline
+Créer un compte et postuler à une offre (dépôt du CV) & Candidat & Release 1 — avril – mai \\
+\hline
+Suivre l’avancement de sa candidature à chaque étape & Candidat & Release 1 — avril – mai \\
+\hline
+Publier et gérer les offres d’emploi du périmètre RH & Responsable RH & Release 1 — avril – mai \\
+\hline
+Faire présélectionner les CV par un score IA paramétrable & Responsable RH & Release 2 — juin – août \\
+\hline
+Planifier les entretiens, émettre un avis et le contresigner & RH et Manager & Release 2 — juin – août \\
+\hline
+Consulter le tableau Kanban et le journal d’audit & Responsable RH & Release 2 — juin – août \\
+\hline
+Disposer d’un calendrier d’entretiens avec rappels & Manager & Release 2 — juin – août \\
+\hline
+Bénéficier des suggestions « Job idéal » et du chatbot & Candidat & Release 2 — juin – août \\
+\hline
+Exécuter un cycle complet sans régression visible & RH, Manager et Candidat & Release 3 — septembre \\
+\hline
+Évaluer, corriger et expliquer le scoring IA & Responsable RH & Release 4 — octobre \\
+\hline
+\end{tabular}
+\end{table}
+
+Backlog reconstitué a posteriori à partir du code livré et des comptes rendus de démonstration, non tenu en temps réel durant le stage ; les repères mensuels sont ceux de la macro-planification du tableau~\ref{tab_1_2} et n’ont donné lieu à aucune mesure de vélocité.
 \section{Conclusion}
 \label{sec_1_9}
 Les limites du processus existant chez Sopra HR Software sont maintenant posées, tout comme la méthodologie suivie pendant le stage. Reste à entrer dans le vif du sujet : quels besoins précis JOB4YOU devait-il couvrir ? C’est l’objet du chapitre suivant.
@@ -841,44 +1015,93 @@ Au-delà des fonctionnalités métier, la plateforme doit aussi répondre aux ex
 \label{sec_2_2_4}
 Avant de détailler les fonctionnalités attendues, ce diagramme d’activité pose le flux métier global : il décrit l’enchaînement des activités du processus de recrutement, de la publication de l’offre jusqu’à la décision finale, ainsi que les acteurs qui les portent, indépendamment de toute considération technique.
 
-Le diagramme d’activité de la figure~\ref{fig_2_1}  rend explicite un point que le texte seul rendait moins visible : l’entretien téléphonique RH est un passage obligé avant toute évaluation technique (section~\ref{sec_4_5_8}), et la transmission au manager désigné par le RH (section~\ref{sec_3_5_4}) n’intervient qu’à ce moment-là, pas dès la validation du CV — conformément à la correction décrite en section~\ref{sec_4_5_5}. Le rejet automatique par l’IA n’y constitue pas une fin de parcours distincte : il rejoint, comme le contreseing du RH, l’étape commune de notification et de journalisation, et admet deux issues humaines distinctes, toutes deux portées par la transition « AUTO\_REJECTED » de la figure~\ref{fig_3_8} : le RH confirme le refus après examen, ou le conteste par un override justifié qui le réintègre dans le pipeline, à condition que la note corrigée atteigne le seuil de 60/100.
+Le diagramme d’activité, présenté en trois volets (figures~\ref{fig_2_1a}, \ref{fig_2_1b} et \ref{fig_2_1c}), rend explicite un point que le texte seul rendait moins visible : l’entretien téléphonique RH est un passage obligé avant toute évaluation technique (section~\ref{sec_4_5_8}), et la transmission au manager désigné par le RH (section~\ref{sec_3_5_4}) n’intervient qu’à ce moment-là, pas dès la validation du CV — conformément à la correction décrite en section~\ref{sec_4_5_5}. Le rejet automatique par l’IA n’y constitue pas une fin de parcours distincte : il rejoint, comme le contreseing du RH, l’étape commune de notification et de journalisation, et admet deux issues humaines distinctes, toutes deux portées par la transition « AUTO\_REJECTED » de la figure~\ref{fig_3_8} : le RH confirme le refus après examen, ou le conteste par un override justifié qui le réintègre dans le pipeline, à condition que la note corrigée atteigne le seuil de 60/100.
 
-% figure 2.1
+Le volet~\ref{fig_2_1a} couvre le dépôt de la candidature et la présélection automatisée ; le volet~\ref{fig_2_1b} prend le dossier en charge côté RH et manager, jusqu’à l’avis du manager ; le volet~\ref{fig_2_1c} termine le parcours par la décision finale du RH, sa journalisation et la notification du candidat. Ce découpage en trois volets a été imposé par la lisibilité à l’impression : la vue d’ensemble, en une seule figure, ne rendait plus qu’en 5,4 pt imprimés sous la contrainte de la page paysage, alors que ces trois figures s’affichent entre 8,7 et 12,8 pt.
+
+% figure 2.1a / 2.1b / 2.1c
+% La vue d'ensemble tenait dans une seule figure paysage (fig2_1.png,
+% 2221x1383 px) : ramenee a 0,98\linewidth x 0,90\textheight en paysage, elle
+% n'imprimait plus ses etiquettes qu'a 5,4 pt, sous le plancher de 8 pt retenu
+% pour ce rapport. Elle est donc decompee en trois volets enchaunes, chacun
+% rendu a sa propre echelle : 8,7 pt imprimes pour 2.1a (paysage, ratio 2,3),
+% 12,8 pt pour 2.1b (portrait) et 10,2 pt pour 2.1c (portrait). Les numeros a
+% suffixe alphabetique suivent le procede deja utilise pour 3.2a/3.2b et
+% 4.15a/4.15b, ce qui ne decale aucune figure du chapitre.
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+\begingroup\renewcommand{\thefigure}{2.1a}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_1}
-\caption{Diagramme d’activité — Vue d’ensemble du processus de recrutement}
-\label{fig_2_1}
-\end{sidewaysfigure}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1a}
+\caption{Diagramme d’activité — Dépôt de la candidature et présélection automatisée par le score IA}
+\label{fig_2_1a}
+\end{figure}
+\clearpage
+\end{landscape}
+\endgroup
+
+\setcounter{figure}{0}
+\begingroup\renewcommand{\thefigure}{2.1b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1b}
+\caption{Diagramme d’activité — Traitement du dossier par le RH et le manager, jusqu’à l’avis du manager}
+\label{fig_2_1b}
+\end{figure}
+\endgroup
+
+\setcounter{figure}{0}
+\begingroup\renewcommand{\thefigure}{2.1c}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1c}
+\caption{Diagramme d’activité — Décision finale du RH, journalisation et notification du candidat}
+\label{fig_2_1c}
+\end{figure}
+\endgroup
 
 \subsection{Diagrammes de cas d’utilisation}
 \label{sec_2_2_5}
-Afin d’éviter l’effet « toile d’araignée », le périmètre fonctionnel est d’abord présenté en vue macro (figure~\ref{fig_2_2}), puis décliné en trois sous-diagrammes par module (figures~\ref{fig_2_3} à \ref{fig_2_5}). L’authentification par jeton JWT, bien qu’obligatoire pour les espaces sécurisés, est représentée par un cas commun « S’authentifier » (la relation « include » n’est illustrée que sur quelques cas représentatifs) ; les relations d’inclusion pointent du cas principal vers le sous-cas requis, conformément à la norme UML \cite{ref03}, et le Candidat généralise le Visiteur.
+Afin d’éviter l’effet « toile d’araignée », le périmètre fonctionnel est présenté en deux vues macro — l’espace public et candidat (figure~\ref{fig_2_2a}), puis les espaces réservés RH, manager et administrateur (figure~\ref{fig_2_2b}) — avant d’être décliné en trois sous-diagrammes par module (figures~\ref{fig_2_3} à \ref{fig_2_5}). Chaque vue est enfermée dans le cadre de la limite du système étudié, «~JOB4YOU~» : les acteurs restent à l’extérieur du cadre, les cas d’utilisation à l’intérieur, et les seules relations tracées relient soit un acteur à un cas (trait plein, sans flèche), soit un cas à un autre par «~include~» (pointillés, flèche pointée vers le cas inclus).
 
-% figure 2.2
+% figure 2_2
 \setcounter{figure}{1}
+\begingroup\renewcommand{\thefigure}{2.2a}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig2_2}
-\caption{Diagramme de cas d’utilisation global}
-\label{fig_2_2}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_2a}
+\caption{Diagramme de cas d’utilisation global — espace public et candidat}
+\label{fig_2_2a}
 \end{figure}
+\endgroup
 
-Seuls 7 cas d’usage représentatifs sont reliés à « S’authentifier » pour la lisibilité ; l’authentification s’applique à tout l’espace interne.
+% figure 2_2
+\setcounter{figure}{1}
+\begingroup\renewcommand{\thefigure}{2.2b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_2b}
+\caption{Diagramme de cas d’utilisation global — espaces RH, manager et administrateur}
+\label{fig_2_2b}
+\end{figure}
+\endgroup
 
-L’authentification constitue une fonctionnalité transversale de la plateforme : le cas d’utilisation « S’authentifier » est commun au Candidat, au Responsable RH, au Manager et à l’Administrateur, qui doivent s’identifier avant d’accéder à leur espace sécurisé. Pour ne pas surcharger la figure~\ref{fig_2_2}, la relation « include » n’y est représentée que pour sept cas représentatifs (postuler à une offre, suivre l’état de sa candidature, consulter ses entretiens planifiés, échanger avec l’assistant conversationnel, consulter et filtrer les candidatures, contresigner la décision finale, gérer les utilisateurs et les rôles) ; elle s’applique à toutes les fonctionnalités des espaces sécurisés. Seules la consultation et la recherche des offres ainsi que les suggestions « Job idéal » demeurent accessibles au visiteur non authentifié, l’assistant conversationnel restant réservé au candidat authentifié. Les autorisations sont ensuite contrôlées côté serveur selon le rôle et le périmètre métier de l’utilisateur. Les diagrammes ne représentent que les cas principaux : la matrice du tableau~\ref{tab_2_1} fait foi pour le détail des droits (par exemple, le RH peut aussi saisir un feedback et consulter le journal d’audit).
-
+L’authentification par jeton JWT est représentée par un cas unique « S’authentifier », auquel les cas des espaces sécurisés sont reliés par une relation « include ». Cette convention est celle du diagramme de cas d’utilisation global : elle est reprise ici sur sept cas représentatifs (postuler à une offre, suivre l’état de sa candidature, consulter ses entretiens planifiés, échanger avec l’assistant conversationnel, consulter et filtrer les candidatures, contresigner la décision finale, gérer les utilisateurs et les rôles) et s’applique en réalité à toutes les fonctionnalités des espaces sécurisés. Conformément à la norme UML \cite{ref03}, la flèche d’inclusion part du cas principal pour rejoindre le cas inclus ; aucune relation ne relie deux acteurs entre eux, ni deux cas hors de ce mécanisme. Le visiteur non authentifié conserve la consultation et la recherche des offres ainsi que les suggestions « Job idéal » ; le candidat authentifié reprend ces deux cas et y ajoute le dépôt de candidature, le suivi de son dossier, l’accès à ses entretiens et l’assistant conversationnel, qui lui est réservé. Les autorisations sont ensuite contrôlées côté serveur selon le rôle et le périmètre métier de l’utilisateur. Les diagrammes ne représentent que les cas principaux : la matrice du tableau~\ref{tab_2_1} fait foi pour le détail des droits. Certains droits y sont acceptés sans être retracés ici, pour ne pas transformer la figure en toile d’araignée : l’administrateur peut aussi publier une offre, planifier un entretien, émettre un avis et contresigner la décision finale ; le RH peut aussi saisir un feedback, émettre un avis et consulter le journal d’audit.
 Le premier zoom couvre le portail public et candidat : consultation des offres, matching « Job idéal », dépôt de candidature et suivi en libre-service (figure~\ref{fig_2_3}).
 
 % figure 2.3
 \setcounter{figure}{2}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,25, le vrai paysage ne l agrandissait que de
+% 13 % (544 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 8,2 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_3}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig2_3}
 \caption{Diagramme de cas d’utilisation — Portail Candidat \& Visiteur}
 \label{fig_2_3}
-\end{sidewaysfigure}
+\end{figure}
 
 Le deuxième zoom décrit le cœur du processus côté RH et manager : publication des offres, filtrage, entretiens, feedbacks, avis du manager puis contreseing RH de la décision finale (figure~\ref{fig_2_4}). L’envoi des notifications par e-mail y est modélisé comme un cas inclus, déclenché par la planification ou par la décision, et non comme un cas autonome.
 
@@ -936,12 +1159,16 @@ Le diagramme de la figure~\ref{fig_2_6} adopte une approche « boîte noire » s
 
 % figure 2.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+% remise en portrait et a taille naturelle : le PNG source ne mesure que 418 x 255 px.
+% Etalee sur une page paysage entiere, l'image s'imprimait a ~1,6 fois sa taille,
+% donc en flou, et coutait une page pleine. A 0,70\linewidth elle imprime
+% 337 pt de large (police ~9,7 pt), sans qu'aucun pixel ne soit agrandi.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_6}
+\includegraphics[width=0.70\linewidth]{fig2_6}
 \caption{Diagramme de séquence système — Soumettre une candidature (boîte noire)}
 \label{fig_2_6}
-\end{sidewaysfigure}
+\end{figure}
 
 \section{Étude technique}
 \label{sec_2_3}
@@ -1006,53 +1233,58 @@ La figure~\ref{fig_3_1} illustre l’organisation du back-end en paquetages (con
 
 % figure 3.1
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,23, le vrai paysage ne l agrandissait que de
+% 10 % (534 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 10,0 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_1}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_1}
 \caption{Diagramme des paquetages}
 \label{fig_3_1}
-\end{sidewaysfigure}
+\end{figure}
 
 Côté back-end, j’ai suivi un découpage classique en couches : la couche controller expose les API REST, la couche service porte la logique métier (règles de gestion, garde-fous, orchestration des appels vers n8n), la couche repository assure la persistance via Spring Data JPA, et les entités JPA modélisent le domaine métier. Côté front-end, chaque page consomme des services Angular dédiés à une ressource métier (candidats, entretiens, feedbacks, offres), qui communiquent eux-mêmes avec le back-end via des appels HTTP authentifiés.
 
 \section{Diagrammes de classes}
 \label{sec_3_3}
-La figure~\ref{fig_3_2} donne une vue d’ensemble du modèle de données : neuf entités métier principales de la plateforme, leurs attributs caractéristiques et les associations réellement mappées par JPA. Quatorze entités JPA sont persistées au total ; les cinq restantes — notes internes, profils de pondération du scoring, file d’attente n8n, rappels et jetons de réinitialisation — sont des tables d’accompagnement, que l’on retrouve sur le schéma relationnel de la figure~\ref{fig_3_9}. Les deux figures suivantes en proposent des zooms thématiques — le recrutement (figure~\ref{fig_3_2a}), puis les utilisateurs, la sécurité et l’audit (figure~\ref{fig_3_2b}) — afin d’en conserver une lecture confortable.
+Le modèle statique est présenté en trois volets volontairement restreints, pour que chaque figure se lise sans zoom : le cœur métier du recrutement (figure~\ref{fig_3_2}), les utilisateurs, les rôles et l’audit (figure~\ref{fig_3_2a}), enfin l’automatisation et les tables d’accompagnement (figure~\ref{fig_3_2b}). Chaque boîte reprend les attributs caractéristiques de l’entité JPA correspondante ; la liste exhaustive des colonnes, avec leurs types SQL et leurs clés, figure sur le schéma relationnel de la section~\ref{sec_3_7}. Le type de trait suit la navigabilité réellement codée : une association bidirectionnelle (un \texttt{@OneToMany} doublé de son \texttt{mappedBy}) se lit trait plein sans flèche, une navigabilité unidirectionnelle (un \texttt{@ManyToOne} sans contre-référence sur l’autre classe) porte une flèche ouverte pointée vers la classe ciblée, et un lien logique détenu par une simple colonne, sans clé étrangère en base, est tracé en pointillés. Les cardinalités sont rappelées à chaque extrémité. Seule la table d’association 	exttt{user\_roles}, générée par le 	exttt{@ManyToMany} de 	exttt{User}, fait exception : ses deux traits pleins ne disent rien de la navigabilité mais nomment les deux colonnes qui portent la jointure.
 
-% figure 3.2
+% figure 3_2
 \setcounter{figure}{1}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2}
-\caption{Diagramme de classes — vue globale du domaine métier}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2}
+\caption{Diagramme de classes — cœur métier du recrutement}
 \label{fig_3_2}
 \end{figure}
 
-% figure 3.2a
+Ce premier volet concentre les cinq entités du parcours de recrutement, auxquelles s’ajoutent les rappels de \texttt{User} et de \texttt{Department} : quatre relations unidirectionnelles aboutissent en effet à ces deux classes (le dossier est routé vers un manager, l’entretien est mené par un utilisateur, le feedback est rédigé par un utilisateur, l’offre est rattachée à un département) et leur définition complète est donnée en figure~\ref{fig_3_2a}. Un candidat dépose au plus un CV et peut passer plusieurs entretiens ; chaque entretien donne lieu à un feedback, rattaché à la fois à l’entretien et au dossier. Une offre reçoit plusieurs candidatures. Les deux scores conservés sur le dossier — \texttt{aiScore}, calculé par l’agent d’évaluation, et \texttt{manualScore}, saisi par le RH — traduisent une règle de conception : la décision reste traçable, chaque score portant son auteur et son horodatage.
+
+% figure 3_2
 \setcounter{figure}{1}
 \begingroup\renewcommand{\thefigure}{3.2a}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2a}
-\caption{Diagramme de classes — modèle recrutement}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2a}
+\caption{Diagramme de classes — utilisateurs, rôles et audit}
 \label{fig_3_2a}
 \end{figure}
 \endgroup
 
-Ce modèle fait ressortir plusieurs relations structurantes : un candidat dépose au plus un CV et peut passer par plusieurs entretiens, chacun pouvant donner lieu à un ou plusieurs feedbacks rédigés par un utilisateur (manager ou RH). Une offre d’emploi, rattachée à un département, reçoit plusieurs candidatures. Quant à la classe User, elle centralise l’identité des utilisateurs disposant d’un compte (RH, managers, administrateurs, ainsi que les candidats authentifiés, avec le rôle ROLE\_USER) et porte, via la classe Role, un système de rôles multiples pour une gestion fine des permissions. Les associations de User avec les offres (création), les entretiens (intervieweur) et les feedbacks (auteur) sont matérialisées dans le schéma relationnel (figure~\ref{fig_3_9}) ; le rattachement d’un compte à ses candidatures s’appuie sur l’adresse e-mail du compte, pré-remplie et non modifiable lors du dépôt d’une candidature.
+La figure~\ref{fig_3_2a} isole la partie sécurité. La classe User centralise l’identité des comptes (RH, managers, administrateurs, ainsi que les candidats authentifiés, avec le rôle ROLE\_USER) ; les rôles multiples passent par la table d’association \texttt{user\_roles}, affichée ici parce que JPA la génère sans qu’une entité corresponde à ce nom. Le jeton de réinitialisation et la ligne d’audit complètent ce volet, reliés en pointillés parce que leur rattachement n’est pas une clé étrangère : le premier est adossé à un compte par son adresse e-mail, la seconde consigne l’auteur de chaque action sensible dans une colonne \texttt{performed\_by} libre de contrainte.
 
-% figure 3.2b
+% figure 3_2
 \setcounter{figure}{1}
 \begingroup\renewcommand{\thefigure}{3.2b}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2b}
-\caption{Diagramme de classes — utilisateurs et sécurité}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2b}
+\caption{Diagramme de classes — automatisation et tables d’accompagnement}
 \label{fig_3_2b}
 \end{figure}
 \endgroup
 
-La vue sécurité isole les entités d’authentification et d’audit : chaque utilisateur porte un ou plusieurs rôles (ERole) et, le cas échéant, un rattachement à un département, Manager\-Routing\-Service gèle sur la candidature le manager désigné par le RH, Manager\-Scope\-Service lit cette destination pour borner la visibilité du manager, et AuditLog journalise les actions sensibles.
+Le dernier volet montre les entités qui prolongent le dossier sans en modifier le cycle de vie : la file d’attente n8n, les notes internes, les rappels et le profil de pondération du scoring, ce dernier étant relié au rappel de \texttt{JobOffer} dont il paramètre les critères. Le lien entre un dossier et ses événements d’automatisation n’est pas une clé étrangère mais une convention sur la colonne \texttt{event\_key}, dont la valeur commence par l’identifiant du dossier (\texttt{candidateId:DOSSIER\_VALIDE\_RH:…}) ; c’est ce qui permet de retrouver l’historique d’un routage sans coupler les deux tables. Le profil de pondération, lui, n’est relié à aucune offre par une clé : il s’applique par famille métier et par niveau d’ancienneté.
 
 \section{Séquence technique — Soumission asynchrone et scoring IA}
 \label{sec_3_4}
@@ -1060,12 +1292,16 @@ Lors de la soumission d’une candidature, l’application orchestre plusieurs c
 
 % figure 3.3
 \setcounter{figure}{2}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_3}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_3}
 \caption{Diagramme de séquence technique — Soumission asynchrone et scoring IA}
 \label{fig_3_3}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 \section{Diagrammes de séquence objet}
 \label{sec_3_5}
@@ -1075,12 +1311,15 @@ Les quatre diagrammes des figures~\ref{fig_3_4}, \ref{fig_3_5}, \ref{fig_3_6} et
 \label{sec_3_5_1}
 % figure 3.4
 \setcounter{figure}{3}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,17, le vrai paysage ne l agrandissait que de
+% 5 % (510 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 10,1 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_4}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_4}
 \caption{Diagramme de séquence objet — Planifier un entretien}
 \label{fig_3_4}
-\end{sidewaysfigure}
+\end{figure}
 
 Trois garde-fous ressortent de ce diagramme : la planification écarte un dossier clos (rejeté ou retiré) comme une candidature encore au stade APPLIED dont le CV n’a pas été examiné, et refuse tout créneau chevauchant un entretien déjà réservé du même intervieweur — plusieurs entretiens le même jour restent possibles, jamais au même horaire. Un manager ne planifie enfin que dans son propre agenda, et pour un dossier de son périmètre.
 
@@ -1101,12 +1340,16 @@ Ce second diagramme illustre le garde-fou central du processus, dont la décisio
 \label{sec_3_5_3}
 % figure 3.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_6}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_6}
 \caption{Diagramme de séquence objet — Analyse IA du CV}
 \label{fig_3_6}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Ce diagramme détaille, au niveau objet, le cheminement du scoring : le texte du CV est extrait par le back-end au moment même de la soumission, puis la candidature (statut APPLIED) est placée dans la file d’attente interne ; l’agent « CV Parser » n8n est déclenché en arrière-plan et rappelle le back-end via POST \path{/api/candidates/\{id\}/ai-score/recompute}, et c’est le back-end — au travers de son client CohereClient — qui interroge l’API de Cohere, calcule le score et le persiste. Le statut bascule ensuite automatiquement vers CV\_REVIEWED ou AUTO\_REJECTED selon le seuil configuré, sans intervention humaine à ce stade — sauf si le dossier est signalé pour arbitrage, comme le décrit la suite du diagramme. Deux étapes complémentaires figurent sur le diagramme. Avant l’appel au modèle, Skill\-Normalization\-Service harmonise les compétences extraites (k8s devient Kubernetes, postgres devient PostgreSQL) et conserve, après nettoyage, les termes absents du dictionnaire d’alias, afin qu’une compétence rare ne disparaisse pas du comparatif. Après le calcul, le service positionne le drapeau needs\-Human\-Review lorsque le texte extrait est absent ou plus court de cinquante caractères, lorsqu’un écart de séniorité sévère plafonne le score, lorsque celui-ci tombe dans la zone grise comprise entre 55 et 65, ou lorsque l’API de Cohere est indisponible ; dans ce dernier cas le score est marqué SIMULATED et le dossier est dirigé vers un arbitrage humain plutôt que vers une décision automatique (section~\ref{sec_4_4_6}).
 
@@ -1114,12 +1357,16 @@ Ce diagramme détaille, au niveau objet, le cheminement du scoring : le texte du
 \label{sec_3_5_4}
 % figure 3.7
 \setcounter{figure}{6}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_7}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_7}
 \caption{Diagramme de séquence objet — Routage et notification des managers}
 \label{fig_3_7}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Ce diagramme détaille la destination et la notification (section~\ref{sec_4_5_5}). La résolution structurelle de Manager\-Routing\-Service — manager désigné sur l’offre, puis département, puis famille de métier, puis ancien champ e-mail — ne produit plus qu’une proposition, pré-sélectionnée dans la modale de transmission : c’est le RH qui désigne le destinataire. Sans désignation, le back-end refuse la transition (erreur 400) et le dossier reste à son statut précédent. Le compte désigné est vérifié — rôle MANAGER, e-mail renseigné — puis gelé sur la candidature avec la base MANUAL ; c’est cette destination, et non le département courant de l’offre, qui borne la visibilité du manager via Manager\-Scope\-Service. Un choix hors proposition reste possible : il est journalisé ROUTING\_MANUAL.
 
@@ -1152,35 +1399,83 @@ Ce choix de prestataire répond d’abord à une contrainte d’environnement : 
 
 \section{Conception de la base de données}
 \label{sec_3_7}
-La base de données relationnelle PostgreSQL reflète directement le diagramme de classes présenté en section~\ref{sec_3_3} : chaque entité JPA est mappée sur une table, et les relations One-to-Many et Many-to-One sont matérialisées par des clés étrangères (par exemple job\_offer.hiring\_manager\_id, candidate.routed\_to\_manager\_id, interview.candidate\_id, feedback.interview\_id). J’ai configuré la génération du schéma en mode « update » (Hibernate ddl-auto) — un choix pratique en phase de développement, qui permet de faire évoluer la structure de la base sans perte de données au fil des itérations. En production, ce mode devrait néanmoins céder la place à un outil de migration versionnée comme Flyway ou Liquibase, seul capable de garantir des évolutions de schéma maîtrisées et reproductibles.
+La base de données relationnelle PostgreSQL reflète directement le diagramme de classes présenté en section~\ref{sec_3_3} : chaque entité JPA est mappée sur une table, et les relations One-to-Many et Many-to-One sont matérialisées par des clés étrangères (par exemple job\_offers.hiring\_manager\_id, candidates.routed\_to\_manager\_id, interviews.candidate\_id, feedbacks.interview\_id, écrites ici au pluriel, comme les déclare l’annotation @Table de chaque entité). J’ai configuré la génération du schéma en mode « update » (Hibernate ddl-auto) — un choix pratique en phase de développement, qui permet de faire évoluer la structure de la base sans perte de données au fil des itérations. En production, ce mode devrait néanmoins céder la place à un outil de migration versionnée comme Flyway ou Liquibase, seul capable de garantir des évolutions de schéma maîtrisées et reproductibles.
 
-Le schéma relationnel de la figure~\ref{fig_3_9} présente l’ensemble des tables générées à partir des entités JPA, avec les clés primaires et étrangères qui matérialisent les relations décrites plus haut.
+Le schéma de la figure~\ref{fig_3_9} et de ses quatre prolongements (figures~\ref{fig_3_9a} à \ref{fig_3_9d}) présente les tables générées à partir des entités JPA. Il est découpé par domaine pour rester lisible à l’impression : comptes et référentiel, dossiers et CV, offres et entretiens, puis tables d’accompagnement.
 
-% figure 3.9
+% figure 3_9
 \setcounter{figure}{8}
-\begin{sidewaysfigure}
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_9}
-\caption{Schéma relationnel de la base de données PostgreSQL}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9}
+\caption{Schéma relationnel — comptes, rôles et départements}
 \label{fig_3_9}
-\end{sidewaysfigure}
+\end{figure}
 
-Le schéma relationnel reprend fidèlement les entités JPA : clés primaires préfixées d’un astérisque, clés étrangères suffixées « FK ». On y lit les relations structurantes — département, offres, candidatures, CV, entretiens, feedbacks — et la destination du routage, figée sur le dossier au moment de la transmission (routed\_to\_manager\_id, routed\_manager\_emails, routing\_basis, routed\_at).
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9a}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9a}
+\caption{Schéma relationnel — dossiers de candidature et CV}
+\label{fig_3_9a}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9b}
+\caption{Schéma relationnel — offres, entretiens et feedbacks}
+\label{fig_3_9b}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9c}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9c}
+\caption{Schéma relationnel — audit, notes internes et rappels}
+\label{fig_3_9c}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9d}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9d}
+\caption{Schéma relationnel — pondération du scoring, file n8n et jetons}
+\label{fig_3_9d}
+\end{figure}
+\endgroup
+
+Le schéma reprend fidèlement les entités JPA : clé primaire signalée par un astérisque et le stéréotype \texttt{<<PK>>}, clé étrangère repérée par le stéréotype \texttt{<<FK>>}, cardinalités en patte de poule. On y lit les relations structurantes — département, offres, candidatures, CV, entretiens, feedbacks — et la destination du routage, figée sur le dossier au moment de la transmission (\texttt{routed\_to\_manager\_id}, \texttt{routed\_manager\_emails}, \texttt{routing\_basis}, \texttt{routed\_at}). Quatre liens suivis par le code n’ont, en revanche, pas de clé étrangère en base, et apparaissent à ce titre en pointillés : le jeton de réinitialisation se rattache à un compte par son adresse e-mail, la file n8n, les rappels et les notes internes se rattachent à un dossier par une colonne conventionnelle (\texttt{event\_key}, \texttt{related\_id}, \texttt{candidate\_id}) que Hibernate ne contraint pas. Ce choix est assumé : ces tables doivent survivre à la suppression éventuelle de la ligne qu’elles décrivent et restent interrogeables sans jointure. Les tables rappelées en tête de panneau avec la mention «~détail fig.~» n’y figurent qu’en référence, avec leur clé et leur clé naturelle ; leurs colonnes complètes sont listées sur le panneau de leur domaine.
 
 \section{Diagramme de composants}
 \label{sec_3_8}
-Le diagramme de la figure~\ref{fig_3_10} détaille l’organisation de la plateforme en composants logiciels (front-end Angular et back-end Spring Boot), ainsi que leurs dépendances.
+Le diagramme de la figure~\ref{fig_3_10} détaille l’organisation de la plateforme en deux composants déployables — le front-end Angular et le back-end Spring Boot — et leurs dépendances. La flèche pleine marque une dépendance d’exécution, l’émetteur appelant le récepteur ; la flèche pointillée marque une collaboration transversale qui n’immobilise pas l’appelant : le filtrage des routes côté front, l’authentification côté back et la journalisation des actions.
 
 % figure 3.10
 \setcounter{figure}{9}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_10}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_10}
 \caption{Diagramme de composants de la plateforme JOB4YOU}
 \label{fig_3_10}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
-Chaque service métier (Candidate, Interview, Feedback, JobOffer) s’appuie sur la couche de repositories Spring Data JPA pour la persistance, et sur le service d’audit pour tracer les actions sensibles. Le service Candidate délègue le calcul du score au service de scoring IA, tandis que Candidate et Interview déclenchent chacun les agents n8n compétents via des webhooks.
+Le front-end ne touche jamais la base : ses services HTTP, portés par l’intercepteur JWT, adressent la seule surface d’entrée du back-end, les \texttt{@RestController} exposés sous \texttt{/api}. Deux gardes complètent le dispositif : les \texttt{RoleGuard} angulars masquent les routes qu’un rôle n’a pas le droit d’emprunter, et le filtre Spring — jeton JWT pour les utilisateurs, clé d’API pour n8n — authentifie la requête avant qu’elle n’atteigne la couche métier. Chaque service métier (Candidate, Interview, Feedback, JobOffer) s’appuie alors sur la couche de repositories Spring Data JPA pour la persistance, et sur le service d’audit pour tracer les actions sensibles. Le service Candidate délègue le calcul du score au service de scoring IA, qui appelle les fournisseurs externes ; Candidate et Interview déclenchent chacun les agents n8n compétents via la table d’attente, et le retour de l’agent — recalcul du score, notification — reprend l’entrée du back-end par un rappel authentifié sur \texttt{/api}. Ce dernier aller-retour donne au diagramme sa forme en boucle : le back-end y est à la fois appelant et rappelé.
 
 \section{Diagramme de déploiement}
 \label{sec_3_9}
@@ -1188,12 +1483,16 @@ Le diagramme de la figure~\ref{fig_3_11} représente la répartition physique de
 
 % figure 3.11
 \setcounter{figure}{10}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_11}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_11}
 \caption{Diagramme de déploiement de la plateforme JOB4YOU}
 \label{fig_3_11}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Dans la configuration de développement représentée, le front-end Angular, le back-end Spring Boot, les agents n8n et le stockage des CV s’exécutent sur un même poste local, avec une base de données PostgreSQL (SGBD) pour la persistance. Le front-end communique avec le back-end via des API REST sécurisées par JWT. Le back-end déclenche, via des webhooks HTTP, les agents d’automatisation n8n — lesquels sollicitent à leur tour Google Calendar pour la création réelle de l’événement et du lien Google Meet lors de la planification, et le serveur SMTP pour les notifications — tandis que le back-end appelle lui-même l’API de Cohere pour le scoring IA et l’API OpenRouter pour l’assistant conversationnel.
 
@@ -1251,12 +1550,16 @@ Cette section présente les interfaces de la plateforme, regroupées par acteur 
 \label{sec_4_3_1}
 % figure 4.1
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_1}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_1}
 \caption{Page d’accueil publique — recherche d’offres d’emploi}
 \label{fig_4_1}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Accessible sans authentification, la page d’accueil de la figure~\ref{fig_4_1} propose un cartouche de « Recherche rapide » par mot-clé et par localisation et présente, sous le titre « Offres en vedette » — « Découvrez les dernières opportunités professionnelles » —, les offres les plus récemment publiées : chaque carte porte l’intitulé du poste, son type de contrat, son lieu, l’expérience demandée, ses compétences clés, sa date de publication, un extrait de la description et un bouton « Voir les détails ».
 
@@ -1284,12 +1587,16 @@ Comme le montre la figure~\ref{fig_4_3}, un candidat connecté postule directeme
 
 % figure 4.4
 \setcounter{figure}{3}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_4}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_4}
 \caption{Fonctionnalité « Job idéal » — suggestions d’offres selon le CV}
 \label{fig_4_4}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Comme l’illustre la figure~\ref{fig_4_4}, un visiteur ou un candidat qui ne postule à aucune offre précise peut déposer son CV et recevoir une liste des offres actives classées par pourcentage de compatibilité, calculée par l’API de Cohere (badge « Analyse IA (Cohere) », avec repli automatique sur un classement par mots-clés si l’IA est indisponible).
 
@@ -1308,23 +1615,31 @@ Disponible uniquement pour un candidat authentifié, le widget de la figure~\ref
 \label{sec_4_3_2}
 % figure 4.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_6}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_6}
 \caption{Gestion des offres d’emploi (espace RH)}
 \label{fig_4_6}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Comme le montre la figure~\ref{fig_4_6}, le responsable RH crée, modifie et suit le statut de chaque offre depuis une table filtrable par mot-clé, par statut et par type de contrat, avec un accès direct à la consultation, à la modification et à la suppression ; la bascule en « expirée » se fait automatiquement une fois la date limite dépassée.
 
 % figure 4.7
 \setcounter{figure}{6}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_7}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_7}
 \caption{Gestion des candidats — vue liste avec score IA}
 \label{fig_4_7}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La figure~\ref{fig_4_7} reproduit la liste des dossiers de l’espace RH : pour chacun apparaissent le contact, l’offre visée, le statut courant et le score de l’agent IA — coloré selon son niveau. Une colonne d’actions rapides accompagne par ailleurs chaque ligne (consultation en ligne du CV, téléchargement, modification, envoi d’e-mail, suppression), et le bandeau supérieur résume l’état du vivier par quatre compteurs cliquables — « À valider », « Rejetés », « Retirées », « Embauchés » — qui basculent la liste sur le filtre correspondant ; ces deux zones, situées en haut et à droite de l’écran, ne sont pas reproduites sur le recadrage, qui privilégie la lisibilité du tableau.
 
@@ -1352,34 +1667,46 @@ Le formulaire de modification (figure~\ref{fig_4_9}) permet de corriger un dossi
 
 % figure 4.10
 \setcounter{figure}{9}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_10}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_10}
 \caption{Tableau Kanban du pipeline de recrutement}
 \label{fig_4_10}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Le tableau Kanban de la figure~\ref{fig_4_10}, intitulé « Pipeline de recrutement », donne une vue synthétique et interactive de toutes les candidatures réparties par statut : chaque colonne porte le nombre de dossiers qu’elle contient et chaque carte le nom du candidat, l’offre visée et son score IA. Toutes les colonnes ne tenant pas à l’écran, le tableau se fait défiler horizontalement. Glisser une carte d’une colonne à une autre déclenche automatiquement la mise à jour du statut, sous réserve des garde-fous métier décrits au chapitre 3 pour les décisions finales.
 
 % figure 4.11
 \setcounter{figure}{10}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_11}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_11}
 \caption{Gestion des entretiens (espace RH)}
 \label{fig_4_11}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’écran de gestion des entretiens de la figure~\ref{fig_4_11} permet de planifier, filtrer et suivre les entretiens par candidat, offre, type, interviewer et statut, avec des actions contextuelles comme le démarrage, l’annulation, la reprogrammation ou l’ajout d’un feedback une fois l’entretien terminé.
 
 % figure 4.12
 \setcounter{figure}{11}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_12}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_12}
 \caption{Gestion des feedbacks (espace RH)}
 \label{fig_4_12}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La figure~\ref{fig_4_12} centralise les feedbacks saisis par les managers, notés de 1 à 5 étoiles et assortis d’un commentaire, avec une étape de validation par le RH avant transmission au candidat.
 
@@ -1415,35 +1742,47 @@ La figure~\ref{fig_4_14} présente la modale « Confirmer le refus », dans laqu
 % moins de 1760 px de large, soit 8,5 a 9,2 pt imprimes. Le ratio de chaque volet
 % (3,0) rend le paysage nettement plus grand que le portrait (717 pt contre 484).
 \begingroup\renewcommand{\thefigure}{4.15a}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_15a}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_15a}
 \caption{Espace Manager — candidatures du périmètre : état d'avancement, avis du manager et score}
 \label{fig_4_15a}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 \endgroup
 
 % figure 4.15b
 \setcounter{figure}{14}
 \begingroup\renewcommand{\thefigure}{4.15b}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_15b}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_15b}
 \caption{Espace Manager — ligne dépliée : contact, analyse IA du dossier, synthèse et motif du statut}
 \label{fig_4_15b}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 \endgroup
 
 Un manager ne voit que les dossiers relevant de son périmètre — le destinataire désigné par le RH, gelé sur la candidature (base MANUAL) et lu par Manager\-Scope\-Service (3.5.4) —, à partir de leur entrée en évaluation technique. La figure~\ref{fig_4_15a} montre cette vue, distincte de la liste RH (figure~\ref{fig_4_7}) : les colonnes ne rognent plus, chaque ligne porte le score et « Planifier l'entretien », et se déplie sur le contact, l'analyse IA du dossier, la synthèse et le motif du statut (figure~\ref{fig_4_15b}). La colonne « Compétences », alignée en regard de l'analyse dans ce panneau, n'y est pas reproduite.
 
 % figure 4.16
 \setcounter{figure}{15}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_16}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_16}
 \caption{Espace Manager — page « Mon calendrier d’entretiens », prochains entretiens, rappels et entretiens passés}
 \label{fig_4_16}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La page « Mon calendrier d’entretiens » (figure~\ref{fig_4_16}) n’affiche que ce qui regarde l’intervieweur connecté : filtrage côté serveur sur sa seule identité, reprise du jeton, et même contrôle d’accès au dossier que pour la liste des dossiers. Elle n’est pas figée pour autant : le manager peut y marquer un entretien comme effectué et y reprendre un dossier encore instruit.
 
@@ -1456,35 +1795,47 @@ La partie haute de la figure~\ref{fig_4_16} donne les trois prochains rendez-vou
 % Capture recadree sur les trois colonnes utiles (identifiant, e-mail, roles) et
 % sur huit lignes : de 2880 x 1560 px a 1720 x 964 px. Un texte de 22 px dans
 % l'image passe ainsi de 4,6 pt a 9,2 pt imprimes. Le ratio 1,78 rend le paysage
-% nettement plus grand que le portrait (717 pt contre 484), d'ou sidewaysfigure.
-\begin{sidewaysfigure}
+% nettement plus grand que le portrait (717 pt contre 484), d'ou la page paysage.
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_17}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_17}
 \caption{Gestion des utilisateurs et des rôles (espace Administrateur) --- partie gauche de l'écran}
 \label{fig_4_17}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’écran de la figure~\ref{fig_4_17} permet à l’administrateur de gérer l’ensemble des comptes de la plateforme et leurs rôles — un même compte pouvant en cumuler plusieurs —, ainsi que leur rattachement à un département ou, à défaut pour un manager, à une famille de métier.
 
 % figure 4.18
 \setcounter{figure}{17}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_18}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_18}
 \caption{Paramétrage du scoring IA par famille de métier}
 \label{fig_4_18}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Réservé à l’administrateur, l’écran de la figure~\ref{fig_4_18} permet d’ajuster, pour chaque famille de métier et chaque niveau de séniorité, la pondération technique / communication / séniorité utilisée par l’agent IA pour calculer le score d’une candidature ; une colonne de contrôle vérifie avant l’enregistrement que les trois poids somment bien à 100 \%.
 
 % figure 4.19
 \setcounter{figure}{18}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_19}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_19}
 \caption{Historique d’audit}
 \label{fig_4_19}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’historique d’audit reproduit en figure~\ref{fig_4_19} trace tous les changements significatifs d’un dossier — statut, score, routage vers un manager, contreseing de la décision finale — en précisant la date, l’entité concernée, la nature de l’action, la valeur précédente et la nouvelle valeur ; une colonne « Effectué par », placée à droite de l’écran et non reproduite sur le recadrage, nomme l’auteur de chaque écriture, qu’elle soit initiée manuellement par un utilisateur ou automatiquement par le système (agents n8n). Les lignes ROUTING et ROUTING\_MANUAL y rappellent le destinataire retenu et la proposition écartée, ce qui garantit la traçabilité de chaque décision.
 
@@ -1492,34 +1843,46 @@ L’historique d’audit reproduit en figure~\ref{fig_4_19} trace tous les chang
 \label{sec_4_3_5}
 % figure 4.20
 \setcounter{figure}{19}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_20}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_20}
 \caption{Console n8n — les trois flux d’automatisation publiés et leurs statistiques}
 \label{fig_4_20}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Au-delà des interfaces de la plateforme, la chaîne d’automatisation a été vérifiée dans la console n8n elle-même. La figure~\ref{fig_4_20} montre les trois flux déclarés dans l’application — « Agent 1 — CV Parser + Score IA + Email Candidat », « Agent 2 — Planification entretien + Email participants » et « Agent 3 — RH vers Manager (dossier validé) » — tous trois à l’état Publié ; le bandeau de la console affiche 119 exécutions de production, 30 en échec, un taux d’échec de 25,2 \% et une durée moyenne de 4,2 s ; ces compteurs proviennent de l’agrégat interne d’n8n, qui dénombre moins d’exécutions que la table (119 contre 154) mais converge exactement sur les trente échecs. Reprise directement dans la table d’exécutions de l’instance à la date de finalisation du rapport, la mesure de référence porte sur 154 exécutions déclenchées par webhook : 124 abouties et 30 en échec. Ces trente échecs sont tous imputables à Agent 2 et concentrés sur la période de calibration des 15 et 18 octobre (identifiants SMTP Gmail refusés, échec du callback de sauvegarde du lien Meet, accès aux variables d’environnement bloqué dans les nœuds) ; ces trois causes ont été corrigées depuis, et aucune exécution en échec n’est postérieure au 18 octobre. La durée moyenne d’une exécution réussie est alors de 5,6 s, Agent 1 et Agent 3 étant les plus lents (respectivement 6,0 s et 6,2 s, l’analyse Cohere et les envois d’e-mail étant exécutés en série). Ces mesures relèvent d’un environnement local et non d’une exploitation en production ; l’échantillon reste trop limité pour valoir test de charge ou garantie de disponibilité.
 
 % figure 4.21
 \setcounter{figure}{20}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_21}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_21}
 \caption{Flux n8n de l’Agent 1 — webhook de candidature, appel du scoring Cohere puis e-mail au candidat}
 \label{fig_4_21}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Le détail de l’Agent 1 (figure~\ref{fig_4_21}) confirme le découpage des responsabilités décrit au chapitre 3 : le webhook « Nouvelle candidature » reçoit l’événement POST émis par Spring Boot, le nœud « Cohere — Score IA (Spring Boot) » rappelle le back-end qui interroge réellement l’API de Cohere et persiste le score, puis « Préparer données email » alimente le nœud d’envoi de la confirmation au candidat.
 
 % figure 4.22
 \setcounter{figure}{21}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_22}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_22}
 \caption{E-mail automatique de confirmation de candidature reçu par le candidat}
 \label{fig_4_22}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Côté candidat, la notification produite par ce flux arrive bien dans sa boîte de réception : le corps du message reproduit à la figure~\ref{fig_4_22} est celui généré par l’agent pour une candidature réelle, celle du dossier présenté à la figure~\ref{fig_4_3} — accusé de réception nominatif pour le poste visé, score d’analyse IA obtenu et horodatage du traitement, avec la mention « Cet email a été envoyé automatiquement par la plateforme JOB4YOU ». Lorsque l’analyse n’a pas abouti, le bloc score est remplacé dans le même message par l’encart « profil en cours d’analyse » décrit en section~\ref{sec_4_6}.
 
@@ -1527,7 +1890,7 @@ Côté candidat, la notification produite par ce flux arrive bien dans sa boîte
 \label{sec_4_4}
 \subsection{Tests unitaires (JUnit 5 / Mockito)}
 \label{sec_4_4_1}
-Au-delà des vérifications manuelles, la couche service et une partie de la couche controller sont couvertes par une suite de tests automatisés écrite avec JUnit 5 et Mockito \cite{ref16,ref24}, exécutée via Maven. Elle comprend 20 classes de test pour un total de 249 méthodes, toutes exécutées sans échec : Candidate\-Service\-Test, Job\-Offer\-Service\-Test, Manager\-Routing\-Service\-Test, Manager\-Scope\-Service\-Test, Candidate\-Manual\-Routing\-Test, Department\-Proposal\-Service\-Test, N8nServiceTest, N8n\-Service\-Outbox\-Key\-Test, Scoring\-Weight\-Profile\-Service\-Test, Ai\-Scoring\-Service\-Test, Skill\-Normalization\-Service\-Test, Cohere\-Client\-Parsing\-Test, Matching\-Service\-Test, Experience\-Level\-Norms\-Test, Interview\-Service\-Test et Interview\-Service\-Manager\-Calendar\-Test en tests unitaires purs (services isolés à l’aide de doublons Mockito), ainsi que Candidate\-Controller\-Workflow\-Test, Candidate\-Status\-Anonymous\-Security\-Test, Interview\-Manager\-Calendar\-Security\-Test et Interview\-Meet\-Link\-Security\-Test en tests de contrôleur reposant sur @WebMvcTest et MockMvc, qui vérifient les routes anonymes et la sécurité d’accès au lien Google Meet d’un entretien. Ces tests couvrent en particulier la résolution des managers destinataires et son blocage lorsqu’aucun niveau ne propose, le refus de transmission sans désignation et la journalisation ROUTING\_MANUAL d’un choix hors de la proposition retenue, l’isolation stricte de la visibilité à la liste gelée, le calcul du score IA et ses seuils de décision, la neutralisation d’une compétence que le CV nie explicitement, l’orientation de tout score en zone grise vers un arbitrage humain, l’avancée du dossier à l’étape effectivement planifiée, le refus du créneau qui en chevauche un autre à l’agenda du même intervieweur, l’arbitrage RH d’un dossier rejeté par l’agent IA — confirmation motivée ou correction du score —, l’absence de double notification quand le RH confirme un refus déjà notifié par l’IA, ainsi que les garde-fous de transition décrits au chapitre 3.
+Au-delà des vérifications manuelles, la couche service et une partie de la couche controller sont couvertes par une suite de tests automatisés écrite avec JUnit 5 et Mockito \cite{ref16,ref24}, exécutée via Maven. Elle comprend 20 classes de test pour un total de 249 méthodes, toutes exécutées sans échec : Candidate\allowbreak Service\allowbreak Test, Job\allowbreak Offer\allowbreak Service\allowbreak Test, Manager\allowbreak Routing\allowbreak Service\allowbreak Test, Manager\allowbreak Scope\allowbreak Service\allowbreak Test, Candidate\allowbreak Manual\allowbreak Routing\allowbreak Test, Department\allowbreak Proposal\allowbreak Service\allowbreak Test, N8nServiceTest, N8n\allowbreak Service\allowbreak Outbox\allowbreak Key\allowbreak Test, Scoring\allowbreak Weight\allowbreak Profile\allowbreak Service\allowbreak Test, Ai\allowbreak Scoring\allowbreak Service\allowbreak Test, Skill\allowbreak Normalization\allowbreak Service\allowbreak Test, Cohere\allowbreak Client\allowbreak Parsing\allowbreak Test, Matching\allowbreak Service\allowbreak Test, Experience\allowbreak Level\allowbreak Norms\allowbreak Test, Interview\allowbreak Service\allowbreak Test et Interview\allowbreak Service\allowbreak Manager\allowbreak Calendar\allowbreak Test en tests unitaires purs (services isolés à l’aide de doublons Mockito), ainsi que Candidate\allowbreak Controller\allowbreak Workflow\allowbreak Test, Candidate\allowbreak Status\allowbreak Anonymous\allowbreak Security\allowbreak Test, Interview\allowbreak Manager\allowbreak Calendar\allowbreak Security\allowbreak Test et Interview\allowbreak Meet\allowbreak Link\allowbreak Security\allowbreak Test en tests de contrôleur reposant sur @WebMvcTest et MockMvc, qui vérifient les routes anonymes et la sécurité d’accès au lien Google Meet d’un entretien. Ces tests couvrent en particulier la résolution des managers destinataires et son blocage lorsqu’aucun niveau ne propose, le refus de transmission sans désignation et la journalisation ROUTING\_MANUAL d’un choix hors de la proposition retenue, l’isolation stricte de la visibilité à la liste gelée, le calcul du score IA et ses seuils de décision, la neutralisation d’une compétence que le CV nie explicitement, l’orientation de tout score en zone grise vers un arbitrage humain, l’avancée du dossier à l’étape effectivement planifiée, le refus du créneau qui en chevauche un autre à l’agenda du même intervieweur, l’arbitrage RH d’un dossier rejeté par l’agent IA — confirmation motivée ou correction du score —, l’absence de double notification quand le RH confirme un refus déjà notifié par l’IA, ainsi que les garde-fous de transition décrits au chapitre 3.
 
 L’extrait ci-dessous, tiré de Candidate\-Service\-Test, illustre l’un des deux tests ajoutés pour valider le correctif décrit en section~\ref{sec_4_5_4} : il vérifie qu’un manager n’obtient, via get\-Candidates\-By\-Status(), que les candidats de son propre périmètre.
 
@@ -1618,7 +1981,7 @@ Au-delà des tests unitaires par fonctionnalité, j’ai mené une vérification
 \label{sec_4_4_5}
 Les tests décrits ci-dessus vérifient que la plateforme fonctionne ; ils ne disent rien de la pertinence du score attribué par l’IA. J’ai donc constitué un jeu de référence — un Gold Set \cite{ref21} — de vingt curriculum vitæ synthétiques, rédigés pour ce projet à partir de profils réalistes mais fictifs : aucun CV réel d’un collaborateur de Sopra HR n’a été employé, ce qui écarte toute question de confidentialité dans la démarche d’évaluation.
 
-Les vingt profils se répartissent sur les trois familles de métiers visées par la plateforme, chacune rattachée à une offre cible : Développeur Backend Java/Spring (offre 115, sept profils), DevOps Engineer (offre 117, six profils) et Business Analyst (offre 122, sept profils). Chaque CV porte une vérité terrain binaire, PERTINENT ou NON\_PERTINENT, arrêtée sur des critères objectifs — compétences techniques indispensables et séniorité — et non d’après la sortie du modèle : onze profils sont pertinents, neuf sont volontairement hors cible (compétences d’un autre domaine, séniorité insuffisante, outillage sans rapport avec l’offre). Quatre cas (GOLD\_17 à GOLD\_20) ont été écrits pour cette réévaluation, dont deux construits pour se situer au voisinage immédiat du seuil de décision.
+Les vingt profils se répartissent sur les trois familles de métiers visées par la plateforme, chacune rattachée à une offre cible : Développeur Backend Java/Spring (offre 115, sept profils), DevOps Engineer (offre 117, six profils) et Business Analyst (offre 122, sept profils). Chaque CV porte une vérité terrain binaire, PERTINENT ou NON\_PERTINENT, arrêtée sur des critères objectifs — compétences techniques indispensables et séniorité — et non d’après la sortie du modèle : onze profils sont pertinents, neuf sont volontairement hors cible (compétences d’un autre domaine, séniorité insuffisante, outillage sans rapport avec l’offre). Quatre cas (GOLD\_17 à GOLD\_20) ont été écrits pour cette réévaluation, dont deux construits pour se situer au voisinage du seuil de décision ; au score, seul GOLD\_20 atteint effectivement ce voisinage (57/100), les trois autres se stabilisant entre 77 et 78/100.
 
 Le protocole s’appuie sur le point d’entrée POST \path{/api/matching/evaluate-gold-set}, qui reçoit un CV et l’identifiant de l’offre cible, rejoue la chaîne complète (extraction du texte, normalisation des compétences, appel à l’API de Cohere, pondération par profil de scoring) et renvoie le score avec son explication, sans créer de candidature. La décision automatique — le score atteint-il le seuil — est alors confrontée à la vérité terrain, ce qui donne la matrice de confusion du tableau~\ref{tab_4_2} pour trois seuils.
 
@@ -1634,35 +1997,35 @@ Le protocole s’appuie sur le point d’entrée POST \path{/api/matching/evalua
 \hline
 \textbf{Critère} & \textbf{Seuil = 50} & \textbf{Seuil = 60 (retenu)} & \textbf{Seuil = 70} \\
 \hline
-Vrais positifs (TP) & 11 & 11 & 10 \\
+Vrais positifs (TP) & 11 & 11 & 11 \\
 \hline
-Faux positifs (FP) & 1 & 1 & 1 \\
+Faux positifs (FP) & 6 & 1 & 1 \\
 \hline
-Vrais négatifs (TN) & 8 & 8 & 8 \\
+Vrais négatifs (TN) & 3 & 8 & 8 \\
 \hline
-Faux négatifs (FN) & 0 & 0 & 1 \\
+Faux négatifs (FN) & 0 & 0 & 0 \\
 \hline
-Précision & 91,7 \% & 91,7 \% & 90,9 \% \\
+Précision & 64,7 \% & 91,7 \% & 91,7 \% \\
 \hline
-Rappel & 100 \% & 100 \% & 90,9 \% \\
+Rappel & 100 \% & 100 \% & 100 \% \\
 \hline
-F1-score & 95,7 \% & 95,7 \% & 90,9 \% \\
+F1-score & 78,6 \% & 95,7 \% & 95,7 \% \\
 \hline
-Exactitude & 95 \% & 95 \% & 90 \% \\
+Exactitude & 70 \% & 95 \% & 95 \% \\
 \hline
 \end{tabular}
 \end{table}
-Avec le seuil retenu de 60/100, le système prend dix-neuf bonnes décisions sur vingt : aucun profil pertinent n’est écarté (rappel de 100 \%). Un profil volontairement hors cible est en revanche retenu à 71/100 — GOLD\_18, ingénieure DevOps dont l’outillage d’intégration continue recouvre une large part des compétences attendues par l’offre, alors que son dossier déclare aucune expérience des plateformes cloud managées —, d’où une précision de 91,7 \%. Abaisser le seuil à 50 ne change rien sur ce jeu, les deux seuils y sont donc indiscernables ; le relever à 70, outre ce même faux positif, fait apparaître un faux négatif — le profil GOLD\_14, développeuse Java dont le dossier est pourtant jugé pertinent et scoré 67/100 — et fait chuter le rappel à 90,9 \%.
+Les chiffres rapportés ici proviennent d’une réévaluation menée le 27 octobre 2026 sur l’instance de développement du backend : les vingt CV ont été soumis au point d’entrée de notation, et la source du score est COHERE pour les vingt dossiers, sans recours au mode dégradé. Avec le seuil retenu de 60/100, le système prend dix-neuf bonnes décisions sur vingt : aucun profil pertinent n’est écarté (rappel de 100 \%). Un profil volontairement hors cible est en revanche retenu à 77/100 — GOLD\_18, ingénieure DevOps dont l’outillage d’intégration continue recouvre une large part des compétences attendues par l’offre, alors que son dossier déclare aucune expérience des plateformes cloud managées —, d’où une précision de 91,7 \%. Abaisser la frontière à 50 la dégrade nettement : cinq dossiers hors cible supplémentaires la franchissent (GOLD\_04 et GOLD\_20 à 57/100, GOLD\_07 à 54, GOLD\_12 et GOLD\_13 à 52), la précision retombe à 64,7 \% et l’exactitude à 70 \%, pour un rappel qui ne progresse pas puisqu’il est déjà maximal. Relever le seuil à 70 ne change rien sur ce jeu : les classifications et les métriques restent identiques à celles du seuil de 60, le profil pertinent le plus faible atteignant 71/100.
 
-Le seuil de 60 est cohérent avec la distribution des scores obtenus, à une exception près : huit des neuf profils hors cible s’arrêtent à 47/100 ou moins, soit treize points au moins sous le seuil, tandis que le plus faible profil pertinent atteint 67/100, soit sept points au-dessus. Les deux familles sont donc nettement séparées de part et d’autre de la frontière, sauf GOLD\_18, dont l’outillage recouvre celui de l’offre visée.
+Le seuil de 60 est cohérent avec la distribution des scores obtenus, à une exception près : huit des neuf profils hors cible s’arrêtent à 57/100 ou moins — soit trois points au moins sous la frontière, et cinq d’entre eux à 52/100 ou moins — tandis que le plus faible profil pertinent atteint 71/100, soit onze points au-dessus du seuil et quatorze points au-dessus du meilleur hors-cible hors GOLD\_18. Les deux familles sont donc séparées de part et d’autre de la frontière, sauf GOLD\_18, dont l’outillage recouvre celui de l’offre visée : son score dépasse de six points celui du profil pertinent le plus faible.
 
-Ce qui précède établit le seuil de 60/100 comme paramètre opérationnel pour cette version de la plateforme, non comme un optimum démontré. Sur les vingt profils du Gold Set, 60 et 50 produisent exactement les mêmes classifications, faux positif compris : leur écart n’est donc pas observable sur ce jeu, et rien n’y établit la supériorité de 60 sur 50. Seule la remontée à 70 s’en distingue, en introduisant un faux négatif. Le faux positif de GOLD\_18, lui, se retrouve aux trois seuils : il ne relève pas du réglage de la frontière, mais de la proximité sémantique entre deux métiers voisins, que seul l’arbitrage du recruteur tranche. Le seuil retenu relève d’un calibrage préliminaire : une évaluation sur un corpus plus large et représentatif, complétée par le suivi des erreurs observées en conditions réelles, sera nécessaire pour le confirmer ou l’ajuster.
+Ce qui précède établit le seuil de 60/100 comme paramètre opérationnel pour cette version de la plateforme, non comme un optimum démontré. Sur les vingt profils du Gold Set, 60 et 50 ne produisent plus les mêmes classifications : à 50, cinq faux positifs s’ajoutent, ce qui distingue cette fois les deux réglages en faveur de 60. Remonter à 70 n’apporte en revanche rien sur ce jeu — mêmes décisions, mêmes métriques — et ne serait défendable qu’au prix d’une marge réduite sur GOLD\_14, dont le score de 71/100 ne dépasse ce seuil que d’un point. Le faux positif de GOLD\_18, lui, se retrouve aux trois seuils : il ne relève pas du réglage de la frontière, mais de la proximité sémantique entre deux métiers voisins, que seul l’arbitrage du recruteur tranche. Une limite pèse sur cette comparaison : les scores ne sont pas parfaitement reproductibles d’une exécution à l’autre. GOLD\_18 a été mesuré à 81/100 le 18 octobre 2026, à 71/100 lors d’une exécution intermédiaire, puis 77/100 le 27 octobre ; GOLD\_14 est passé de 67/100 à 71/100 sur la même période. Une dérive de quatre à dix points place donc certains dossiers à la limite d’un seuil et milite pour des décisions assises sur la zone d’incertitude plutôt que sur la seule comparaison au seuil. Le seuil retenu relève d’un calibrage préliminaire : une évaluation sur un corpus plus large, plusieurs exécutions par dossier et le suivi des erreurs observées en conditions réelles seront nécessaires pour le confirmer ou l’ajuster.
 
 Ces résultats demandent à être lus avec prudence : vingt cas construits pour l’évaluation ne constituent pas une mesure de performance en conditions réelles. Le Gold Set valide un mécanisme de décision et un calibrage de seuil ; il ne remplace pas le suivi, en production, des faux positifs et des faux négatifs effectivement constatés par les recruteurs sur les candidatures réelles.
 
 \subsection{Validation humaine du score et explicabilité}
 \label{sec_4_4_6}
-Un moteur de présélection n’est fiable que s’il sait dire quand il ne l’est pas. Le service de scoring positionne le drapeau needs\-Human\-Review et un motif lisible dans trois situations : texte extrait du CV trop court — moins de cinquante caractères, ce qui correspond à un scan, à une image ou à un fichier dégradé ; score en zone grise entre 55 et 65, c’est-à-dire de part et d’autre du seuil ; mode dégradé enfin, lorsque l’API de Cohere est indisponible ou renvoie une réponse inexploitable et que le score, calculé localement, est marqué avec la source SIMULATED. Le dossier signalé est présenté au recruteur comme demandant un arbitrage, au lieu d’être accepté ou rejeté automatiquement. Les deux mécanismes sont complémentaires et non contradictoires : un score de 62 franchit le seuil de décision et bascule la candidature en CV\_REVIEWED, tout en tombant dans la zone grise, ce qui allume également le drapeau d’arbitrage ; inversement, un score de 57 reste sous le seuil mais, signalé en zone grise, il est lui aussi orienté vers CV\_REVIEWED plutôt que vers AUTO\_REJECTED, pour être tranché par un recruteur. Ce second chemin est désormais le même que le score provienne du recalcul complet du dossier ou de la transmission d’un score calculé hors platforme : les deux entrées partagent la même règle de décision et la même bande d’incertitude, définie par deux constantes uniques dans le service de scoring. Reste à en mesurer l’effet réel : sur les vingt cas du Gold Set, aucun n’est tombé dans la bande 55-65, le score le plus proche du seuil s’arrêtant à 67/100. La zone grise est donc un filet de sécurité établi par test unitaire en mode simulé, non une étape effectivement rencontrée par le jeu de référence.
+Un moteur de présélection n’est fiable que s’il sait dire quand il ne l’est pas. Le service de scoring positionne le drapeau needs\-Human\-Review et un motif lisible dans trois situations : texte extrait du CV trop court — moins de cinquante caractères, ce qui correspond à un scan, à une image ou à un fichier dégradé ; score en zone grise entre 55 et 65, c’est-à-dire de part et d’autre du seuil ; mode dégradé enfin, lorsque l’API de Cohere est indisponible ou renvoie une réponse inexploitable et que le score, calculé localement, est marqué avec la source SIMULATED. Le dossier signalé est présenté au recruteur comme demandant un arbitrage, au lieu d’être accepté ou rejeté automatiquement. Les deux mécanismes sont complémentaires et non contradictoires : un score de 62 franchit le seuil de décision et bascule la candidature en CV\_REVIEWED, tout en tombant dans la zone grise, ce qui allume également le drapeau d’arbitrage ; inversement, un score de 57 reste sous le seuil mais, signalé en zone grise, il est lui aussi orienté vers CV\_REVIEWED plutôt que vers AUTO\_REJECTED, pour être tranché par un recruteur. Ce second chemin est désormais le même que le score provienne du recalcul complet du dossier ou de la transmission d’un score calculé hors platforme : les deux entrées partagent la même règle de décision et la même bande d’incertitude, définie par deux constantes uniques dans le service de scoring. Reste à en mesurer l’effet réel : la réévaluation du 27 octobre 2026 place deux dossiers dans cette bande, GOLD\_04 et GOLD\_20, tous deux scorés 57/100 et effectivement signalés avec le motif « score en zone grise incertaine : arbitrage humain recommandé ». Aucun profil pertinent n’atteint la bande, le plus faible d’entre eux s’établissant à 71/100. La zone grise est donc réellement rencontrée par le jeu de référence, mais seulement sur des profils que la vérité terrain destine de toute façon à un refus : elle y coûte du temps recruteur sans corriger une erreur de décision. Son effet propre sur un profil pertinent — la sauvegarde d’un dossier que le seuil aurait rejeté — demeure établi par test unitaire en mode simulé, non par le jeu de référence.
 
 L’explicabilité est produite par le service Skill\-Normalization\-Service, appelé avant le modèle de langage : il harmonise les alias (k8s devient Kubernetes, postgres devient PostgreSQL) et refuse les fusions abusives — Spring Boot n’est pas Spring Cloud, Angular n’est pas AngularJS, Java n’est pas JavaScript — puis restitue les compétences validées (matchedSkills) et manquantes (missingSkills) avec un taux de recouvrement technique qui ne peut pas descendre sous 30/100. La présence d’une compétence est en outre examinée segment par segment : une mention placée sous une négation — « aucune expérience des plateformes cloud managées » — n’est plus comptée comme acquise, ce qui évite que la liste présentée au recruteur crédite un candidat d’une compétence dont son propre CV déclare l’absence. Ces éléments alimentent les badges affichés dans le détail d’une candidature (figure~\ref{fig_4_8}) et la synthèse enregistrée dans aiSummary \cite{ref23}.
 
@@ -1736,7 +2099,10 @@ Le traitement des données des candidats appelle quelques rappels, sans prétend
 
 \section{Bilan des fonctionnalités réalisées}
 \label{sec_4_7}
+\begingroup
+\setlength{\emergencystretch}{4em}
 Le tableau suivant récapitule, par grand domaine fonctionnel, l’état d’avancement des développements à l’issue du projet.
+\par\endgroup
 
 % tableau 4.3
 \setcounter{table}{2}
@@ -1793,7 +2159,7 @@ Au terme de la période de développement de ce Projet de Fin d’Études, JOB4Y
 
 Ce travail couvre désormais l’ensemble du cycle de recrutement, de la publication d’une offre jusqu’à la décision finale d’embauche, en passant par la soumission des candidatures, l’analyse automatique des CV par intelligence artificielle, la planification des entretiens et la collecte des feedbacks des managers. La plateforme intègre également deux fonctionnalités différenciantes : le matching inverse « Job idéal », qui suggère à un candidat les offres les plus compatibles avec son CV, et un assistant conversationnel (chatbot) permettant à chacun de suivre ses candidatures en langage naturel — ce dernier étant strictement cloisonné aux données du candidat connecté, à l’exclusion de toute information interne (score IA, notes RH, identité de l’intervieweur). Un système de notifications automatiques par e-mail et un tableau de pilotage visuel de type Kanban complètent l’ensemble et donnent aux équipes RH et aux managers une visibilité en temps réel sur l’avancement de chaque dossier.
 
-Sur le plan technique, ce projet m’a permis d’approfondir mes compétences en développement back-end avec Spring Boot et Spring Security, en développement front-end avec Angular, ainsi qu’en conception de bases de données relationnelles avec PostgreSQL. J’y ai aussi découvert et mis en œuvre des outils d’automatisation (n8n) et d’intelligence artificielle (API de Cohere) au service d’un processus métier concret, tout en renforçant mes compétences en sécurité applicative (authentification JWT, contrôle d’accès basé sur les rôles) et en gestion de projet, selon une démarche itérative inspirée d’Agile/Scrum. J’ai également vérifié le comportement du seuil de décision du scoring sur un jeu de référence annoté (Gold Set) et prévu, pour les cas limites, une validation humaine du score assortie d’une explication automatique des compétences retenues.
+Sur le plan technique, ce projet m’a permis d’approfondir mes compétences en développement back-end avec Spring Boot et Spring Security, en développement front-end avec Angular, ainsi qu’en conception de bases de données relationnelles avec PostgreSQL. J’y ai aussi découvert et mis en œuvre des outils d’automatisation (n8n) et d’intelligence artificielle (API de Cohere) au service d’un processus métier concret, tout en renforçant mes compétences en sécurité applicative (authentification JWT, contrôle d’accès basé sur les rôles) et en gestion de projet, selon une démarche itérative et incrémentale conduite en huit sprints et quatre releases. J’ai également vérifié le comportement du seuil de décision du scoring sur un jeu de référence annoté (Gold Set) et prévu, pour les cas limites, une validation humaine du score assortie d’une explication automatique des compétences retenues.
 
 Au-delà de l’aspect purement technique, cette expérience au sein d’un grand groupe international m’a beaucoup apporté sur le plan professionnel : travail en équipe, communication régulière avec mon encadrant entreprise, prise en compte de contraintes réelles de sécurité et de fiabilité, et nécessité de concevoir une solution robuste et évolutive dans un contexte professionnel réel.
 
@@ -1812,6 +2178,9 @@ Les principales fonctionnalités prévues pour ce projet ont été développées
         % malgre tout inclus et imprimait une page sans contenu.
         \clearpage
     \backmatter
+% \backmatter remise a zero du style de corps : a reposer ici, sinon les
+% pages de suite de la bibliographie repartent avec le numero a droite.
+\pagestyle{fancy}
         % ======== ./tpl/resume ========
 %===== File containing the back cover of the document =====%
 %                                                          %

@@ -12,53 +12,58 @@ La figure~\ref{fig_3_1} illustre l’organisation du back-end en paquetages (con
 
 % figure 3.1
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,23, le vrai paysage ne l agrandissait que de
+% 10 % (534 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 10,0 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_1}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_1}
 \caption{Diagramme des paquetages}
 \label{fig_3_1}
-\end{sidewaysfigure}
+\end{figure}
 
 Côté back-end, j’ai suivi un découpage classique en couches : la couche controller expose les API REST, la couche service porte la logique métier (règles de gestion, garde-fous, orchestration des appels vers n8n), la couche repository assure la persistance via Spring Data JPA, et les entités JPA modélisent le domaine métier. Côté front-end, chaque page consomme des services Angular dédiés à une ressource métier (candidats, entretiens, feedbacks, offres), qui communiquent eux-mêmes avec le back-end via des appels HTTP authentifiés.
 
 \section{Diagrammes de classes}
 \label{sec_3_3}
-La figure~\ref{fig_3_2} donne une vue d’ensemble du modèle de données : neuf entités métier principales de la plateforme, leurs attributs caractéristiques et les associations réellement mappées par JPA. Quatorze entités JPA sont persistées au total ; les cinq restantes — notes internes, profils de pondération du scoring, file d’attente n8n, rappels et jetons de réinitialisation — sont des tables d’accompagnement, que l’on retrouve sur le schéma relationnel de la figure~\ref{fig_3_9}. Les deux figures suivantes en proposent des zooms thématiques — le recrutement (figure~\ref{fig_3_2a}), puis les utilisateurs, la sécurité et l’audit (figure~\ref{fig_3_2b}) — afin d’en conserver une lecture confortable.
+Le modèle statique est présenté en trois volets volontairement restreints, pour que chaque figure se lise sans zoom : le cœur métier du recrutement (figure~\ref{fig_3_2}), les utilisateurs, les rôles et l’audit (figure~\ref{fig_3_2a}), enfin l’automatisation et les tables d’accompagnement (figure~\ref{fig_3_2b}). Chaque boîte reprend les attributs caractéristiques de l’entité JPA correspondante ; la liste exhaustive des colonnes, avec leurs types SQL et leurs clés, figure sur le schéma relationnel de la section~\ref{sec_3_7}. Le type de trait suit la navigabilité réellement codée : une association bidirectionnelle (un \texttt{@OneToMany} doublé de son \texttt{mappedBy}) se lit trait plein sans flèche, une navigabilité unidirectionnelle (un \texttt{@ManyToOne} sans contre-référence sur l’autre classe) porte une flèche ouverte pointée vers la classe ciblée, et un lien logique détenu par une simple colonne, sans clé étrangère en base, est tracé en pointillés. Les cardinalités sont rappelées à chaque extrémité. Seule la table d’association 	exttt{user\_roles}, générée par le 	exttt{@ManyToMany} de 	exttt{User}, fait exception : ses deux traits pleins ne disent rien de la navigabilité mais nomment les deux colonnes qui portent la jointure.
 
-% figure 3.2
+% figure 3_2
 \setcounter{figure}{1}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2}
-\caption{Diagramme de classes — vue globale du domaine métier}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2}
+\caption{Diagramme de classes — cœur métier du recrutement}
 \label{fig_3_2}
 \end{figure}
 
-% figure 3.2a
+Ce premier volet concentre les cinq entités du parcours de recrutement, auxquelles s’ajoutent les rappels de \texttt{User} et de \texttt{Department} : quatre relations unidirectionnelles aboutissent en effet à ces deux classes (le dossier est routé vers un manager, l’entretien est mené par un utilisateur, le feedback est rédigé par un utilisateur, l’offre est rattachée à un département) et leur définition complète est donnée en figure~\ref{fig_3_2a}. Un candidat dépose au plus un CV et peut passer plusieurs entretiens ; chaque entretien donne lieu à un feedback, rattaché à la fois à l’entretien et au dossier. Une offre reçoit plusieurs candidatures. Les deux scores conservés sur le dossier — \texttt{aiScore}, calculé par l’agent d’évaluation, et \texttt{manualScore}, saisi par le RH — traduisent une règle de conception : la décision reste traçable, chaque score portant son auteur et son horodatage.
+
+% figure 3_2
 \setcounter{figure}{1}
 \begingroup\renewcommand{\thefigure}{3.2a}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2a}
-\caption{Diagramme de classes — modèle recrutement}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2a}
+\caption{Diagramme de classes — utilisateurs, rôles et audit}
 \label{fig_3_2a}
 \end{figure}
 \endgroup
 
-Ce modèle fait ressortir plusieurs relations structurantes : un candidat dépose au plus un CV et peut passer par plusieurs entretiens, chacun pouvant donner lieu à un ou plusieurs feedbacks rédigés par un utilisateur (manager ou RH). Une offre d’emploi, rattachée à un département, reçoit plusieurs candidatures. Quant à la classe User, elle centralise l’identité des utilisateurs disposant d’un compte (RH, managers, administrateurs, ainsi que les candidats authentifiés, avec le rôle ROLE\_USER) et porte, via la classe Role, un système de rôles multiples pour une gestion fine des permissions. Les associations de User avec les offres (création), les entretiens (intervieweur) et les feedbacks (auteur) sont matérialisées dans le schéma relationnel (figure~\ref{fig_3_9}) ; le rattachement d’un compte à ses candidatures s’appuie sur l’adresse e-mail du compte, pré-remplie et non modifiable lors du dépôt d’une candidature.
+La figure~\ref{fig_3_2a} isole la partie sécurité. La classe User centralise l’identité des comptes (RH, managers, administrateurs, ainsi que les candidats authentifiés, avec le rôle ROLE\_USER) ; les rôles multiples passent par la table d’association \texttt{user\_roles}, affichée ici parce que JPA la génère sans qu’une entité corresponde à ce nom. Le jeton de réinitialisation et la ligne d’audit complètent ce volet, reliés en pointillés parce que leur rattachement n’est pas une clé étrangère : le premier est adossé à un compte par son adresse e-mail, la seconde consigne l’auteur de chaque action sensible dans une colonne \texttt{performed\_by} libre de contrainte.
 
-% figure 3.2b
+% figure 3_2
 \setcounter{figure}{1}
 \begingroup\renewcommand{\thefigure}{3.2b}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_2b}
-\caption{Diagramme de classes — utilisateurs et sécurité}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_2b}
+\caption{Diagramme de classes — automatisation et tables d’accompagnement}
 \label{fig_3_2b}
 \end{figure}
 \endgroup
 
-La vue sécurité isole les entités d’authentification et d’audit : chaque utilisateur porte un ou plusieurs rôles (ERole) et, le cas échéant, un rattachement à un département, Manager\-Routing\-Service gèle sur la candidature le manager désigné par le RH, Manager\-Scope\-Service lit cette destination pour borner la visibilité du manager, et AuditLog journalise les actions sensibles.
+Le dernier volet montre les entités qui prolongent le dossier sans en modifier le cycle de vie : la file d’attente n8n, les notes internes, les rappels et le profil de pondération du scoring, ce dernier étant relié au rappel de \texttt{JobOffer} dont il paramètre les critères. Le lien entre un dossier et ses événements d’automatisation n’est pas une clé étrangère mais une convention sur la colonne \texttt{event\_key}, dont la valeur commence par l’identifiant du dossier (\texttt{candidateId:DOSSIER\_VALIDE\_RH:…}) ; c’est ce qui permet de retrouver l’historique d’un routage sans coupler les deux tables. Le profil de pondération, lui, n’est relié à aucune offre par une clé : il s’applique par famille métier et par niveau d’ancienneté.
 
 \section{Séquence technique — Soumission asynchrone et scoring IA}
 \label{sec_3_4}
@@ -66,12 +71,16 @@ Lors de la soumission d’une candidature, l’application orchestre plusieurs c
 
 % figure 3.3
 \setcounter{figure}{2}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_3}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_3}
 \caption{Diagramme de séquence technique — Soumission asynchrone et scoring IA}
 \label{fig_3_3}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 \section{Diagrammes de séquence objet}
 \label{sec_3_5}
@@ -81,12 +90,15 @@ Les quatre diagrammes des figures~\ref{fig_3_4}, \ref{fig_3_5}, \ref{fig_3_6} et
 \label{sec_3_5_1}
 % figure 3.4
 \setcounter{figure}{3}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,17, le vrai paysage ne l agrandissait que de
+% 5 % (510 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 10,1 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_4}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig3_4}
 \caption{Diagramme de séquence objet — Planifier un entretien}
 \label{fig_3_4}
-\end{sidewaysfigure}
+\end{figure}
 
 Trois garde-fous ressortent de ce diagramme : la planification écarte un dossier clos (rejeté ou retiré) comme une candidature encore au stade APPLIED dont le CV n’a pas été examiné, et refuse tout créneau chevauchant un entretien déjà réservé du même intervieweur — plusieurs entretiens le même jour restent possibles, jamais au même horaire. Un manager ne planifie enfin que dans son propre agenda, et pour un dossier de son périmètre.
 
@@ -107,12 +119,16 @@ Ce second diagramme illustre le garde-fou central du processus, dont la décisio
 \label{sec_3_5_3}
 % figure 3.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_6}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_6}
 \caption{Diagramme de séquence objet — Analyse IA du CV}
 \label{fig_3_6}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Ce diagramme détaille, au niveau objet, le cheminement du scoring : le texte du CV est extrait par le back-end au moment même de la soumission, puis la candidature (statut APPLIED) est placée dans la file d’attente interne ; l’agent « CV Parser » n8n est déclenché en arrière-plan et rappelle le back-end via POST \path{/api/candidates/\{id\}/ai-score/recompute}, et c’est le back-end — au travers de son client CohereClient — qui interroge l’API de Cohere, calcule le score et le persiste. Le statut bascule ensuite automatiquement vers CV\_REVIEWED ou AUTO\_REJECTED selon le seuil configuré, sans intervention humaine à ce stade — sauf si le dossier est signalé pour arbitrage, comme le décrit la suite du diagramme. Deux étapes complémentaires figurent sur le diagramme. Avant l’appel au modèle, Skill\-Normalization\-Service harmonise les compétences extraites (k8s devient Kubernetes, postgres devient PostgreSQL) et conserve, après nettoyage, les termes absents du dictionnaire d’alias, afin qu’une compétence rare ne disparaisse pas du comparatif. Après le calcul, le service positionne le drapeau needs\-Human\-Review lorsque le texte extrait est absent ou plus court de cinquante caractères, lorsqu’un écart de séniorité sévère plafonne le score, lorsque celui-ci tombe dans la zone grise comprise entre 55 et 65, ou lorsque l’API de Cohere est indisponible ; dans ce dernier cas le score est marqué SIMULATED et le dossier est dirigé vers un arbitrage humain plutôt que vers une décision automatique (section~\ref{sec_4_4_6}).
 
@@ -120,12 +136,16 @@ Ce diagramme détaille, au niveau objet, le cheminement du scoring : le texte du
 \label{sec_3_5_4}
 % figure 3.7
 \setcounter{figure}{6}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_7}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_7}
 \caption{Diagramme de séquence objet — Routage et notification des managers}
 \label{fig_3_7}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Ce diagramme détaille la destination et la notification (section~\ref{sec_4_5_5}). La résolution structurelle de Manager\-Routing\-Service — manager désigné sur l’offre, puis département, puis famille de métier, puis ancien champ e-mail — ne produit plus qu’une proposition, pré-sélectionnée dans la modale de transmission : c’est le RH qui désigne le destinataire. Sans désignation, le back-end refuse la transition (erreur 400) et le dossier reste à son statut précédent. Le compte désigné est vérifié — rôle MANAGER, e-mail renseigné — puis gelé sur la candidature avec la base MANUAL ; c’est cette destination, et non le département courant de l’offre, qui borne la visibilité du manager via Manager\-Scope\-Service. Un choix hors proposition reste possible : il est journalisé ROUTING\_MANUAL.
 
@@ -158,35 +178,83 @@ Ce choix de prestataire répond d’abord à une contrainte d’environnement : 
 
 \section{Conception de la base de données}
 \label{sec_3_7}
-La base de données relationnelle PostgreSQL reflète directement le diagramme de classes présenté en section~\ref{sec_3_3} : chaque entité JPA est mappée sur une table, et les relations One-to-Many et Many-to-One sont matérialisées par des clés étrangères (par exemple job\_offer.hiring\_manager\_id, candidate.routed\_to\_manager\_id, interview.candidate\_id, feedback.interview\_id). J’ai configuré la génération du schéma en mode « update » (Hibernate ddl-auto) — un choix pratique en phase de développement, qui permet de faire évoluer la structure de la base sans perte de données au fil des itérations. En production, ce mode devrait néanmoins céder la place à un outil de migration versionnée comme Flyway ou Liquibase, seul capable de garantir des évolutions de schéma maîtrisées et reproductibles.
+La base de données relationnelle PostgreSQL reflète directement le diagramme de classes présenté en section~\ref{sec_3_3} : chaque entité JPA est mappée sur une table, et les relations One-to-Many et Many-to-One sont matérialisées par des clés étrangères (par exemple job\_offers.hiring\_manager\_id, candidates.routed\_to\_manager\_id, interviews.candidate\_id, feedbacks.interview\_id, écrites ici au pluriel, comme les déclare l’annotation @Table de chaque entité). J’ai configuré la génération du schéma en mode « update » (Hibernate ddl-auto) — un choix pratique en phase de développement, qui permet de faire évoluer la structure de la base sans perte de données au fil des itérations. En production, ce mode devrait néanmoins céder la place à un outil de migration versionnée comme Flyway ou Liquibase, seul capable de garantir des évolutions de schéma maîtrisées et reproductibles.
 
-Le schéma relationnel de la figure~\ref{fig_3_9} présente l’ensemble des tables générées à partir des entités JPA, avec les clés primaires et étrangères qui matérialisent les relations décrites plus haut.
+Le schéma de la figure~\ref{fig_3_9} et de ses quatre prolongements (figures~\ref{fig_3_9a} à \ref{fig_3_9d}) présente les tables générées à partir des entités JPA. Il est découpé par domaine pour rester lisible à l’impression : comptes et référentiel, dossiers et CV, offres et entretiens, puis tables d’accompagnement.
 
-% figure 3.9
+% figure 3_9
 \setcounter{figure}{8}
-\begin{sidewaysfigure}
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_9}
-\caption{Schéma relationnel de la base de données PostgreSQL}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9}
+\caption{Schéma relationnel — comptes, rôles et départements}
 \label{fig_3_9}
-\end{sidewaysfigure}
+\end{figure}
 
-Le schéma relationnel reprend fidèlement les entités JPA : clés primaires préfixées d’un astérisque, clés étrangères suffixées « FK ». On y lit les relations structurantes — département, offres, candidatures, CV, entretiens, feedbacks — et la destination du routage, figée sur le dossier au moment de la transmission (routed\_to\_manager\_id, routed\_manager\_emails, routing\_basis, routed\_at).
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9a}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9a}
+\caption{Schéma relationnel — dossiers de candidature et CV}
+\label{fig_3_9a}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9b}
+\caption{Schéma relationnel — offres, entretiens et feedbacks}
+\label{fig_3_9b}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9c}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9c}
+\caption{Schéma relationnel — audit, notes internes et rappels}
+\label{fig_3_9c}
+\end{figure}
+\endgroup
+
+% figure 3_9
+\setcounter{figure}{8}
+\begingroup\renewcommand{\thefigure}{3.9d}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_9d}
+\caption{Schéma relationnel — pondération du scoring, file n8n et jetons}
+\label{fig_3_9d}
+\end{figure}
+\endgroup
+
+Le schéma reprend fidèlement les entités JPA : clé primaire signalée par un astérisque et le stéréotype \texttt{<<PK>>}, clé étrangère repérée par le stéréotype \texttt{<<FK>>}, cardinalités en patte de poule. On y lit les relations structurantes — département, offres, candidatures, CV, entretiens, feedbacks — et la destination du routage, figée sur le dossier au moment de la transmission (\texttt{routed\_to\_manager\_id}, \texttt{routed\_manager\_emails}, \texttt{routing\_basis}, \texttt{routed\_at}). Quatre liens suivis par le code n’ont, en revanche, pas de clé étrangère en base, et apparaissent à ce titre en pointillés : le jeton de réinitialisation se rattache à un compte par son adresse e-mail, la file n8n, les rappels et les notes internes se rattachent à un dossier par une colonne conventionnelle (\texttt{event\_key}, \texttt{related\_id}, \texttt{candidate\_id}) que Hibernate ne contraint pas. Ce choix est assumé : ces tables doivent survivre à la suppression éventuelle de la ligne qu’elles décrivent et restent interrogeables sans jointure. Les tables rappelées en tête de panneau avec la mention «~détail fig.~» n’y figurent qu’en référence, avec leur clé et leur clé naturelle ; leurs colonnes complètes sont listées sur le panneau de leur domaine.
 
 \section{Diagramme de composants}
 \label{sec_3_8}
-Le diagramme de la figure~\ref{fig_3_10} détaille l’organisation de la plateforme en composants logiciels (front-end Angular et back-end Spring Boot), ainsi que leurs dépendances.
+Le diagramme de la figure~\ref{fig_3_10} détaille l’organisation de la plateforme en deux composants déployables — le front-end Angular et le back-end Spring Boot — et leurs dépendances. La flèche pleine marque une dépendance d’exécution, l’émetteur appelant le récepteur ; la flèche pointillée marque une collaboration transversale qui n’immobilise pas l’appelant : le filtrage des routes côté front, l’authentification côté back et la journalisation des actions.
 
 % figure 3.10
 \setcounter{figure}{9}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_10}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_10}
 \caption{Diagramme de composants de la plateforme JOB4YOU}
 \label{fig_3_10}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
-Chaque service métier (Candidate, Interview, Feedback, JobOffer) s’appuie sur la couche de repositories Spring Data JPA pour la persistance, et sur le service d’audit pour tracer les actions sensibles. Le service Candidate délègue le calcul du score au service de scoring IA, tandis que Candidate et Interview déclenchent chacun les agents n8n compétents via des webhooks.
+Le front-end ne touche jamais la base : ses services HTTP, portés par l’intercepteur JWT, adressent la seule surface d’entrée du back-end, les \texttt{@RestController} exposés sous \texttt{/api}. Deux gardes complètent le dispositif : les \texttt{RoleGuard} angulars masquent les routes qu’un rôle n’a pas le droit d’emprunter, et le filtre Spring — jeton JWT pour les utilisateurs, clé d’API pour n8n — authentifie la requête avant qu’elle n’atteigne la couche métier. Chaque service métier (Candidate, Interview, Feedback, JobOffer) s’appuie alors sur la couche de repositories Spring Data JPA pour la persistance, et sur le service d’audit pour tracer les actions sensibles. Le service Candidate délègue le calcul du score au service de scoring IA, qui appelle les fournisseurs externes ; Candidate et Interview déclenchent chacun les agents n8n compétents via la table d’attente, et le retour de l’agent — recalcul du score, notification — reprend l’entrée du back-end par un rappel authentifié sur \texttt{/api}. Ce dernier aller-retour donne au diagramme sa forme en boucle : le back-end y est à la fois appelant et rappelé.
 
 \section{Diagramme de déploiement}
 \label{sec_3_9}
@@ -194,12 +262,16 @@ Le diagramme de la figure~\ref{fig_3_11} représente la répartition physique de
 
 % figure 3.11
 \setcounter{figure}{10}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig3_11}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig3_11}
 \caption{Diagramme de déploiement de la plateforme JOB4YOU}
 \label{fig_3_11}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Dans la configuration de développement représentée, le front-end Angular, le back-end Spring Boot, les agents n8n et le stockage des CV s’exécutent sur un même poste local, avec une base de données PostgreSQL (SGBD) pour la persistance. Le front-end communique avec le back-end via des API REST sécurisées par JWT. Le back-end déclenche, via des webhooks HTTP, les agents d’automatisation n8n — lesquels sollicitent à leur tour Google Calendar pour la création réelle de l’événement et du lien Google Meet lors de la planification, et le serveur SMTP pour les notifications — tandis que le back-end appelle lui-même l’API de Cohere pour le scoring IA et l’API OpenRouter pour l’assistant conversationnel.
 

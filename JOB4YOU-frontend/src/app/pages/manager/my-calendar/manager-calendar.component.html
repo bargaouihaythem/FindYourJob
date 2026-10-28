@@ -173,7 +173,9 @@
                    [ngClass]="isDossierClosed(interview) ? 'fa-lock'
                               : interview.status === 'COMPLETED' ? 'fa-check'
                               : interview.status === 'CANCELLED' ? 'fa-ban'
-                              : awaitsHrDecision(interview) ? 'fa-hourglass-half' : 'fa-clock'"></i>{{ getTypeLabel(interview.type) }}
+                              : awaitsHrDecision(interview) ? 'fa-hourglass-half' : 'fa-clock'"></i>{{ getTypeLabel(interview.type) }}<span
+                  *ngIf="interview.status === 'COMPLETED'"> · Terminé</span><span
+                  *ngIf="interview.status === 'CANCELLED'"> · Annulé</span>
               </small>
             </div>
           </article>
@@ -216,9 +218,13 @@
             <div class="detail-row">
               <dt>Lien de connexion</dt>
               <dd>
-                <a *ngIf="interview.meetLink" [href]="interview.meetLink" target="_blank" rel="noopener">
+                <a *ngIf="canJoin(interview)" [href]="interview.meetLink" target="_blank" rel="noopener">
                   <i class="fas fa-video me-1"></i>{{ interview.meetLink }}
                 </a>
+                <span *ngIf="interview.meetLink && !canJoin(interview)" class="text-muted">
+                  <i class="fas fa-video-slash me-1"></i><s>{{ interview.meetLink }}</s>
+                  <span class="d-block small">{{ linkClosedReason(interview) }}</span>
+                </span>
                 <span *ngIf="!interview.meetLink" class="text-muted">Non disponible pour le moment</span>
               </dd>
             </div>

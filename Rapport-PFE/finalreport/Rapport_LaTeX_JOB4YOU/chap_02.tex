@@ -93,44 +93,93 @@ Au-delà des fonctionnalités métier, la plateforme doit aussi répondre aux ex
 \label{sec_2_2_4}
 Avant de détailler les fonctionnalités attendues, ce diagramme d’activité pose le flux métier global : il décrit l’enchaînement des activités du processus de recrutement, de la publication de l’offre jusqu’à la décision finale, ainsi que les acteurs qui les portent, indépendamment de toute considération technique.
 
-Le diagramme d’activité de la figure~\ref{fig_2_1}  rend explicite un point que le texte seul rendait moins visible : l’entretien téléphonique RH est un passage obligé avant toute évaluation technique (section~\ref{sec_4_5_8}), et la transmission au manager désigné par le RH (section~\ref{sec_3_5_4}) n’intervient qu’à ce moment-là, pas dès la validation du CV — conformément à la correction décrite en section~\ref{sec_4_5_5}. Le rejet automatique par l’IA n’y constitue pas une fin de parcours distincte : il rejoint, comme le contreseing du RH, l’étape commune de notification et de journalisation, et admet deux issues humaines distinctes, toutes deux portées par la transition « AUTO\_REJECTED » de la figure~\ref{fig_3_8} : le RH confirme le refus après examen, ou le conteste par un override justifié qui le réintègre dans le pipeline, à condition que la note corrigée atteigne le seuil de 60/100.
+Le diagramme d’activité, présenté en trois volets (figures~\ref{fig_2_1a}, \ref{fig_2_1b} et \ref{fig_2_1c}), rend explicite un point que le texte seul rendait moins visible : l’entretien téléphonique RH est un passage obligé avant toute évaluation technique (section~\ref{sec_4_5_8}), et la transmission au manager désigné par le RH (section~\ref{sec_3_5_4}) n’intervient qu’à ce moment-là, pas dès la validation du CV — conformément à la correction décrite en section~\ref{sec_4_5_5}. Le rejet automatique par l’IA n’y constitue pas une fin de parcours distincte : il rejoint, comme le contreseing du RH, l’étape commune de notification et de journalisation, et admet deux issues humaines distinctes, toutes deux portées par la transition « AUTO\_REJECTED » de la figure~\ref{fig_3_8} : le RH confirme le refus après examen, ou le conteste par un override justifié qui le réintègre dans le pipeline, à condition que la note corrigée atteigne le seuil de 60/100.
 
-% figure 2.1
+Le volet~\ref{fig_2_1a} couvre le dépôt de la candidature et la présélection automatisée ; le volet~\ref{fig_2_1b} prend le dossier en charge côté RH et manager, jusqu’à l’avis du manager ; le volet~\ref{fig_2_1c} termine le parcours par la décision finale du RH, sa journalisation et la notification du candidat. Ce découpage en trois volets a été imposé par la lisibilité à l’impression : la vue d’ensemble, en une seule figure, ne rendait plus qu’en 5,4 pt imprimés sous la contrainte de la page paysage, alors que ces trois figures s’affichent entre 8,7 et 12,8 pt.
+
+% figure 2.1a / 2.1b / 2.1c
+% La vue d'ensemble tenait dans une seule figure paysage (fig2_1.png,
+% 2221x1383 px) : ramenee a 0,98\linewidth x 0,90\textheight en paysage, elle
+% n'imprimait plus ses etiquettes qu'a 5,4 pt, sous le plancher de 8 pt retenu
+% pour ce rapport. Elle est donc decompee en trois volets enchaunes, chacun
+% rendu a sa propre echelle : 8,7 pt imprimes pour 2.1a (paysage, ratio 2,3),
+% 12,8 pt pour 2.1b (portrait) et 10,2 pt pour 2.1c (portrait). Les numeros a
+% suffixe alphabetique suivent le procede deja utilise pour 3.2a/3.2b et
+% 4.15a/4.15b, ce qui ne decale aucune figure du chapitre.
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+\begingroup\renewcommand{\thefigure}{2.1a}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_1}
-\caption{Diagramme d’activité — Vue d’ensemble du processus de recrutement}
-\label{fig_2_1}
-\end{sidewaysfigure}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1a}
+\caption{Diagramme d’activité — Dépôt de la candidature et présélection automatisée par le score IA}
+\label{fig_2_1a}
+\end{figure}
+\clearpage
+\end{landscape}
+\endgroup
+
+\setcounter{figure}{0}
+\begingroup\renewcommand{\thefigure}{2.1b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1b}
+\caption{Diagramme d’activité — Traitement du dossier par le RH et le manager, jusqu’à l’avis du manager}
+\label{fig_2_1b}
+\end{figure}
+\endgroup
+
+\setcounter{figure}{0}
+\begingroup\renewcommand{\thefigure}{2.1c}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_1c}
+\caption{Diagramme d’activité — Décision finale du RH, journalisation et notification du candidat}
+\label{fig_2_1c}
+\end{figure}
+\endgroup
 
 \subsection{Diagrammes de cas d’utilisation}
 \label{sec_2_2_5}
-Afin d’éviter l’effet « toile d’araignée », le périmètre fonctionnel est d’abord présenté en vue macro (figure~\ref{fig_2_2}), puis décliné en trois sous-diagrammes par module (figures~\ref{fig_2_3} à \ref{fig_2_5}). L’authentification par jeton JWT, bien qu’obligatoire pour les espaces sécurisés, est représentée par un cas commun « S’authentifier » (la relation « include » n’est illustrée que sur quelques cas représentatifs) ; les relations d’inclusion pointent du cas principal vers le sous-cas requis, conformément à la norme UML \cite{ref03}, et le Candidat généralise le Visiteur.
+Afin d’éviter l’effet « toile d’araignée », le périmètre fonctionnel est présenté en deux vues macro — l’espace public et candidat (figure~\ref{fig_2_2a}), puis les espaces réservés RH, manager et administrateur (figure~\ref{fig_2_2b}) — avant d’être décliné en trois sous-diagrammes par module (figures~\ref{fig_2_3} à \ref{fig_2_5}). Chaque vue est enfermée dans le cadre de la limite du système étudié, «~JOB4YOU~» : les acteurs restent à l’extérieur du cadre, les cas d’utilisation à l’intérieur, et les seules relations tracées relient soit un acteur à un cas (trait plein, sans flèche), soit un cas à un autre par «~include~» (pointillés, flèche pointée vers le cas inclus).
 
-% figure 2.2
+% figure 2_2
 \setcounter{figure}{1}
+\begingroup\renewcommand{\thefigure}{2.2a}
 \begin{figure}[!ht]
 \centering
-\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig2_2}
-\caption{Diagramme de cas d’utilisation global}
-\label{fig_2_2}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_2a}
+\caption{Diagramme de cas d’utilisation global — espace public et candidat}
+\label{fig_2_2a}
 \end{figure}
+\endgroup
 
-Seuls 7 cas d’usage représentatifs sont reliés à « S’authentifier » pour la lisibilité ; l’authentification s’applique à tout l’espace interne.
+% figure 2_2
+\setcounter{figure}{1}
+\begingroup\renewcommand{\thefigure}{2.2b}
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig2_2b}
+\caption{Diagramme de cas d’utilisation global — espaces RH, manager et administrateur}
+\label{fig_2_2b}
+\end{figure}
+\endgroup
 
-L’authentification constitue une fonctionnalité transversale de la plateforme : le cas d’utilisation « S’authentifier » est commun au Candidat, au Responsable RH, au Manager et à l’Administrateur, qui doivent s’identifier avant d’accéder à leur espace sécurisé. Pour ne pas surcharger la figure~\ref{fig_2_2}, la relation « include » n’y est représentée que pour sept cas représentatifs (postuler à une offre, suivre l’état de sa candidature, consulter ses entretiens planifiés, échanger avec l’assistant conversationnel, consulter et filtrer les candidatures, contresigner la décision finale, gérer les utilisateurs et les rôles) ; elle s’applique à toutes les fonctionnalités des espaces sécurisés. Seules la consultation et la recherche des offres ainsi que les suggestions « Job idéal » demeurent accessibles au visiteur non authentifié, l’assistant conversationnel restant réservé au candidat authentifié. Les autorisations sont ensuite contrôlées côté serveur selon le rôle et le périmètre métier de l’utilisateur. Les diagrammes ne représentent que les cas principaux : la matrice du tableau~\ref{tab_2_1} fait foi pour le détail des droits (par exemple, le RH peut aussi saisir un feedback et consulter le journal d’audit).
-
+L’authentification par jeton JWT est représentée par un cas unique « S’authentifier », auquel les cas des espaces sécurisés sont reliés par une relation « include ». Cette convention est celle du diagramme de cas d’utilisation global : elle est reprise ici sur sept cas représentatifs (postuler à une offre, suivre l’état de sa candidature, consulter ses entretiens planifiés, échanger avec l’assistant conversationnel, consulter et filtrer les candidatures, contresigner la décision finale, gérer les utilisateurs et les rôles) et s’applique en réalité à toutes les fonctionnalités des espaces sécurisés. Conformément à la norme UML \cite{ref03}, la flèche d’inclusion part du cas principal pour rejoindre le cas inclus ; aucune relation ne relie deux acteurs entre eux, ni deux cas hors de ce mécanisme. Le visiteur non authentifié conserve la consultation et la recherche des offres ainsi que les suggestions « Job idéal » ; le candidat authentifié reprend ces deux cas et y ajoute le dépôt de candidature, le suivi de son dossier, l’accès à ses entretiens et l’assistant conversationnel, qui lui est réservé. Les autorisations sont ensuite contrôlées côté serveur selon le rôle et le périmètre métier de l’utilisateur. Les diagrammes ne représentent que les cas principaux : la matrice du tableau~\ref{tab_2_1} fait foi pour le détail des droits. Certains droits y sont acceptés sans être retracés ici, pour ne pas transformer la figure en toile d’araignée : l’administrateur peut aussi publier une offre, planifier un entretien, émettre un avis et contresigner la décision finale ; le RH peut aussi saisir un feedback, émettre un avis et consulter le journal d’audit.
 Le premier zoom couvre le portail public et candidat : consultation des offres, matching « Job idéal », dépôt de candidature et suivi en libre-service (figure~\ref{fig_2_3}).
 
 % figure 2.3
 \setcounter{figure}{2}
-\begin{sidewaysfigure}
+% le portrait a ete garde ici : ratio 1,25, le vrai paysage ne l agrandissait que de
+% 13 % (544 pt contre 484 de large) tout en coutant une page pleine et la coupure
+% du texte. En portrait l image imprime 8,2 pt, au-dessus de la cible de 8 pt.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_3}
+\includegraphics[width=\textwidth, height=0.80\textheight, keepaspectratio]{fig2_3}
 \caption{Diagramme de cas d’utilisation — Portail Candidat \& Visiteur}
 \label{fig_2_3}
-\end{sidewaysfigure}
+\end{figure}
 
 Le deuxième zoom décrit le cœur du processus côté RH et manager : publication des offres, filtrage, entretiens, feedbacks, avis du manager puis contreseing RH de la décision finale (figure~\ref{fig_2_4}). L’envoi des notifications par e-mail y est modélisé comme un cas inclus, déclenché par la planification ou par la décision, et non comme un cas autonome.
 
@@ -188,12 +237,16 @@ Le diagramme de la figure~\ref{fig_2_6} adopte une approche « boîte noire » s
 
 % figure 2.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+% remise en portrait et a taille naturelle : le PNG source ne mesure que 418 x 255 px.
+% Etalee sur une page paysage entiere, l'image s'imprimait a ~1,6 fois sa taille,
+% donc en flou, et coutait une page pleine. A 0,70\linewidth elle imprime
+% 337 pt de large (police ~9,7 pt), sans qu'aucun pixel ne soit agrandi.
+\begin{figure}[!ht]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig2_6}
+\includegraphics[width=0.70\linewidth]{fig2_6}
 \caption{Diagramme de séquence système — Soumettre une candidature (boîte noire)}
 \label{fig_2_6}
-\end{sidewaysfigure}
+\end{figure}
 
 \section{Étude technique}
 \label{sec_2_3}

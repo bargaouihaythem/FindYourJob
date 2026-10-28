@@ -1,6 +1,6 @@
 # Rapport d'Évaluation du Gold Set & Analyse du Matching IA — JOB4YOU
 **Contexte :** Sopra HR Software — Plateforme de Recrutement Intelligent JOB4YOU  
-**Date d'évaluation :** 18/10/2026  
+**Date d'évaluation :** 27/10/2026  
 **Taille du Gold Set :** 20 CVs synthétiques représentatifs et annotés  
 
 ---
@@ -46,7 +46,7 @@ L'évaluation de la pertinence de l'algorithme de matching repose sur la constit
 | **GOLD_01** | Alexandre Mercier | Développeur Backend Java/Spring | `PERTINENT` | **89/100** | ✅ Retenu (Succès) | Java, Spring Boot, Spring Security, PostgreSQL, MongoDB, Redis, Docker, Kubernetes, Maven, AWS | Non requise |
 | **GOLD_02** | Camille Bernard | Développeur Backend Java/Spring | `PERTINENT` | **85/100** | ✅ Retenu (Succès) | Java, Spring Boot, PostgreSQL, Redis, Docker, Maven | Non requise |
 | **GOLD_03** | Julien Rouve | Développeur Backend Java/Spring | `PERTINENT` | **84/100** | ✅ Retenu (Succès) | Java, Spring Boot, Spring Security, PostgreSQL, MongoDB, Redis, Docker, Kubernetes, Maven, GCP | Non requise |
-| **GOLD_04** | Guillaume Delorme | Développeur Backend Java/Spring | `NON_PERTINENT` | **59/100** | ❌ Rejeté (Succès) | Aucune | ⚠️ Score en zone grise incertaine (59/100, seuil critique = 60) : arbitrage humain recommandé. |
+| **GOLD_04** | Guillaume Delorme | Développeur Backend Java/Spring | `NON_PERTINENT` | **57/100** | ❌ Rejeté (Succès) | Aucune | ⚠️ Score en zone grise incertaine (57/100, seuil critique = 60) : arbitrage humain recommandé. |
 | **GOLD_05** | Sébastien Vasseur | DevOps Engineer - Mission Freelance | `PERTINENT` | **91/100** | ✅ Retenu (Succès) | AWS, Azure, Docker, Kubernetes, Jenkins, Terraform, Ansible, Prometheus, Grafana, Python, Bash | Non requise |
 | **GOLD_06** | Nadia Khemir | DevOps Engineer - Mission Freelance | `PERTINENT` | **88/100** | ✅ Retenu (Succès) | AWS, Azure, Docker, Kubernetes, Jenkins, Terraform, Ansible, Prometheus, Grafana, Python, Bash | Non requise |
 | **GOLD_07** | Thierry Gauthier | DevOps Engineer - Mission Freelance | `NON_PERTINENT` | **54/100** | ❌ Rejeté (Succès) | Kubernetes, Terraform | Non requise |
@@ -56,11 +56,11 @@ L'évaluation de la pertinence de l'algorithme de matching repose sur la constit
 | **GOLD_11** | Valérie Dubois | Business Analyst - CDD 18 mois | `NON_PERTINENT` | **47/100** | ❌ Rejeté (Succès) | Agile, Scrum | Non requise |
 | **GOLD_12** | Karim Belhadj | Business Analyst - CDD 18 mois | `NON_PERTINENT` | **52/100** | ❌ Rejeté (Succès) | Analyse Fonctionnelle | Non requise |
 | **GOLD_13** | Lucas Pires | Développeur Backend Java/Spring | `NON_PERTINENT` | **52/100** | ❌ Rejeté (Succès) | Java, Spring Security | Non requise |
-| **GOLD_14** | Manon Girard | Développeur Backend Java/Spring | `PERTINENT` | **74/100** | ✅ Retenu (Succès) | Java, Spring Boot, PostgreSQL, Docker, Maven | Non requise |
+| **GOLD_14** | Manon Girard | Développeur Backend Java/Spring | `PERTINENT` | **71/100** | ✅ Retenu (Succès) | Java, Spring Boot, PostgreSQL, Docker, Maven | Non requise |
 | **GOLD_15** | Romain Mercier | DevOps Engineer - Mission Freelance | `NON_PERTINENT` | **44/100** | ❌ Rejeté (Succès) | Docker, Terraform, Ansible, Bash | ⚠️ Écart de séniorité : 3 an(s) d'expérience détecté(s) dans le CV pour un minimum de 5 an(s) exigé par l'offre (5-8 ans). Score plafonné à 45/100 sous le seuil d'auto-rejet : le dossier reste à arbitrer par le RH et n'est pas transmis à un manager. |
 | **GOLD_16** | Inès Benali | Business Analyst - CDD 18 mois | `PERTINENT` | **81/100** | ✅ Retenu (Succès) | Analyse Fonctionnelle, Agile, Scrum, Jira, Confluence, UML | Non requise |
 | **GOLD_17** | Hugo Delaunay | Développeur Backend Java/Spring | `PERTINENT` | **77/100** | ✅ Retenu (Succès) | Java, Spring Boot, PostgreSQL, Docker, Maven | Non requise |
-| **GOLD_18** | Nadia Ostermann | DevOps Engineer - Mission Freelance | `NON_PERTINENT` | **81/100** | ✅ Retenu (Divergence) | Docker, Kubernetes, Jenkins, Python, Bash | Non requise |
+| **GOLD_18** | Nadia Ostermann | DevOps Engineer - Mission Freelance | `NON_PERTINENT` | **77/100** | ✅ Retenu (Divergence) | Docker, Kubernetes, Jenkins, Python, Bash | Non requise |
 | **GOLD_19** | Claire Fontaine | Business Analyst - CDD 18 mois | `PERTINENT` | **78/100** | ✅ Retenu (Succès) | Analyse Fonctionnelle, Jira, Confluence, UML | Non requise |
 | **GOLD_20** | Yanis Moureaux | Business Analyst - CDD 18 mois | `NON_PERTINENT` | **57/100** | ❌ Rejeté (Succès) | Aucune | ⚠️ Score en zone grise incertaine (57/100, seuil critique = 60) : arbitrage humain recommandé. |
 

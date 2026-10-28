@@ -17,31 +17,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * ╔══════════════════════════════════════════════════════════════════╗
- * ║          ARCHITECTURE — RESPONSABILITÉS CLAIREMENT DÉFINIES     ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  Angular       │ Interface utilisateur (RH, candidat, manager)  ║
- * ║  Spring Boot   │ Logique métier, sécurité JWT, base de données   ║
- * ║  n8n (agents)  │ Automation IA : scoring, emails, calendrier     ║
- * ║  PostgreSQL    │ Persistance des données                         ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  FLUX :  Angular → Spring Boot → n8n → Email / Calendar         ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  Agent 1  │ Déclencheur : nouvelle candidature                   ║
- * ║           │ Actions n8n : parse CV, score IA,                    ║
- * ║           │               email "candidature reçue" (accusé)     ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  Agent 2  │ Déclencheur : Agent 1 (score ≥ 75 → CV_REVIEWED auto) ║
- * ║           │              ou RH manuellement (override IA)        ║
- * ║           │ Actions n8n : GET /api/n8n/candidatures-du-jour,    ║
- * ║           │               résumé IA, email manager              ║
- * ╠══════════════════════════════════════════════════════════════════╣
- * ║  Agent 3  │ Déclencheur A : entretien créé (RH / manager)       ║
- * ║           │ Actions n8n  : Google Calendar, lien Meet, email    ║
- * ║           │ Déclencheur B : décision finale (ACCEPTED/REJECTED)  ║
- * ║           │ Actions n8n  : email de décision au candidat        ║
- * ║           │ (Switch node sur event dans n8n)                    ║
- * ╚══════════════════════════════════════════════════════════════════╝
+ * Intégration n8n : le backend publie des événements, les agents les consomment.
+ * Aucun agent ne décide de la partie métier — ils envoient les notifications et les callbacks.
+ *
+ * FLUX : Angular → Spring Boot (règles, JWT/RBAC, statut, audit) → n8n → e-mail / Google Calendar
+ *
+ * Agent 1 — {@code n8n-workflows/agent1-cv-parser.json}
+ *   Déclenché par une nouvelle candidature. Rappelle POST /api/candidates/{id}/ai-score/recompute
+ *   (extraction du CV et score Cohere côté Spring), puis envoie l'accusé de réception au candidat.
+ *
+ * Agent 2 — {@code n8n-workflows/agent2-entretien.json}
+ *   Déclenché par la création d'un entretien. Crée l'événement Google Calendar, en extrait le lien
+ *   Meet, le renvoie par POST /api/interviews/{id}/meet-link, puis envoie la convocation au
+ *   candidat et la confirmation à l'intervieweur. Nœud Calendar en tolérance d'erreur : si le
+ *   lien manque, la chaîne d'e-mails continue et l'absence de lien est journalisée.
+ *
+ * Agent 3 — {@code n8n-workflows/agent3-rh-manager.json}
+ *   Déclenché quand le RH valide le dossier. Envoie « Nouveau dossier à examiner » au manager si
+ *   le dossier lui est transmis, le refus motivé si le statut est AUTO_REJECTED, les félicitations
+ *   et la liste des documents à fournir si le statut est ACCEPTED.
+ *
+ * Décision de statut après score : CandidateService.AI_SCORE_THRESHOLD = 60
+ * (score ≥ 60 → CV_REVIEWED, score < 60 → AUTO_REJECTED).
  */
 @Service
 public class N8nService {

@@ -132,7 +132,7 @@
 \proFramerName{M. Mones Ben Mabrouk}
 \proFramerSpeciality{Sopra HR Software Tunisie}
 \academicFramerName{M. Malek Bouzaiene}
-\academicFramerSpeciality{SESAME}
+\academicFramerSpeciality{Université SESAME}
 
 \companyName{Sopra HR Software Tunisie}
 \collegeYear{2025 - 2026}
@@ -194,6 +194,15 @@
         \thispagestyle{frontmatter}
     
     \mainmatter
+%===== Le style de corps doit etre pose ici, pas seulement au preambule =====%
+% Mesure du build 20-10-2026 (117 p.), lue dans le stream brut, sans concatenation
+% de matrices : « /F54 8.9664 Tf 518.031 43.506 Td [(18)]TJ » et un seul filet, a
+% y = 55.4. Numero a 518 = aligne a droite, 8.97 pt = \footnotesize, aucune marque
+% en tete, filet de pied mais pas de tete : c'est le style « frontmatter » pose
+% plus haut qui court sur les 62 pages de corps, \mainmatter ne l'a pas remplace.
+% Le rapport livre par l'ecole rend sur ces pages la marque « Chapitre N. … » a
+% x = 57 en 10.9 pt et le numero centre a x = 287.3, y = 43.5, en 10.9 pt.
+\pagestyle{fancy}
         \input{introduction}
         \clearpage
         
@@ -223,6 +232,9 @@
         % malgre tout inclus et imprimait une page sans contenu.
         \clearpage
     \backmatter
+% \backmatter remise a zero du style de corps : a reposer ici, sinon les
+% pages de suite de la bibliographie repartent avec le numero a droite.
+\pagestyle{fancy}
         \input{./tpl/resume}
     
 % Le style « backcover » du modele ne se pose qu'ici : \thispagestyle vise la

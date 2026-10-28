@@ -36,6 +36,14 @@ public class CandidateResponse {
     private String departmentName;
     private CVResponse cv;
     private Integer interviewsCount;
+
+    /**
+     * État du dernier entretien non annulé du dossier. Le statut de candidature ne bouge pas
+     * quand l'entretien se termine (c'est l'avis du manager qui le fait avancer) : sans cette
+     * information, la liste affiche « Planifier l'entretien » sur un rendez-vous déjà tenu.
+     */
+    private String lastInterviewStatus;
+    private LocalDateTime lastInterviewDate;
     private Integer feedbacksCount;
     private Integer aiScore;
     private String aiSummary;
@@ -84,6 +92,15 @@ public class CandidateResponse {
                 ? candidate.getJobOffer().getDepartment().getName() : null;
         this.cv = candidate.getCv() != null ? new CVResponse(candidate.getCv()) : null;
         this.interviewsCount = candidate.getInterviews() != null ? candidate.getInterviews().size() : 0;
+        candidate.getInterviews().stream()
+                .filter(i -> i.getInterviewDate() != null
+                        && i.getStatus() != com.recrutement.app.entity.Interview.InterviewStatus.CANCELLED)
+                .max(java.util.Comparator.comparing(
+                        com.recrutement.app.entity.Interview::getInterviewDate))
+                .ifPresent(last -> {
+                    this.lastInterviewStatus = last.getStatus() != null ? last.getStatus().name() : null;
+                    this.lastInterviewDate = last.getInterviewDate();
+                });
         this.feedbacksCount = candidate.getFeedbacks() != null ? candidate.getFeedbacks().size() : 0;
         this.aiScore = candidate.getAiScore();
         this.aiSummary = candidate.getAiSummary();

@@ -111,6 +111,44 @@
 
 \usepackage{pdflscape}
 \usepackage{rotating}
+%===== Numero et titre courant sur les pages paysage =====%
+% Ce sont les deux lignes que la classe ecrit elle-meme (tpl/isipfe.cls:305-306)
+% dans son style lscape, et qu'elle a laissees en commentaire. isipfe.cls devant
+% rester intact, elles sont reprises ici aux valeurs corrigees. fancyhdr ne permute pas
+% l'en-tete et le pied quand lscape permute le texte : le \rotatebox{90} remet
+% les glyphes droits une fois la page tournee par /Rotate, et un \raisebox les
+% deplace le long du grand cote. Les trois builds, en abscisse LUE :
+% build 9, vspace du modele (+12cm / -88mm) = numero a 819, titre a -163 rogne
+% hors papier ; build 10, vspace -2,2cm des deux cotes = numero a 755, titre
+% inchange ; build 11, raisebox -11,9cm = numero a 481, titre a 270 et entier.
+% Le raisebox est lineaire et la case de tete a sa baseline naturelle en
+% x = 819,6 : 481 = 819,6 - 338,6 (11,9cm) et 755 = 819,6 - 62,4 (2,2cm). Le
+% \vspace, lui, sature des qu'il monte au-dessus de la boite de \headheight
+% (+12cm rend 819 comme rien du tout) : d'ou le raisebox, seul reglable au pt.
+% Le folio ne peut PAS etre centre sur le grand cote bas, ni meme pose au
+% milieu : la legende de la figure occupe toute cette bande. Mesure build 11 :
+% la legende est centree sous l'image (centre x = 435), donc sa portee se lit a
+% partir de son ancre — la plus longue court de x = 140 a x = 730 (p. 84,
+% legende de deux lignes), les plus courtes de 351 a 519, et sa baseline est a
+% y = 74, 75 ou 76 quand celle du folio est a y = 68, six points plus bas. Pose
+% a x = 481, comme centre a 421, le nombre s'imprime donc dans la legende — 15
+% des 25 pages sont signalees par le controle. Il ne reste que le coin :
+% x >= 770 pour laisser 40 pt apres la legende la plus longue, et x + 14 <= 797
+% pour rester a plus de 1,5 cm du bord de papier (la page lue fait 842 pt de
+% large). x = 775 retenu, soit 819,6 - 44,1 pt = -1,55cm. Le folio reste ainsi
+% dans le meme bandeau bas que les pages portrait, au coin droit, et la classe
+% n'est pas touchee.
+% Le titre courant, dans la bande haute (la case de pied permute), est a
+% y = 531, au-dessus de l'image (y = 524 au plus) ; son depart x = 270 est le
+% meme sur les 25 pages et sa longueur ne depasse pas 200 pt, rien ne sort du
+% papier. Sans regle : la classe les annule (cls:303-304) et on la suit.
+\fancypagestyle{lscape}{%
+  \fancyhf{}%
+  \renewcommand{\footrulewidth}{0pt}%
+  \renewcommand{\headrulewidth}{0pt}%
+  \rhead{\raisebox{-1.55cm}[0pt][0pt]{\rotatebox{90}{\footnotesize \thepage}}}%
+  \lfoot{\raisebox{8cm}[0pt][0pt]{\rotatebox{90}{\nouppercase{\leftmark}}}}%
+}
 \usepackage{wrapfig}
 %=========== Ajoutes pour le contenu du rapport (code, URLs, tableaux) ===========%
 \newcolumntype{P}[1]{>{\raggedright\arraybackslash}p{#1}}

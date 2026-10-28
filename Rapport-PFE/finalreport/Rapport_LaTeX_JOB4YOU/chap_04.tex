@@ -44,12 +44,16 @@ Cette section présente les interfaces de la plateforme, regroupées par acteur 
 \label{sec_4_3_1}
 % figure 4.1
 \setcounter{figure}{0}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_1}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_1}
 \caption{Page d’accueil publique — recherche d’offres d’emploi}
 \label{fig_4_1}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Accessible sans authentification, la page d’accueil de la figure~\ref{fig_4_1} propose un cartouche de « Recherche rapide » par mot-clé et par localisation et présente, sous le titre « Offres en vedette » — « Découvrez les dernières opportunités professionnelles » —, les offres les plus récemment publiées : chaque carte porte l’intitulé du poste, son type de contrat, son lieu, l’expérience demandée, ses compétences clés, sa date de publication, un extrait de la description et un bouton « Voir les détails ».
 
@@ -77,12 +81,16 @@ Comme le montre la figure~\ref{fig_4_3}, un candidat connecté postule directeme
 
 % figure 4.4
 \setcounter{figure}{3}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_4}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_4}
 \caption{Fonctionnalité « Job idéal » — suggestions d’offres selon le CV}
 \label{fig_4_4}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Comme l’illustre la figure~\ref{fig_4_4}, un visiteur ou un candidat qui ne postule à aucune offre précise peut déposer son CV et recevoir une liste des offres actives classées par pourcentage de compatibilité, calculée par l’API de Cohere (badge « Analyse IA (Cohere) », avec repli automatique sur un classement par mots-clés si l’IA est indisponible).
 
@@ -101,23 +109,31 @@ Disponible uniquement pour un candidat authentifié, le widget de la figure~\ref
 \label{sec_4_3_2}
 % figure 4.6
 \setcounter{figure}{5}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_6}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_6}
 \caption{Gestion des offres d’emploi (espace RH)}
 \label{fig_4_6}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Comme le montre la figure~\ref{fig_4_6}, le responsable RH crée, modifie et suit le statut de chaque offre depuis une table filtrable par mot-clé, par statut et par type de contrat, avec un accès direct à la consultation, à la modification et à la suppression ; la bascule en « expirée » se fait automatiquement une fois la date limite dépassée.
 
 % figure 4.7
 \setcounter{figure}{6}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_7}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_7}
 \caption{Gestion des candidats — vue liste avec score IA}
 \label{fig_4_7}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La figure~\ref{fig_4_7} reproduit la liste des dossiers de l’espace RH : pour chacun apparaissent le contact, l’offre visée, le statut courant et le score de l’agent IA — coloré selon son niveau. Une colonne d’actions rapides accompagne par ailleurs chaque ligne (consultation en ligne du CV, téléchargement, modification, envoi d’e-mail, suppression), et le bandeau supérieur résume l’état du vivier par quatre compteurs cliquables — « À valider », « Rejetés », « Retirées », « Embauchés » — qui basculent la liste sur le filtre correspondant ; ces deux zones, situées en haut et à droite de l’écran, ne sont pas reproduites sur le recadrage, qui privilégie la lisibilité du tableau.
 
@@ -145,34 +161,46 @@ Le formulaire de modification (figure~\ref{fig_4_9}) permet de corriger un dossi
 
 % figure 4.10
 \setcounter{figure}{9}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_10}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_10}
 \caption{Tableau Kanban du pipeline de recrutement}
 \label{fig_4_10}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Le tableau Kanban de la figure~\ref{fig_4_10}, intitulé « Pipeline de recrutement », donne une vue synthétique et interactive de toutes les candidatures réparties par statut : chaque colonne porte le nombre de dossiers qu’elle contient et chaque carte le nom du candidat, l’offre visée et son score IA. Toutes les colonnes ne tenant pas à l’écran, le tableau se fait défiler horizontalement. Glisser une carte d’une colonne à une autre déclenche automatiquement la mise à jour du statut, sous réserve des garde-fous métier décrits au chapitre 3 pour les décisions finales.
 
 % figure 4.11
 \setcounter{figure}{10}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_11}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_11}
 \caption{Gestion des entretiens (espace RH)}
 \label{fig_4_11}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’écran de gestion des entretiens de la figure~\ref{fig_4_11} permet de planifier, filtrer et suivre les entretiens par candidat, offre, type, interviewer et statut, avec des actions contextuelles comme le démarrage, l’annulation, la reprogrammation ou l’ajout d’un feedback une fois l’entretien terminé.
 
 % figure 4.12
 \setcounter{figure}{11}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_12}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_12}
 \caption{Gestion des feedbacks (espace RH)}
 \label{fig_4_12}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La figure~\ref{fig_4_12} centralise les feedbacks saisis par les managers, notés de 1 à 5 étoiles et assortis d’un commentaire, avec une étape de validation par le RH avant transmission au candidat.
 
@@ -208,35 +236,47 @@ La figure~\ref{fig_4_14} présente la modale « Confirmer le refus », dans laqu
 % moins de 1760 px de large, soit 8,5 a 9,2 pt imprimes. Le ratio de chaque volet
 % (3,0 et 3,0) rend le paysage nettement plus grand que le portrait.
 \begingroup\renewcommand{\thefigure}{4.15a}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_15a}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_15a}
 \caption{Espace Manager — candidatures du périmètre : état d'avancement, avis du manager et score}
 \label{fig_4_15a}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 \endgroup
 
 % figure 4.15b
 \setcounter{figure}{14}
 \begingroup\renewcommand{\thefigure}{4.15b}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_15b}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_15b}
 \caption{Espace Manager — ligne dépliée : contact, analyse IA du dossier, synthèse et motif du statut}
 \label{fig_4_15b}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 \endgroup
 
 Un manager ne voit que les dossiers relevant de son périmètre — le destinataire désigné par le RH, gelé sur la candidature (base MANUAL) et lu par Manager\-Scope\-Service (3.5.4) —, à partir de leur entrée en évaluation technique. La figure~\ref{fig_4_15a} montre cette vue, distincte de la liste RH (figure~\ref{fig_4_7}) : les colonnes ne rognent plus, chaque ligne porte le score et « Planifier l'entretien », et se déplie sur le contact, l'analyse IA du dossier, la synthèse et le motif du statut (figure~\ref{fig_4_15b}). La colonne « Compétences », alignée en regard de l'analyse dans ce panneau, n'y est pas reproduite.
 
 % figure 4.16
 \setcounter{figure}{15}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_16}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_16}
 \caption{Espace Manager — page « Mon calendrier d’entretiens », prochains entretiens, rappels et entretiens passés}
 \label{fig_4_16}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 La page « Mon calendrier d’entretiens » (figure~\ref{fig_4_16}) n’affiche que ce qui regarde l’intervieweur connecté : filtrage côté serveur sur sa seule identité, reprise du jeton, et même contrôle d’accès au dossier que pour la liste des dossiers. Elle n’est pas figée pour autant : le manager peut y marquer un entretien comme effectué et y reprendre un dossier encore instruit.
 
@@ -249,35 +289,47 @@ La partie haute de la figure~\ref{fig_4_16} donne les trois prochains rendez-vou
 % Capture recadree sur les trois colonnes utiles (identifiant, e-mail, roles) et
 % sur huit lignes : de 2880 x 1560 px a 1720 x 964 px. Un texte de 22 px dans
 % l'image passe ainsi de 4,6 pt a 9,2 pt imprimes. Le ratio 1,78 rend le paysage
-% nettement plus grand que le portrait (717 pt contre 484), d'ou sidewaysfigure.
-\begin{sidewaysfigure}
+% nettement plus grand que le portrait (717 pt contre 484), d'ou la page paysage.
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_17}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_17}
 \caption{Gestion des utilisateurs et des rôles (espace Administrateur) --- partie gauche de l'écran}
 \label{fig_4_17}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’écran de la figure~\ref{fig_4_17} permet à l’administrateur de gérer l’ensemble des comptes de la plateforme et leurs rôles — un même compte pouvant en cumuler plusieurs —, ainsi que leur rattachement à un département ou, à défaut pour un manager, à une famille de métier.
 
 % figure 4.18
 \setcounter{figure}{17}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_18}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_18}
 \caption{Paramétrage du scoring IA par famille de métier}
 \label{fig_4_18}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Réservé à l’administrateur, l’écran de la figure~\ref{fig_4_18} permet d’ajuster, pour chaque famille de métier et chaque niveau de séniorité, la pondération technique / communication / séniorité utilisée par l’agent IA pour calculer le score d’une candidature ; une colonne de contrôle vérifie avant l’enregistrement que les trois poids somment bien à 100 \%.
 
 % figure 4.19
 \setcounter{figure}{18}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_19}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_19}
 \caption{Historique d’audit}
 \label{fig_4_19}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 L’historique d’audit reproduit en figure~\ref{fig_4_19} trace tous les changements significatifs d’un dossier — statut, score, routage vers un manager, contreseing de la décision finale — en précisant la date, l’entité concernée, la nature de l’action, la valeur précédente et la nouvelle valeur ; une colonne « Effectué par », placée à droite de l’écran et non reproduite sur le recadrage, nomme l’auteur de chaque écriture, qu’elle soit initiée manuellement par un utilisateur ou automatiquement par le système (agents n8n). Les lignes ROUTING et ROUTING\_MANUAL y rappellent le destinataire retenu et la proposition écartée, ce qui garantit la traçabilité de chaque décision.
 
@@ -285,34 +337,46 @@ L’historique d’audit reproduit en figure~\ref{fig_4_19} trace tous les chang
 \label{sec_4_3_5}
 % figure 4.20
 \setcounter{figure}{19}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_20}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_20}
 \caption{Console n8n — les trois flux d’automatisation publiés et leurs statistiques}
 \label{fig_4_20}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Au-delà des interfaces de la plateforme, la chaîne d’automatisation a été vérifiée dans la console n8n elle-même. La figure~\ref{fig_4_20} montre les trois flux déclarés dans l’application — « Agent 1 — CV Parser + Score IA + Email Candidat », « Agent 2 — Planification entretien + Email participants » et « Agent 3 — RH vers Manager (dossier validé) » — tous trois à l’état Publié ; le bandeau de la console affiche 119 exécutions de production, 30 en échec, un taux d’échec de 25,2 \% et une durée moyenne de 4,2 s ; ces compteurs proviennent de l’agrégat interne d’n8n, qui dénombre moins d’exécutions que la table (119 contre 154) mais converge exactement sur les trente échecs. Reprise directement dans la table d’exécutions de l’instance à la date de finalisation du rapport, la mesure de référence porte sur 154 exécutions déclenchées par webhook : 124 abouties et 30 en échec. Ces trente échecs sont tous imputables à Agent 2 et concentrés sur la période de calibration des 15 et 18 octobre (identifiants SMTP Gmail refusés, échec du callback de sauvegarde du lien Meet, accès aux variables d’environnement bloqué dans les nœuds) ; ces trois causes ont été corrigées depuis, et aucune exécution en échec n’est postérieure au 18 octobre. La durée moyenne d’une exécution réussie est alors de 5,6 s, Agent 1 et Agent 3 étant les plus lents (respectivement 6,0 s et 6,2 s, l’analyse Cohere et les envois d’e-mail étant exécutés en série). Ces mesures relèvent d’un environnement local et non d’une exploitation en production ; l’échantillon reste trop limité pour valoir test de charge ou garantie de disponibilité.
 
 % figure 4.21
 \setcounter{figure}{20}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_21}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_21}
 \caption{Flux n8n de l’Agent 1 — webhook de candidature, appel du scoring Cohere puis e-mail au candidat}
 \label{fig_4_21}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Le détail de l’Agent 1 (figure~\ref{fig_4_21}) confirme le découpage des responsabilités décrit au chapitre 3 : le webhook « Nouvelle candidature » reçoit l’événement POST émis par Spring Boot, le nœud « Cohere — Score IA (Spring Boot) » rappelle le back-end qui interroge réellement l’API de Cohere et persiste le score, puis « Préparer données email » alimente le nœud d’envoi de la confirmation au candidat.
 
 % figure 4.22
 \setcounter{figure}{21}
-\begin{sidewaysfigure}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
 \centering
-\includegraphics[width=0.98\textheight, height=0.62\textheight, keepaspectratio]{fig4_22}
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_22}
 \caption{E-mail automatique de confirmation de candidature reçu par le candidat}
 \label{fig_4_22}
-\end{sidewaysfigure}
+\end{figure}
+\clearpage
+\end{landscape}
 
 Côté candidat, la notification produite par ce flux arrive bien dans sa boîte de réception : le corps du message reproduit à la figure~\ref{fig_4_22} est celui généré par l’agent pour une candidature réelle, celle du dossier présenté à la figure~\ref{fig_4_3} — accusé de réception nominatif pour le poste visé, score d’analyse IA obtenu et horodatage du traitement, avec la mention « Cet email a été envoyé automatiquement par la plateforme JOB4YOU ». Lorsque l’analyse n’a pas abouti, le bloc score est remplacé dans le même message par l’encart « profil en cours d’analyse » décrit en section~\ref{sec_4_6}.
 
@@ -320,7 +384,7 @@ Côté candidat, la notification produite par ce flux arrive bien dans sa boîte
 \label{sec_4_4}
 \subsection{Tests unitaires (JUnit 5 / Mockito)}
 \label{sec_4_4_1}
-Au-delà des vérifications manuelles, la couche service et une partie de la couche controller sont couvertes par une suite de tests automatisés écrite avec JUnit 5 et Mockito \cite{ref16,ref24}, exécutée via Maven. Elle comprend 20 classes de test pour un total de 249 méthodes, toutes exécutées sans échec : Candidate\-Service\-Test, Job\-Offer\-Service\-Test, Manager\-Routing\-Service\-Test, Manager\-Scope\-Service\-Test, Candidate\-Manual\-Routing\-Test, Department\-Proposal\-Service\-Test, N8nServiceTest, N8n\-Service\-Outbox\-Key\-Test, Scoring\-Weight\-Profile\-Service\-Test, Ai\-Scoring\-Service\-Test, Skill\-Normalization\-Service\-Test, Cohere\-Client\-Parsing\-Test, Matching\-Service\-Test, Experience\-Level\-Norms\-Test, Interview\-Service\-Test et Interview\-Service\-Manager\-Calendar\-Test en tests unitaires purs (services isolés à l’aide de doublons Mockito), ainsi que Candidate\-Controller\-Workflow\-Test, Candidate\-Status\-Anonymous\-Security\-Test, Interview\-Manager\-Calendar\-Security\-Test et Interview\-Meet\-Link\-Security\-Test en tests de contrôleur reposant sur @WebMvcTest et MockMvc, qui vérifient les routes anonymes et la sécurité d’accès au lien Google Meet d’un entretien. Ces tests couvrent en particulier la résolution des managers destinataires et son blocage lorsqu’aucun niveau ne propose, le refus de transmission sans désignation et la journalisation ROUTING\_MANUAL d’un choix hors de la proposition retenue, l’isolation stricte de la visibilité à la liste gelée, le calcul du score IA et ses seuils de décision, la neutralisation d’une compétence que le CV nie explicitement, l’orientation de tout score en zone grise vers un arbitrage humain, l’avancée du dossier à l’étape effectivement planifiée, le refus du créneau qui en chevauche un autre à l’agenda du même intervieweur, l’arbitrage RH d’un dossier rejeté par l’agent IA — confirmation motivée ou correction du score —, l’absence de double notification quand le RH confirme un refus déjà notifié par l’IA, ainsi que les garde-fous de transition décrits au chapitre 3.
+Au-delà des vérifications manuelles, la couche service et une partie de la couche controller sont couvertes par une suite de tests automatisés écrite avec JUnit 5 et Mockito \cite{ref16,ref24}, exécutée via Maven. Elle comprend 20 classes de test pour un total de 249 méthodes, toutes exécutées sans échec : Candidate\allowbreak Service\allowbreak Test, Job\allowbreak Offer\allowbreak Service\allowbreak Test, Manager\allowbreak Routing\allowbreak Service\allowbreak Test, Manager\allowbreak Scope\allowbreak Service\allowbreak Test, Candidate\allowbreak Manual\allowbreak Routing\allowbreak Test, Department\allowbreak Proposal\allowbreak Service\allowbreak Test, N8nServiceTest, N8n\allowbreak Service\allowbreak Outbox\allowbreak Key\allowbreak Test, Scoring\allowbreak Weight\allowbreak Profile\allowbreak Service\allowbreak Test, Ai\allowbreak Scoring\allowbreak Service\allowbreak Test, Skill\allowbreak Normalization\allowbreak Service\allowbreak Test, Cohere\allowbreak Client\allowbreak Parsing\allowbreak Test, Matching\allowbreak Service\allowbreak Test, Experience\allowbreak Level\allowbreak Norms\allowbreak Test, Interview\allowbreak Service\allowbreak Test et Interview\allowbreak Service\allowbreak Manager\allowbreak Calendar\allowbreak Test en tests unitaires purs (services isolés à l’aide de doublons Mockito), ainsi que Candidate\allowbreak Controller\allowbreak Workflow\allowbreak Test, Candidate\allowbreak Status\allowbreak Anonymous\allowbreak Security\allowbreak Test, Interview\allowbreak Manager\allowbreak Calendar\allowbreak Security\allowbreak Test et Interview\allowbreak Meet\allowbreak Link\allowbreak Security\allowbreak Test en tests de contrôleur reposant sur @WebMvcTest et MockMvc, qui vérifient les routes anonymes et la sécurité d’accès au lien Google Meet d’un entretien. Ces tests couvrent en particulier la résolution des managers destinataires et son blocage lorsqu’aucun niveau ne propose, le refus de transmission sans désignation et la journalisation ROUTING\_MANUAL d’un choix hors de la proposition retenue, l’isolation stricte de la visibilité à la liste gelée, le calcul du score IA et ses seuils de décision, la neutralisation d’une compétence que le CV nie explicitement, l’orientation de tout score en zone grise vers un arbitrage humain, l’avancée du dossier à l’étape effectivement planifiée, le refus du créneau qui en chevauche un autre à l’agenda du même intervieweur, l’arbitrage RH d’un dossier rejeté par l’agent IA — confirmation motivée ou correction du score —, l’absence de double notification quand le RH confirme un refus déjà notifié par l’IA, ainsi que les garde-fous de transition décrits au chapitre 3.
 
 L’extrait ci-dessous, tiré de Candidate\-Service\-Test, illustre l’un des deux tests ajoutés pour valider le correctif décrit en section~\ref{sec_4_5_4} : il vérifie qu’un manager n’obtient, via get\-Candidates\-By\-Status(), que les candidats de son propre périmètre.
 
@@ -411,7 +475,7 @@ Au-delà des tests unitaires par fonctionnalité, j’ai mené une vérification
 \label{sec_4_4_5}
 Les tests décrits ci-dessus vérifient que la plateforme fonctionne ; ils ne disent rien de la pertinence du score attribué par l’IA. J’ai donc constitué un jeu de référence — un Gold Set \cite{ref21} — de vingt curriculum vitæ synthétiques, rédigés pour ce projet à partir de profils réalistes mais fictifs : aucun CV réel d’un collaborateur de Sopra HR n’a été employé, ce qui écarte toute question de confidentialité dans la démarche d’évaluation.
 
-Les vingt profils se répartissent sur les trois familles de métiers visées par la plateforme, chacune rattachée à une offre cible : Développeur Backend Java/Spring (offre 115, sept profils), DevOps Engineer (offre 117, six profils) et Business Analyst (offre 122, sept profils). Chaque CV porte une vérité terrain binaire, PERTINENT ou NON\_PERTINENT, arrêtée sur des critères objectifs — compétences techniques indispensables et séniorité — et non d’après la sortie du modèle : onze profils sont pertinents, neuf sont volontairement hors cible (compétences d’un autre domaine, séniorité insuffisante, outillage sans rapport avec l’offre). Quatre cas (GOLD\_17 à GOLD\_20) ont été écrits pour cette réévaluation, dont deux construits pour se situer au voisinage immédiat du seuil de décision.
+Les vingt profils se répartissent sur les trois familles de métiers visées par la plateforme, chacune rattachée à une offre cible : Développeur Backend Java/Spring (offre 115, sept profils), DevOps Engineer (offre 117, six profils) et Business Analyst (offre 122, sept profils). Chaque CV porte une vérité terrain binaire, PERTINENT ou NON\_PERTINENT, arrêtée sur des critères objectifs — compétences techniques indispensables et séniorité — et non d’après la sortie du modèle : onze profils sont pertinents, neuf sont volontairement hors cible (compétences d’un autre domaine, séniorité insuffisante, outillage sans rapport avec l’offre). Quatre cas (GOLD\_17 à GOLD\_20) ont été écrits pour cette réévaluation, dont deux construits pour se situer au voisinage du seuil de décision ; au score, seul GOLD\_20 atteint effectivement ce voisinage (57/100), les trois autres se stabilisant entre 77 et 78/100.
 
 Le protocole s’appuie sur le point d’entrée POST \path{/api/matching/evaluate-gold-set}, qui reçoit un CV et l’identifiant de l’offre cible, rejoue la chaîne complète (extraction du texte, normalisation des compétences, appel à l’API de Cohere, pondération par profil de scoring) et renvoie le score avec son explication, sans créer de candidature. La décision automatique — le score atteint-il le seuil — est alors confrontée à la vérité terrain, ce qui donne la matrice de confusion du tableau~\ref{tab_4_2} pour trois seuils.
 
@@ -427,35 +491,35 @@ Le protocole s’appuie sur le point d’entrée POST \path{/api/matching/evalua
 \hline
 \textbf{Critère} & \textbf{Seuil = 50} & \textbf{Seuil = 60 (retenu)} & \textbf{Seuil = 70} \\
 \hline
-Vrais positifs (TP) & 11 & 11 & 10 \\
+Vrais positifs (TP) & 11 & 11 & 11 \\
 \hline
-Faux positifs (FP) & 1 & 1 & 1 \\
+Faux positifs (FP) & 6 & 1 & 1 \\
 \hline
-Vrais négatifs (TN) & 8 & 8 & 8 \\
+Vrais négatifs (TN) & 3 & 8 & 8 \\
 \hline
-Faux négatifs (FN) & 0 & 0 & 1 \\
+Faux négatifs (FN) & 0 & 0 & 0 \\
 \hline
-Précision & 91,7 \% & 91,7 \% & 90,9 \% \\
+Précision & 64,7 \% & 91,7 \% & 91,7 \% \\
 \hline
-Rappel & 100 \% & 100 \% & 90,9 \% \\
+Rappel & 100 \% & 100 \% & 100 \% \\
 \hline
-F1-score & 95,7 \% & 95,7 \% & 90,9 \% \\
+F1-score & 78,6 \% & 95,7 \% & 95,7 \% \\
 \hline
-Exactitude & 95 \% & 95 \% & 90 \% \\
+Exactitude & 70 \% & 95 \% & 95 \% \\
 \hline
 \end{tabular}
 \end{table}
-Avec le seuil retenu de 60/100, le système prend dix-neuf bonnes décisions sur vingt : aucun profil pertinent n’est écarté (rappel de 100 \%). Un profil volontairement hors cible est en revanche retenu à 71/100 — GOLD\_18, ingénieure DevOps dont l’outillage d’intégration continue recouvre une large part des compétences attendues par l’offre, alors que son dossier déclare aucune expérience des plateformes cloud managées —, d’où une précision de 91,7 \%. Abaisser le seuil à 50 ne change rien sur ce jeu, les deux seuils y sont donc indiscernables ; le relever à 70, outre ce même faux positif, fait apparaître un faux négatif — le profil GOLD\_14, développeuse Java dont le dossier est pourtant jugé pertinent et scoré 67/100 — et fait chuter le rappel à 90,9 \%.
+Les chiffres rapportés ici proviennent d’une réévaluation menée le 27 octobre 2026 sur l’instance de développement du backend : les vingt CV ont été soumis au point d’entrée de notation, et la source du score est COHERE pour les vingt dossiers, sans recours au mode dégradé. Avec le seuil retenu de 60/100, le système prend dix-neuf bonnes décisions sur vingt : aucun profil pertinent n’est écarté (rappel de 100 \%). Un profil volontairement hors cible est en revanche retenu à 77/100 — GOLD\_18, ingénieure DevOps dont l’outillage d’intégration continue recouvre une large part des compétences attendues par l’offre, alors que son dossier déclare aucune expérience des plateformes cloud managées —, d’où une précision de 91,7 \%. Abaisser la frontière à 50 la dégrade nettement : cinq dossiers hors cible supplémentaires la franchissent (GOLD\_04 et GOLD\_20 à 57/100, GOLD\_07 à 54, GOLD\_12 et GOLD\_13 à 52), la précision retombe à 64,7 \% et l’exactitude à 70 \%, pour un rappel qui ne progresse pas puisqu’il est déjà maximal. Relever le seuil à 70 ne change rien sur ce jeu : les classifications et les métriques restent identiques à celles du seuil de 60, le profil pertinent le plus faible atteignant 71/100.
 
-Le seuil de 60 est cohérent avec la distribution des scores obtenus, à une exception près : huit des neuf profils hors cible s’arrêtent à 47/100 ou moins, soit treize points au moins sous le seuil, tandis que le plus faible profil pertinent atteint 67/100, soit sept points au-dessus. Les deux familles sont donc nettement séparées de part et d’autre de la frontière, sauf GOLD\_18, dont l’outillage recouvre celui de l’offre visée.
+Le seuil de 60 est cohérent avec la distribution des scores obtenus, à une exception près : huit des neuf profils hors cible s’arrêtent à 57/100 ou moins — soit trois points au moins sous la frontière, et cinq d’entre eux à 52/100 ou moins — tandis que le plus faible profil pertinent atteint 71/100, soit onze points au-dessus du seuil et quatorze points au-dessus du meilleur hors-cible hors GOLD\_18. Les deux familles sont donc séparées de part et d’autre de la frontière, sauf GOLD\_18, dont l’outillage recouvre celui de l’offre visée : son score dépasse de six points celui du profil pertinent le plus faible.
 
-Ce qui précède établit le seuil de 60/100 comme paramètre opérationnel pour cette version de la plateforme, non comme un optimum démontré. Sur les vingt profils du Gold Set, 60 et 50 produisent exactement les mêmes classifications, faux positif compris : leur écart n’est donc pas observable sur ce jeu, et rien n’y établit la supériorité de 60 sur 50. Seule la remontée à 70 s’en distingue, en introduisant un faux négatif. Le faux positif de GOLD\_18, lui, se retrouve aux trois seuils : il ne relève pas du réglage de la frontière, mais de la proximité sémantique entre deux métiers voisins, que seul l’arbitrage du recruteur tranche. Le seuil retenu relève d’un calibrage préliminaire : une évaluation sur un corpus plus large et représentatif, complétée par le suivi des erreurs observées en conditions réelles, sera nécessaire pour le confirmer ou l’ajuster.
+Ce qui précède établit le seuil de 60/100 comme paramètre opérationnel pour cette version de la plateforme, non comme un optimum démontré. Sur les vingt profils du Gold Set, 60 et 50 ne produisent plus les mêmes classifications : à 50, cinq faux positifs s’ajoutent, ce qui distingue cette fois les deux réglages en faveur de 60. Remonter à 70 n’apporte en revanche rien sur ce jeu — mêmes décisions, mêmes métriques — et ne serait défendable qu’au prix d’une marge réduite sur GOLD\_14, dont le score de 71/100 ne dépasse ce seuil que d’un point. Le faux positif de GOLD\_18, lui, se retrouve aux trois seuils : il ne relève pas du réglage de la frontière, mais de la proximité sémantique entre deux métiers voisins, que seul l’arbitrage du recruteur tranche. Une limite pèse sur cette comparaison : les scores ne sont pas parfaitement reproductibles d’une exécution à l’autre. GOLD\_18 a été mesuré à 81/100 le 18 octobre 2026, à 71/100 lors d’une exécution intermédiaire, puis 77/100 le 27 octobre ; GOLD\_14 est passé de 67/100 à 71/100 sur la même période. Une dérive de quatre à dix points place donc certains dossiers à la limite d’un seuil et milite pour des décisions assises sur la zone d’incertitude plutôt que sur la seule comparaison au seuil. Le seuil retenu relève d’un calibrage préliminaire : une évaluation sur un corpus plus large, plusieurs exécutions par dossier et le suivi des erreurs observées en conditions réelles seront nécessaires pour le confirmer ou l’ajuster.
 
 Ces résultats demandent à être lus avec prudence : vingt cas construits pour l’évaluation ne constituent pas une mesure de performance en conditions réelles. Le Gold Set valide un mécanisme de décision et un calibrage de seuil ; il ne remplace pas le suivi, en production, des faux positifs et des faux négatifs effectivement constatés par les recruteurs sur les candidatures réelles.
 
 \subsection{Validation humaine du score et explicabilité}
 \label{sec_4_4_6}
-Un moteur de présélection n’est fiable que s’il sait dire quand il ne l’est pas. Le service de scoring positionne le drapeau needs\-Human\-Review et un motif lisible dans trois situations : texte extrait du CV trop court — moins de cinquante caractères, ce qui correspond à un scan, à une image ou à un fichier dégradé ; score en zone grise entre 55 et 65, c’est-à-dire de part et d’autre du seuil ; mode dégradé enfin, lorsque l’API de Cohere est indisponible ou renvoie une réponse inexploitable et que le score, calculé localement, est marqué avec la source SIMULATED. Le dossier signalé est présenté au recruteur comme demandant un arbitrage, au lieu d’être accepté ou rejeté automatiquement. Les deux mécanismes sont complémentaires et non contradictoires : un score de 62 franchit le seuil de décision et bascule la candidature en CV\_REVIEWED, tout en tombant dans la zone grise, ce qui allume également le drapeau d’arbitrage ; inversement, un score de 57 reste sous le seuil mais, signalé en zone grise, il est lui aussi orienté vers CV\_REVIEWED plutôt que vers AUTO\_REJECTED, pour être tranché par un recruteur. Ce second chemin est désormais le même que le score provienne du recalcul complet du dossier ou de la transmission d’un score calculé hors platforme : les deux entrées partagent la même règle de décision et la même bande d’incertitude, définie par deux constantes uniques dans le service de scoring. Reste à en mesurer l’effet réel : sur les vingt cas du Gold Set, aucun n’est tombé dans la bande 55-65, le score le plus proche du seuil s’arrêtant à 67/100. La zone grise est donc un filet de sécurité établi par test unitaire en mode simulé, non une étape effectivement rencontrée par le jeu de référence.
+Un moteur de présélection n’est fiable que s’il sait dire quand il ne l’est pas. Le service de scoring positionne le drapeau needs\-Human\-Review et un motif lisible dans trois situations : texte extrait du CV trop court — moins de cinquante caractères, ce qui correspond à un scan, à une image ou à un fichier dégradé ; score en zone grise entre 55 et 65, c’est-à-dire de part et d’autre du seuil ; mode dégradé enfin, lorsque l’API de Cohere est indisponible ou renvoie une réponse inexploitable et que le score, calculé localement, est marqué avec la source SIMULATED. Le dossier signalé est présenté au recruteur comme demandant un arbitrage, au lieu d’être accepté ou rejeté automatiquement. Les deux mécanismes sont complémentaires et non contradictoires : un score de 62 franchit le seuil de décision et bascule la candidature en CV\_REVIEWED, tout en tombant dans la zone grise, ce qui allume également le drapeau d’arbitrage ; inversement, un score de 57 reste sous le seuil mais, signalé en zone grise, il est lui aussi orienté vers CV\_REVIEWED plutôt que vers AUTO\_REJECTED, pour être tranché par un recruteur. Ce second chemin est désormais le même que le score provienne du recalcul complet du dossier ou de la transmission d’un score calculé hors platforme : les deux entrées partagent la même règle de décision et la même bande d’incertitude, définie par deux constantes uniques dans le service de scoring. Reste à en mesurer l’effet réel : la réévaluation du 27 octobre 2026 place deux dossiers dans cette bande, GOLD\_04 et GOLD\_20, tous deux scorés 57/100 et effectivement signalés avec le motif « score en zone grise incertaine : arbitrage humain recommandé ». Aucun profil pertinent n’atteint la bande, le plus faible d’entre eux s’établissant à 71/100. La zone grise est donc réellement rencontrée par le jeu de référence, mais seulement sur des profils que la vérité terrain destine de toute façon à un refus : elle y coûte du temps recruteur sans corriger une erreur de décision. Son effet propre sur un profil pertinent — la sauvegarde d’un dossier que le seuil aurait rejeté — demeure établi par test unitaire en mode simulé, non par le jeu de référence.
 
 L’explicabilité est produite par le service Skill\-Normalization\-Service, appelé avant le modèle de langage : il harmonise les alias (k8s devient Kubernetes, postgres devient PostgreSQL) et refuse les fusions abusives — Spring Boot n’est pas Spring Cloud, Angular n’est pas AngularJS, Java n’est pas JavaScript — puis restitue les compétences validées (matchedSkills) et manquantes (missingSkills) avec un taux de recouvrement technique qui ne peut pas descendre sous 30/100. La présence d’une compétence est en outre examinée segment par segment : une mention placée sous une négation — « aucune expérience des plateformes cloud managées » — n’est plus comptée comme acquise, ce qui évite que la liste présentée au recruteur crédite un candidat d’une compétence dont son propre CV déclare l’absence. Ces éléments alimentent les badges affichés dans le détail d’une candidature (figure~\ref{fig_4_8}) et la synthèse enregistrée dans aiSummary \cite{ref23}.
 
@@ -529,7 +593,10 @@ Le traitement des données des candidats appelle quelques rappels, sans prétend
 
 \section{Bilan des fonctionnalités réalisées}
 \label{sec_4_7}
+\begingroup
+\setlength{\emergencystretch}{4em}
 Le tableau suivant récapitule, par grand domaine fonctionnel, l’état d’avancement des développements à l’issue du projet.
+\par\endgroup
 
 % tableau 4.3
 \setcounter{table}{2}

@@ -277,6 +277,9 @@ export interface Candidate {
   routedManagerEmails?: string;
   routedAt?: Date;
   routingBasis?: 'OFFER_MANAGER' | 'DEPARTMENT' | 'JOB_FAMILY' | 'LEGACY_EMAIL' | 'UNRESOLVED';
+  /** État du dernier entretien non annulé : seul indicateur d'un rendez-vous déjà tenu. */
+  lastInterviewStatus?: 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'RESCHEDULED';
+  lastInterviewDate?: Date;
   jobOffers?: JobOffer[];
 }
 

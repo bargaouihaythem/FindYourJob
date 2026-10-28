@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -88,6 +89,10 @@ public class InterviewService {
             Interview.InterviewStatus.RESCHEDULED
     );
 
+    /** Lieux qui désignent un échange à distance, donc ayant besoin d'une salle virtuelle. */
+    private static final Pattern LIEU_A_DISTANCE = Pattern.compile(
+            "visio|distant|en ligne|remote|meet|teams|zoom", Pattern.CASE_INSENSITIVE);
+
     @Transactional
     public InterviewResponse scheduleInterview(InterviewRequest interviewRequest) {
         // Vérifier si le candidat existe
@@ -134,6 +139,13 @@ public class InterviewService {
         // avancée qu'elle refuse laisse le dossier où il est, sans jamais annuler l'entretien.
         Interview savedInterview = interviewRepository.save(interview);
 
+        // Un entretien à distance porte toujours une salle, dès sa création : ce lien est
+        // produit par la plateforme, sans dépendance à un jeton Google. L'agent n8n se
+        // contente de le remplacer par un lien Google Meet authentique quand l'API Calendar
+        // répond ; quand elle ne répond pas (OAuth expiré), candidat et interviewer ont déjà
+        // de quoi se rejoindre et l'e-mail d'invitation part avec le lien.
+        savedInterview = avecSalleParDefaut(savedInterview);
+
         candidateService.advanceForScheduledInterview(
                 candidate.getId(), candidateStatusForType(savedInterview.getType()),
                 "Entretien " + labelForType(savedInterview.getType()) + " planifié le "
@@ -152,6 +164,23 @@ public class InterviewService {
         n8nService.triggerAgent2InterviewScheduler(savedInterview);
 
         return new InterviewResponse(savedInterview);
+    }
+
+    /**
+     * Dote l'entretien d'une salle de visio gérée par la plateforme s'il se tient à distance
+     * et qu'aucun lien n'a été saisi. Retourne l'entité telle quelle pour un entretien sur
+     * site — un lien de visio y serait un faux signal.
+     */
+    private Interview avecSalleParDefaut(Interview interview) {
+        String lieu = interview.getLocation();
+        boolean aDistance = lieu != null && LIEU_A_DISTANCE.matcher(lieu).find();
+        boolean sansLien = interview.getMeetLink() == null || interview.getMeetLink().isBlank();
+        if (!aDistance || !sansLien) {
+            return interview;
+        }
+        interview.setMeetLink("https://meet.jit.si/Job4You-" + interview.getId()
+                + "-" + interview.getInterviewDate().toLocalDate());
+        return interviewRepository.save(interview);
     }
 
     /**
@@ -464,6 +493,11 @@ public class InterviewService {
     public InterviewResponse saveMeetLink(Long id, String meetLink) {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
+        // Un lien vide ou tronqué effacerait la salle par défaut déjà publiée : le callback
+        // de l'agent ne peut qu'améliorer le lien, jamais le retirer.
+        if (meetLink == null || !meetLink.startsWith("http")) {
+            return new InterviewResponse(interview);
+        }
         interview.setMeetLink(meetLink);
         Interview updatedInterview = interviewRepository.save(interview);
         return new InterviewResponse(updatedInterview);
