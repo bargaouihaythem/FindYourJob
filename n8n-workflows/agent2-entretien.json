@@ -1,5 +1,4 @@
 {
-  "id": "aDlMEwef9SLGf0Xd",
   "name": "Agent 2 — Planification entretien + Email participants",
   "nodes": [
     {
@@ -66,16 +65,19 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.candidateEmail }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.candidateEmail }}",
         "subject": "=✅ Votre profil a été retenu — {{ $json.jobTitle }}",
-        "html": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">Plateforme Intelligente de Recrutement</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Nous avons le plaisir de vous informer que votre profil pour l'opportunité <strong>{{ $json.jobTitle }}</strong> a été retenu avec succès par notre équipe de recrutement.\n      </p>\n      \n      <div style=\"background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;\">\n        <h3 style=\"margin: 0 0 8px; color: #1e40af; font-size: 16px;\">📋 Prochaines étapes</h3>\n        <p style=\"margin: 0; color: #475569; font-size: 14px; line-height: 1.5;\">\n          Votre candidature passe à l'étape suivante. Notre équipe RH prendra contact avec vous très prochainement pour convenir d'un premier entretien (téléphonique ou vidéo).\n        </p>\n      </div>\n\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        Aucune action n'est requise de votre part pour le moment. Vous recevrez une convocation officielle dès validation du créneau d'entretien.\n      </p>\n      \n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Tous droits réservés.<br>\n        Email généré automatiquement par l'Agent IA d'orchestration de recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">Plateforme Intelligente de Recrutement</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Nous avons le plaisir de vous informer que votre profil pour l'opportunité <strong>{{ $json.jobTitle }}</strong> a été retenu avec succès par notre équipe de recrutement.\n      </p>\n      \n      <div style=\"background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;\">\n        <h3 style=\"margin: 0 0 8px; color: #1e40af; font-size: 16px;\">📋 Prochaines étapes</h3>\n        <p style=\"margin: 0; color: #475569; font-size: 14px; line-height: 1.5;\">\n          Votre candidature passe à l'étape suivante. Notre équipe RH prendra contact avec vous très prochainement pour convenir d'un premier entretien (téléphonique ou vidéo).\n        </p>\n      </div>\n\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        Aucune action n'est requise de votre part pour le moment. Vous recevrez une convocation officielle dès validation du créneau d'entretien.\n      </p>\n      \n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Tous droits réservés.<br>\n        Email généré automatiquement par l'Agent IA d'orchestration de recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
         "options": {}
       },
       "id": "email-candidat-selection",
       "name": "Email — Candidat (profil retenu)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         960,
         192
@@ -86,11 +88,14 @@
           "id": "IfwIPrT1KMjf4UMR",
           "name": "SMTP account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json.body;\n\nconst interviewId     = data.interviewId;\nconst candidateFirst  = data.candidateFirstName || 'Candidat';\nconst candidateLast   = data.candidateLastName  || '';\nconst candidateEmail  = data.candidateEmail;\nconst jobTitle        = data.jobOfferTitle || 'le poste';\nconst interviewDate   = data.scheduledDate;\nconst durationMinutes = data.durationMinutes || 30;\n\n// Libellés alignés sur l'enum InterviewType côté backend.\nconst typeLabels = {\n  PHONE_SCREENING: '📞 Entretien téléphonique',\n  TECHNICAL:       '⚙️ Test technique',\n  HR:              '🧑‍💼 Entretien RH',\n  MANAGER:         '🏢 Entretien manager',\n  FINAL:           '🏁 Entretien final',\n  GROUP:           '👥 Entretien de groupe',\n};\nconst interviewType    = typeLabels[data.interviewType] || data.interviewType || 'Entretien';\nconst interviewerName  = data.interviewerName  || 'Notre équipe';\nconst interviewerEmail = data.interviewerEmail || null;\nconst notes            = data.notes || '';\n\nconst startIso = interviewDate ? new Date(interviewDate).toISOString() : null;\nconst endIso   = interviewDate ? new Date(new Date(interviewDate).getTime() + durationMinutes * 60000).toISOString() : null;\n\nconst dateFormatted = interviewDate\n  ? new Date(interviewDate).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })\n  : 'À confirmer';\n\nreturn [{ json: {\n  interviewId, candidateFirst, candidateLast, candidateEmail,\n  jobTitle, interviewType, interviewerName, interviewerEmail, interviewDate,\n  startIso, endIso, dateFormatted, notes,\n  scheduledAt: new Date().toISOString()\n} }];\n"
+        "jsCode": "const data = $input.first().json.body;\n\nconst interviewId     = data.interviewId;\nconst candidateFirst  = data.candidateFirstName || 'Candidat';\nconst candidateLast   = data.candidateLastName  || '';\nconst candidateEmail  = data.candidateEmail;\nconst jobTitle        = data.jobOfferTitle || 'le poste';\nconst interviewDate   = data.scheduledDate;\nconst durationMinutes = data.durationMinutes || 30;\n\n// Libellés alignés sur l'enum InterviewType côté backend.\nconst typeLabels = {\n  PHONE_SCREENING: '📞 Entretien téléphonique',\n  TECHNICAL:       '⚙️ Test technique',\n  HR:              '🧑‍💼 Entretien RH',\n  MANAGER:         '🏢 Entretien manager',\n  FINAL:           '🏁 Entretien final',\n  GROUP:           '👥 Entretien de groupe',\n};\nconst interviewType    = typeLabels[data.interviewType] || data.interviewType || 'Entretien';\nconst interviewerName  = data.interviewerName  || 'Notre équipe';\nconst interviewerEmail = data.interviewerEmail || null;\nconst notes            = data.notes || '';\nconst platformLink     = data.meetLink || null; // salle deja creee par la plateforme\n\nconst startIso = interviewDate ? new Date(interviewDate).toISOString() : null;\nconst endIso   = interviewDate ? new Date(new Date(interviewDate).getTime() + durationMinutes * 60000).toISOString() : null;\n\nconst dateFormatted = interviewDate\n  ? new Date(interviewDate).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' })\n  : 'À confirmer';\n\nreturn [{ json: {\n  interviewId, candidateFirst, candidateLast, candidateEmail,\n  jobTitle, interviewType, interviewerName, interviewerEmail, interviewDate,\n  startIso, endIso, dateFormatted, notes, meetLink: platformLink,\n  scheduledAt: new Date().toISOString()\n} }];\n"
       },
       "id": "prepare-interview",
       "name": "Préparer données entretien",
@@ -137,7 +142,8 @@
         }
       },
       "continueOnFail": true,
-      "notes": "Crée l'événement (avec lien Meet auto-généré) pour tout entretien planifié. Nécessite une credential OAuth2 'Google Calendar account' configurée dans n8n (Settings > Credentials)."
+      "notes": "Crée l'événement (avec lien Meet auto-généré) pour tout entretien planifié. Nécessite une credential OAuth2 'Google Calendar account' configurée dans n8n (Settings > Credentials).",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -152,16 +158,10 @@
             }
           ]
         },
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "X-N8N-API-Key",
-              "value": "={{ $env.JOB4YOU_N8N_API_KEY || '' }}"
-            }
-          ]
-        },
-        "options": {}
+        "sendHeaders": false,
+        "options": {},
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth"
       },
       "id": "save-meet-link",
       "name": "Sauvegarder lien Meet (callback backend)",
@@ -170,20 +170,29 @@
       "position": [
         1616,
         304
-      ]
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "8HohqODy6bYiUq4F",
+          "name": "JOB4YOU callback (X-N8N-API-Key)"
+        }
+      }
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $('Préparer données entretien').item.json.candidateEmail }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Préparer données entretien').item.json.candidateEmail }}",
         "subject": "=📅 Convocation à votre entretien — {{ $('Préparer données entretien').item.json.jobTitle }}",
-        "html": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #2563eb); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">Convocation à votre entretien</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Votre entretien pour le poste de <strong>{{ $('Préparer données entretien').item.json.jobTitle }}</strong> a été planifié. Voici les détails de votre rendez-vous :\n      </p>\n\n      <div style=\"background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 18px 20px; margin: 20px 0;\">\n        <table style=\"width: 100%; border-collapse: collapse; font-size: 14px; color: #1e293b;\">\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold; width: 35%;\">Format :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewType }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Date & Heure :</td>\n            <td style=\"padding: 6px 0; color: #1e40af; font-weight: bold;\">{{ $('Préparer données entretien').item.json.dateFormatted }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Interlocuteur :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewerName }}</td>\n          </tr>\n        </table>\n      </div>\n      <div style=\"margin: 22px 0; text-align: center;\">\n        {{ $json.meetLink ? '<a href=\"' + $json.meetLink + '\" style=\"display:inline-block;background:#1e40af;color:#ffffff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold;\">Rejoindre l\\'entretien</a>' : '<p style=\"margin:0;color:#64748b;font-size:14px;\">Le lien de connexion vous sera confirmé juste avant l\\'entretien.</p>' }}\n      </div>\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        Merci de vous connecter quelques minutes avant l'heure indiquée. En cas d'imprévu, veuillez nous en avertir dès que possible.\n      </p>\n\n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Plateforme Intelligente de Recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #2563eb); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">Convocation à votre entretien</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Votre entretien pour le poste de <strong>{{ $('Préparer données entretien').item.json.jobTitle }}</strong> a été planifié. Voici les détails de votre rendez-vous :\n      </p>\n\n      <div style=\"background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 18px 20px; margin: 20px 0;\">\n        <table style=\"width: 100%; border-collapse: collapse; font-size: 14px; color: #1e293b;\">\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold; width: 35%;\">Format :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewType }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Date & Heure :</td>\n            <td style=\"padding: 6px 0; color: #1e40af; font-weight: bold;\">{{ $('Préparer données entretien').item.json.dateFormatted }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Interlocuteur :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewerName }}</td>\n          </tr>\n        </table>\n      </div>\n      <div style=\"margin: 22px 0; text-align: center;\">\n        {{ ($json.meetLink || $('Préparer données entretien').item.json.meetLink) ? '<a href=\"' + ($json.meetLink || $('Préparer données entretien').item.json.meetLink) + '\" style=\"display:inline-block;background:#1e40af;color:#ffffff;padding:12px 26px;border-radius:8px;text-decoration:none;font-weight:bold;\">Rejoindre l\\'entretien</a>' : '<p style=\"margin:0;color:#64748b;font-size:14px;\">Le lien de connexion vous sera confirmé juste avant l\\'entretien.</p>' }}\n      </div>\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        Merci de vous connecter quelques minutes avant l'heure indiquée. En cas d'imprévu, veuillez nous en avertir dès que possible.\n      </p>\n\n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Plateforme Intelligente de Recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
         "options": {}
       },
       "id": "email-candidat",
       "name": "Email — Candidat (convocation)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         1232,
         304
@@ -194,20 +203,26 @@
           "id": "IfwIPrT1KMjf4UMR",
           "name": "SMTP account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $('Préparer données entretien').item.json.interviewerEmail || 'bargaouihaythem1@gmail.com' }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $('Préparer données entretien').item.json.interviewerEmail || 'bargaouihaythem1@gmail.com' }}",
         "subject": "=📅 Entretien planifié — {{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }} / {{ $('Préparer données entretien').item.json.jobTitle }}",
-        "html": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #0f172a, #334155); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 22px;\">JOB4YOU — Espace Recruteur</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 14px;\">Confirmation d'entretien planifié</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 18px; margin-top: 0;\">Bonjour {{ $('Préparer données entretien').item.json.interviewerName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Un nouvel entretien a été ajouté à votre planning pour le candidat <strong>{{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }}</strong>.\n      </p>\n\n      <div style=\"background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 20px 0;\">\n        <table style=\"width: 100%; border-collapse: collapse; font-size: 14px; color: #1e293b;\">\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold; width: 35%;\">Poste :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.jobTitle }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Candidat :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }} ({{ $('Préparer données entretien').item.json.candidateEmail }})</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Date & Heure :</td>\n            <td style=\"padding: 6px 0; color: #0f172a; font-weight: bold;\">{{ $('Préparer données entretien').item.json.dateFormatted }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Type :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewType }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Lien de connexion :</td>\n            <td style=\"padding: 6px 0;\">{{ $json.meetLink ? '<a href=\"' + $json.meetLink + '\">' + $json.meetLink + '</a>' : 'à confirmer' }}</td>\n          </tr>\n        </table>\n      </div>\n\n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Notification interne recruteur.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #0f172a, #334155); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 22px;\">JOB4YOU — Espace Recruteur</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 14px;\">Confirmation d'entretien planifié</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 18px; margin-top: 0;\">Bonjour {{ $('Préparer données entretien').item.json.interviewerName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Un nouvel entretien a été ajouté à votre planning pour le candidat <strong>{{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }}</strong>.\n      </p>\n\n      <div style=\"background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px 20px; margin: 20px 0;\">\n        <table style=\"width: 100%; border-collapse: collapse; font-size: 14px; color: #1e293b;\">\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold; width: 35%;\">Poste :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.jobTitle }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Candidat :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.candidateFirst }} {{ $('Préparer données entretien').item.json.candidateLast }} ({{ $('Préparer données entretien').item.json.candidateEmail }})</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Date & Heure :</td>\n            <td style=\"padding: 6px 0; color: #0f172a; font-weight: bold;\">{{ $('Préparer données entretien').item.json.dateFormatted }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Type :</td>\n            <td style=\"padding: 6px 0;\">{{ $('Préparer données entretien').item.json.interviewType }}</td>\n          </tr>\n          <tr>\n            <td style=\"padding: 6px 0; font-weight: bold;\">Lien de connexion :</td>\n            <td style=\"padding: 6px 0;\">{{ ($json.meetLink || $('Préparer données entretien').item.json.meetLink) ? '<a href=\"' + ($json.meetLink || $('Préparer données entretien').item.json.meetLink) + '\">' + ($json.meetLink || $('Préparer données entretien').item.json.meetLink) + '</a>' : 'à confirmer' }}</td>\n          </tr>\n        </table>\n      </div>\n\n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Notification interne recruteur.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
         "options": {}
       },
       "id": "email-rh",
       "name": "Email — Intervieweur (confirmation planification)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         1232,
         624
@@ -218,7 +233,10 @@
           "id": "IfwIPrT1KMjf4UMR",
           "name": "SMTP account"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -385,8 +403,10 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "tags": []
+  "pinData": {},
+  "versionId": "b312ac4e-8242-4882-aefb-32551fa04799"
 }

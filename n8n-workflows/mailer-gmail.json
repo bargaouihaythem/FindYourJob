@@ -1,0 +1,59 @@
+{
+  "name": "Mailer — API Gmail (delégation Spring Boot)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mailer-gmail",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "name": "Webhook — notification",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -500,
+        0
+      ],
+      "webhookId": "8853c9df-05fb-49c6-901c-3c072d5bd3c9"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.body.to }}",
+        "subject": "={{ $json.body.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.body.html || $json.body.text }}",
+        "options": {}
+      },
+      "name": "Email — API Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook — notification": {
+      "main": [
+        [
+          {
+            "node": "Email — API Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "versionId": "771c7b0f-917c-4c78-8025-296425610b13"
+}

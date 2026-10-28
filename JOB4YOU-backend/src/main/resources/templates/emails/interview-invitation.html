@@ -112,6 +112,11 @@
                 <span th:text="${interviewerName}">Nom de l'interviewer</span>
             </div>
         </div>
+
+        <div th:if="${meetLink != null and !#strings.isEmpty(meetLink)}" class="meet-link" style="margin: 24px 0; text-align: center;">
+            <a th:href="${meetLink}" style="display: inline-block; background: #1e40af; color: #ffffff; padding: 12px 26px; border-radius: 8px; text-decoration: none; font-weight: bold;">Rejoindre l'entretien</a>
+            <p style="margin: 10px 0 0; color: #64748b; font-size: 13px; word-break: break-all;" th:text="${meetLink}">Lien de connexion</p>
+        </div>
         
         <div class="important-info">
             <h4>⚠️ Informations importantes :</h4>

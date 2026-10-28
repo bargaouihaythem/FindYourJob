@@ -68,6 +68,7 @@ public class NotificationService {
         variables.put("interviewDate", interview.getInterviewDate());
         variables.put("duration", interview.getDurationMinutes());
         variables.put("location", interview.getLocation());
+        variables.put("meetLink", interview.getMeetLink());
         variables.put("interviewerName", interview.getInterviewer().getUsername());
         variables.put("notes", interview.getNotes());
         

@@ -1,5 +1,4 @@
 {
-  "id": "vuIc7XWE1gcN4hBG",
   "name": "Agent 3 — RH vers Manager (dossier validé)",
   "nodes": [
     {
@@ -34,19 +33,22 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.managerEmail }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.managerEmail }}",
         "subject": "=📋 Nouveau dossier à examiner — {{ $json.prenom }} {{ $json.nom }} / {{ $json.offreTitre }}",
-        "html": "={{ $json.emailManagerHtml }}",
+        "emailType": "html",
+        "message": "={{ $json.emailManagerHtml }}",
         "options": {}
       },
       "id": "email-manager",
       "name": "Email — Manager (dossier validé)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
-        1184,
-        464
+        1312,
+        416
       ],
       "webhookId": "207d69ff-6b41-48d3-9cab-b9fabec5484b",
       "credentials": {
@@ -55,7 +57,10 @@
           "name": "SMTP account"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -91,16 +96,19 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.candidatEmail }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.candidatEmail }}",
         "subject": "=❌ Résultat de votre candidature — {{ $json.offreTitre }}",
-        "html": "={{ $json.emailCandidatHtml }}",
+        "emailType": "html",
+        "message": "={{ $json.emailCandidatHtml }}",
         "options": {}
       },
       "id": "email-candidat-rejet",
       "name": "Email — Candidat (refus IA)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         912,
         160
@@ -111,7 +119,10 @@
           "name": "SMTP account"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -147,16 +158,19 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.candidatEmail }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.candidatEmail }}",
         "subject": "=🎉 Félicitations — Votre candidature est retenue — {{ $json.offreTitre }}",
-        "html": "={{ $json.emailCandidatAccepteHtml }}",
+        "emailType": "html",
+        "message": "={{ $json.emailCandidatAccepteHtml }}",
         "options": {}
       },
       "id": "email-candidat-accepte",
       "name": "Email — Candidat (félicitations)",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         1184,
         160
@@ -168,7 +182,10 @@
           "name": "SMTP account"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -208,8 +225,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        1056,
-        400
+        1040,
+        512
       ]
     }
   ],
@@ -285,12 +302,10 @@
       ]
     }
   },
+  "active": true,
   "settings": {
     "executionOrder": "v1"
   },
-  "tags": [
-    "job4you",
-    "agent3",
-    "rh-manager"
-  ]
+  "pinData": {},
+  "versionId": "abe49217-5e52-4640-9f4d-658b28f563c4"
 }

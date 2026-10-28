@@ -21,7 +21,7 @@ n8n est une couche d’orchestration optionnelle. Le backend Spring Boot reste r
                                       │ Callbacks   │
                                       └──────┬──────┘
                                              ▼
-                                      SMTP / services externes
+                                      API Gmail (443) / services externes
 ```
 
 ## Responsabilités par composant
@@ -124,7 +124,7 @@ Rejeté ou Validé ?
 
 Le backend détermine le périmètre du manager (`ManagerRoutingService`), valide la transition
 d'état et sélectionne les destinataires ; n8n n'orchestre que l'envoi des e-mails. Les trois
-envois d'e-mails de ce workflow sont en `continueOnFail` : un échec SMTP journalise l'incident
+envois d'e-mails de ce workflow sont en `continueOnFail` : un échec d'envoi (API Gmail) journalise l'incident
 dans la outbox et ne modifie pas le statut de la candidature.
 
 ## Déclencheurs backend

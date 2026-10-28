@@ -32,7 +32,7 @@ Importer `n8n-workflows/agent1-cv-parser.json`. Le webhook est :
 POST http://localhost:5678/webhook/agent1-cv-parser
 ```
 
-Le workflow appelle le backend pour le recalcul du score. L’extraction du CV et l’appel Cohere sont réalisés côté Spring Boot. n8n envoie ensuite l’email de confirmation si les identifiants SMTP du workflow sont configurés par variables locales.
+Le workflow appelle le backend pour le recalcul du score. L’extraction du CV et l’appel Cohere sont réalisés côté Spring Boot. n8n envoie ensuite l’email de confirmation via l’API Gmail (credential `Gmail account`, type `gmailOAuth2`, HTTPS 443) : les ports SMTP 25/465/587 ne sont plus utilisés, y compris sur un réseau qui les filtre.
 
 ### Agent 2 — Planification des entretiens
 

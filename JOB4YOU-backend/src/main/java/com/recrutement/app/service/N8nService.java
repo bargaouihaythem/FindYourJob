@@ -142,6 +142,9 @@ public class N8nService {
         payload.put("interviewType", interview.getType().toString());
         payload.put("jobOfferTitle", candidate.getJobOffer() != null ? candidate.getJobOffer().getTitle() : "Entretien général");
         payload.put("notes", interview.getNotes());
+        // La salle déja créée par la plateforme (Jitsi) : l'agent n8n ne fait que la remplacer
+        // par un lien Meet quand Calendar répond, sinon la convocation doit garder ce lien.
+        payload.put("meetLink", interview.getMeetLink());
 
         enqueueOrSend(interview.getId() + ":ENTRETIEN_PLANIFIE", agent2Webhook,
                 "Agent 2 (Planification entretien)", payload);

@@ -1,5 +1,4 @@
 {
-  "id": "abHc50O9XFYNXIa8",
   "name": "Agent 1 — CV Parser + Score IA + Email Candidat",
   "nodes": [
     {
@@ -21,16 +20,19 @@
     },
     {
       "parameters": {
-        "fromEmail": "bargaouihaythem1@gmail.com",
-        "toEmail": "={{ $json.email }}",
+        "authentication": "oAuth2",
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.email }}",
         "subject": "=✅ Candidature reçue — {{ $json.jobTitle }}",
-        "html": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Plateforme de recrutement IA</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n    <p>Votre candidature pour le poste de <strong>{{ $json.jobTitle }}</strong> a bien été reçue.</p>\n    \n{{ $json.scoreBlock }}\n\n    <p>Notre équipe RH examinera votre dossier dans les plus brefs délais. Vous serez contacté(e) par email pour les prochaines étapes.</p>\n    \n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par la plateforme JOB4YOU.<br>\n      Traitement réalisé le {{ $json.processedAt }}.\n    </p>\n  </div>\n</body></html>",
+        "emailType": "html",
+        "message": "=<html><body style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;\">\n  <div style=\"background: #1e40af; color: white; padding: 24px; border-radius: 8px 8px 0 0;\">\n    <h1 style=\"margin:0\">JOB4YOU</h1>\n    <p style=\"margin:4px 0 0\">Plateforme de recrutement IA</p>\n  </div>\n  <div style=\"background: #f8fafc; padding: 24px; border-radius: 0 0 8px 8px;\">\n    <h2 style=\"color: #1e40af;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n    <p>Votre candidature pour le poste de <strong>{{ $json.jobTitle }}</strong> a bien été reçue.</p>\n    \n{{ $json.scoreBlock }}\n\n    <p>Notre équipe RH examinera votre dossier dans les plus brefs délais. Vous serez contacté(e) par email pour les prochaines étapes.</p>\n    \n    <p style=\"color: #6b7280; font-size: 12px; margin-top: 24px;\">\n      Cet email a été envoyé automatiquement par la plateforme JOB4YOU.<br>\n      Traitement réalisé le {{ $json.processedAt }}.\n    </p>\n  </div>\n</body></html>",
         "options": {}
       },
       "id": "email-candidat",
       "name": "Email — Confirmation candidat",
-      "type": "n8n-nodes-base.emailSend",
-      "typeVersion": 2.1,
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
       "position": [
         864,
         64
@@ -42,7 +44,10 @@
           "name": "SMTP account"
         }
       },
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -82,7 +87,10 @@
         368,
         304
       ],
-      "continueOnFail": true
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000
     },
     {
       "parameters": {
@@ -138,14 +146,10 @@
       ]
     }
   },
+  "active": true,
   "settings": {
-    "executionOrder": "v1",
-    "callerPolicy": "workflowsFromSameOwner",
-    "availableInMCP": false
+    "executionOrder": "v1"
   },
-  "tags": [
-    "job4you",
-    "agent1",
-    "cv-parser"
-  ]
+  "pinData": {},
+  "versionId": "65b5ef53-70c0-4d94-b9a1-900268afad95"
 }
