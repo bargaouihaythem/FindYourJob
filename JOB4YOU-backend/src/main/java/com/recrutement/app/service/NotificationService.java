@@ -268,9 +268,11 @@ public class NotificationService {
 
         String subject = (favourable ? "Avis favorable à valider — " : "Refus proposé à valider — ")
                 + candidateName + " / " + (jobOffer != null ? jobOffer.getTitle() : "candidature");
-        for (String hrEmail : hrEmails) {
-            emailService.sendTemplateEmail(hrEmail, subject, "emails/manager-decision-hr", variables);
-        }
+        // Un seul message pour tous les comptes RH : la boucle par destinataire envoyait
+        // une copie indépendante à chacun, et le journal de boîte ne distinguait plus
+        // l'avis d'un dossier de la liste des RH.
+        emailService.sendTemplateEmail(String.join(", ", hrEmails), subject,
+                "emails/manager-decision-hr", variables);
     }
 
     /**

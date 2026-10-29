@@ -993,19 +993,32 @@
                     <div class="row g-2">
                       <div class="col-md-3">
                         <label class="form-label small mb-1">Score corrigé (0-100) *</label>
-                        <input type="number" class="form-control form-control-sm" min="0" max="100" formControlName="manualScore">
+                        <input type="number" class="form-control form-control-sm" min="0" max="100" formControlName="manualScore"
+                               [ngClass]="{'is-invalid': scoreOverrideForm.controls['manualScore'].invalid && scoreOverrideForm.controls['manualScore'].touched}">
+                        <div class="invalid-feedback small">
+                          Indiquez un score entre 0 et 100.
+                        </div>
                       </div>
                       <div class="col-md-9">
                         <label class="form-label small mb-1">Justification *</label>
                         <input type="text" class="form-control form-control-sm" formControlName="reason"
+                               [ngClass]="{'is-invalid': scoreOverrideForm.controls['reason'].invalid && scoreOverrideForm.controls['reason'].touched}"
                                placeholder="Ex: CV sous-évalué par l'IA, expérience pertinente non détectée">
+                        <div class="invalid-feedback small">
+                          La justification est obligatoire (5 caractères minimum) : elle est écrite
+                          dans le journal d'audit et lue par le manager.
+                        </div>
                       </div>
                     </div>
                     <div class="mt-2">
-                      <button type="submit" class="btn btn-sm btn-success" [disabled]="scoreOverrideForm.invalid || savingScoreOverride">
+                      <button type="submit" class="btn btn-sm btn-success" [disabled]="savingScoreOverride">
                         <span *ngIf="savingScoreOverride" class="spinner-border spinner-border-sm me-1"></span>
                         Valider la correction
                       </button>
+                      <span class="small text-muted ms-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Le score de l'IA reste affiché : la correction s'y ajoute, elle ne l'écrase pas.
+                      </span>
                     </div>
                   </form>
                 </div>
@@ -1059,39 +1072,8 @@
           </div>
         </div>
 
-        <!-- Historique des candidatures -->
-        <div class="row mt-4" *ngIf="selectedCandidate.jobOffers && selectedCandidate.jobOffers.length > 0">
-          <div class="col-12">
-            <h6 class="text-primary mb-3">
-              <i class="fas fa-history me-2"></i>
-              Offres d'emploi
-            </h6>
-            <div class="table-responsive">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>Poste</th>
-                    <th>Entreprise</th>
-                    <th>Date de candidature</th>
-                    <th>Statut</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let jobOffer of selectedCandidate.jobOffers">
-                    <td>{{ jobOffer.title }}</td>
-                    <td>{{ jobOffer.company }}</td>
-                    <td>{{ formatDate(selectedCandidate.applicationDate) }}</td>
-                    <td>
-                      <span class="badge bg-info">
-                        {{ getStatusLabel(selectedCandidate.status) }}
-                      </span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <!-- Pas d'historique des offres ici : CandidateResponse ne sérialise pas la liste
+             `jobOffers` du modèle front, ce tableau ne s'est donc jamais rendu. -->
       </div>
       <div class="modal-footer" *ngIf="selectedCandidate">
         <!-- MANAGER : l'avis se saisit ici, sinon le bouton « Donner mon avis » du
