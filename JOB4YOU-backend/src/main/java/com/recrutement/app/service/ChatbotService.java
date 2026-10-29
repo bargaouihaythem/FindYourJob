@@ -108,7 +108,7 @@ public class ChatbotService {
                 .orElseThrow(() -> new AccessDeniedException("Authentification requise"));
         accessControlService.assertOwnEmailOrPrivileged(user.getEmail());
 
-        String firstName = candidateRepository.findByEmail(user.getEmail()).stream()
+        String firstName = candidateRepository.findByEmailOrderByApplicationDateDesc(user.getEmail()).stream()
                 .map(Candidate::getFirstName)
                 .filter(name -> name != null && !name.isBlank())
                 .findFirst()
@@ -126,7 +126,7 @@ public class ChatbotService {
         // L'email est dérivé du JWT côté serveur, jamais du corps de la requête.
         accessControlService.assertOwnEmailOrPrivileged(user.getEmail());
 
-        List<Candidate> applications = candidateRepository.findByEmail(user.getEmail());
+        List<Candidate> applications = candidateRepository.findByEmailOrderByApplicationDateDesc(user.getEmail());
         String context = contextBuilder.buildContext(applications);
         String systemPrompt = SYSTEM_PROMPT_TEMPLATE.formatted(GENERAL_KNOWLEDGE, context);
 

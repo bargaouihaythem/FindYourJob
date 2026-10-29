@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuditLogService } from '../../../services/audit-log.service';
 import { AuditLog } from '../../../models/interfaces';
+import { TableSort } from '../../../services/table-sort';
 
 @Component({
   selector: 'app-audit-log',
@@ -13,6 +14,9 @@ import { AuditLog } from '../../../models/interfaces';
 })
 export class AuditLogComponent implements OnInit {
   logs: AuditLog[] = [];
+  // Journal d'audit : la dernière écriture doit être la première page, sans dépendre de l'ordre
+  // renvoyé par le serveur.
+  readonly tri = new TableSort('performedAt', 'desc');
   loading = true;
   error: string | null = null;
 
@@ -74,7 +78,14 @@ export class AuditLogComponent implements OnInit {
 
   get paginatedLogs(): AuditLog[] {
     const start = (this.currentPage - 1) * this.pageSize;
-    return this.logs.slice(start, start + this.pageSize);
+    return this.tri.apply(this.logs).slice(start, start + this.pageSize);
+  }
+
+  /** Changer de tri ou de sens ramène sur la première page : sinon on consulte une page 3
+   *  d'une liste vient d'être réordonnée. */
+  trier(field: string): void {
+    this.tri.toggle(field);
+    this.currentPage = 1;
   }
 
   changePage(page: number): void {

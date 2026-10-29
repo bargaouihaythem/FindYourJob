@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.net.SocketTimeoutException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -118,7 +119,15 @@ public class N8nOutboxService {
             int attempts = event.getAttempts() + 1;
             event.setAttempts(attempts);
             event.setLastError(safeError(e));
-            if (attempts >= MAX_ATTEMPTS) {
+            if (delivreeMalgreTimeout(e)) {
+                // Le webhook a été atteint : n8n exécute le workflow (Calendar + Gmail) et
+                // l'envoi a pu partir alors même que la réponse nous échappe. Réessayer
+                // produirait un doublon dans la boîte du candidat.
+                event.setStatus(N8nOutboxEvent.Status.FAILED);
+                log.warn("[N8N outbox] réponse lue après délai d'attente pour {} : la remise est "
+                        + "incertaine, aucune relance automatique (relance manuelle possible)",
+                        event.getAgentName());
+            } else if (attempts >= MAX_ATTEMPTS) {
                 event.setStatus(N8nOutboxEvent.Status.FAILED);
                 log.error("[N8N outbox] événement abandonné après {} tentatives : {}", attempts, event.getAgentName());
             } else {
@@ -130,6 +139,20 @@ public class N8nOutboxService {
             }
             repository.save(event);
         }
+    }
+
+    /**
+     * Un délai d'attente en LECTURE signifie que la requête est partie et que n8n a eu le
+     * temps de la recevoir ; un délai en CONNEXION (ou un refus) signifie qu'aucun
+     * destinataire n'a été touché. Seuls ces derniers rendent une relance sans risque.
+     */
+    private boolean delivreeMalgreTimeout(Exception e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t instanceof SocketTimeoutException) {
+                return !(t.getMessage() != null && t.getMessage().toLowerCase().contains("connect"));
+            }
+        }
+        return false;
     }
 
     private String safeError(Exception e) {

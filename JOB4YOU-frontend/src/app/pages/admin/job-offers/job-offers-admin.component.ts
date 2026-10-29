@@ -1,4 +1,5 @@
 import { Component, OnInit, HostListener } from '@angular/core';
+import { defaultOrderFor } from '../../../services/table-sort';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -186,7 +187,7 @@ export class JobOffersAdminComponent implements OnInit {
       this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
       this.sortBy = field;
-      this.sortOrder = 'asc';
+      this.sortOrder = defaultOrderFor(field);
     }
     this.applyFilters();
   }

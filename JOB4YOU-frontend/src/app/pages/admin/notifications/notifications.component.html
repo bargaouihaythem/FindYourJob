@@ -78,8 +78,16 @@
     {{ error }}
   </div>
 
+  <!-- Etat quand l'API ne sert pas d'historique : les envois restent visibles dans Gmail
+       et dans la console n8n, qui sont les deux sources réelles de la chaîne. -->
+  <div *ngIf="historiqueNonServi && !error" class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i>
+    Aucun historique d'envois n'est stocké côté API : le suivi des e-mails se fait dans la boîte
+    Gmail de test et dans les exécutions n8n (les envois partent via l'Agent 2 / l'outbox).
+  </div>
+
   <!-- Email History Table -->
-  <div *ngIf="!loading && !error" class="card">
+  <div *ngIf="!loading && !error && !historiqueNonServi" class="card">
     <div class="card-header">
       <h5 class="card-title mb-0">
         <i class="fas fa-history me-2"></i>
@@ -91,11 +99,15 @@
         <table class="table table-hover mb-0">
           <thead class="table-light">
             <tr>
-              <th>Destinataire</th>
+              <th class="sortable" (click)="tri.toggle('to')" title="Trier par destinataire">
+                <i [class]="tri.icon('to')" class="me-1"></i>Destinataire
+              </th>
               <th>Objet</th>
               <th>Type</th>
               <th>Statut</th>
-              <th>Date d'envoi</th>
+              <th class="sortable" (click)="tri.toggle('sentAt')" title="Trier par date d'envoi, le plus récent d'abord">
+                <i [class]="tri.icon('sentAt')" class="me-1"></i>Date d'envoi
+              </th>
               <th class="text-center">Actions</th>
             </tr>
           </thead>

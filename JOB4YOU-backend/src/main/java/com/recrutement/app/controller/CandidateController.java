@@ -201,7 +201,7 @@ public class CandidateController {
     }
 
     @PatchMapping("/{id}/ai-score")
-    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN')")
     @Operation(summary = "Sauvegarder le score IA calculé par l'Agent 1 n8n")
     public ResponseEntity<CandidateResponse> saveAiScore(
             @PathVariable Long id,
@@ -213,8 +213,8 @@ public class CandidateController {
     }
 
     @PostMapping("/{id}/ai-score/recompute")
-    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
-    @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via Cohere, avec fallback simulé si indisponible. Appelé par n8n Agent 1 à chaque nouvelle candidature, ou manuellement par le RH/Manager.")
+    @PreAuthorize("hasRole('N8N') or hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Recalculer le score IA par critères", description = "Recalcule le score (technique/communication/séniorité) via Cohere, avec fallback simulé si indisponible. Appelé par n8n Agent 1 à chaque nouvelle candidature, ou manuellement par le RH/Admin : le manager juge le dossier à partir du score déjà calculé, il n'écrit pas le score.")
     public ResponseEntity<CandidateResponse> recomputeAiScore(@PathVariable Long id) {
         CandidateResponse response = candidateService.recomputeAiScore(id);
         return ResponseEntity.ok(response);

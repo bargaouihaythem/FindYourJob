@@ -61,7 +61,8 @@ public interface InterviewRepository extends JpaRepository<Interview, Long> {
            "LEFT JOIN FETCH i.candidate c " +
            "LEFT JOIN FETCH c.jobOffer jo " +
            "LEFT JOIN FETCH i.interviewer " +
-           "WHERE c.email = :email")
+           "WHERE c.email = :email " +
+           "ORDER BY i.interviewDate ASC")
     List<Interview> findByCandidateEmail(@Param("email") String email);
 }
 

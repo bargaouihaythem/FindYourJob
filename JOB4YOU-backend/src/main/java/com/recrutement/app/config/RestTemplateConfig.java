@@ -25,7 +25,12 @@ import java.time.Duration;
  *
  * Timeouts configurables via application.properties :
  *   n8n.http.connect-timeout-ms  (défaut : 3000 ms)
- *   n8n.http.read-timeout-ms     (défaut : 10000 ms)
+ *   n8n.http.read-timeout-ms     (défaut : 60000 ms)
+ *
+ * Le délai de lecture doit couvrir l'exécution complète du webhook : les agents n8n
+ * répondent en fin de workflow (Google Calendar + un à trois envois Gmail), soit
+ * régulièrement plus de 10 s. Un délai trop court faisait repartir une requête déjà
+ * aboutie et doublonnait l'e-mail du candidat.
  */
 @Configuration
 public class RestTemplateConfig {
@@ -33,7 +38,7 @@ public class RestTemplateConfig {
     @Value("${n8n.http.connect-timeout-ms:3000}")
     private int connectTimeoutMs;
 
-    @Value("${n8n.http.read-timeout-ms:10000}")
+    @Value("${n8n.http.read-timeout-ms:60000}")
     private int readTimeoutMs;
 
     /**

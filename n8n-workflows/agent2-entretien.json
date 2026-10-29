@@ -52,7 +52,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json.body;\n\nconst candidateId    = data.candidateId;\nconst firstName      = data.candidateFirstName || 'Candidat';\nconst lastName       = data.candidateLastName  || '';\nconst candidateEmail = data.candidateEmail || '';\nconst jobTitle       = data.jobOfferTitle || 'le poste';\n\nreturn [{ json: {\n  candidateId, firstName, lastName, candidateEmail, jobTitle,\n  selectedAt: new Date().toISOString()\n} }];"
+        "jsCode": "const data = $input.first().json.body;\n\nconst candidateId    = data.candidateId;\nconst firstName      = data.candidateFirstName || 'Candidat';\nconst lastName       = data.candidateLastName  || '';\nconst candidateEmail = data.candidateEmail || '';\nconst jobTitle       = data.jobOfferTitle || 'le poste';\n// Le backend distingue une vraie selection d'un dossier garde pour arbitrage humain\n// (mode de secours IA, zone grise, CV illisible) : l'e-mail doit suivre ce statut.\nconst arbitrageHumain = data.arbitrageHumain === true;\n\nreturn [{ json: {\n  candidateId, firstName, lastName, candidateEmail, jobTitle, arbitrageHumain,\n  selectedAt: new Date().toISOString()\n} }];"
       },
       "id": "prepare-selection",
       "name": "Préparer données sélection",
@@ -69,9 +69,9 @@
         "resource": "message",
         "operation": "send",
         "sendTo": "={{ $json.candidateEmail }}",
-        "subject": "=✅ Votre profil a été retenu — {{ $json.jobTitle }}",
+        "subject": "={{ $json.arbitrageHumain ? \"Votre dossier est à l'étude — \" + $json.jobTitle : \"✅ Votre profil a été retenu — \" + $json.jobTitle }}",
         "emailType": "html",
-        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">Plateforme Intelligente de Recrutement</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        Nous avons le plaisir de vous informer que votre profil pour l'opportunité <strong>{{ $json.jobTitle }}</strong> a été retenu avec succès par notre équipe de recrutement.\n      </p>\n      \n      <div style=\"background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;\">\n        <h3 style=\"margin: 0 0 8px; color: #1e40af; font-size: 16px;\">📋 Prochaines étapes</h3>\n        <p style=\"margin: 0; color: #475569; font-size: 14px; line-height: 1.5;\">\n          Votre candidature passe à l'étape suivante. Notre équipe RH prendra contact avec vous très prochainement pour convenir d'un premier entretien (téléphonique ou vidéo).\n        </p>\n      </div>\n\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        Aucune action n'est requise de votre part pour le moment. Vous recevrez une convocation officielle dès validation du créneau d'entretien.\n      </p>\n      \n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Tous droits réservés.<br>\n        Email généré automatiquement par l'Agent IA d'orchestration de recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
+        "message": "=<!DOCTYPE html>\n<html lang=\"fr\">\n<head><meta charset=\"UTF-8\"></head>\n<body style=\"font-family: Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06);\">\n    <div style=\"background: linear-gradient(135deg, #1e40af, #3b82f6); color: white; padding: 28px 24px; text-align: center;\">\n      <h1 style=\"margin: 0; font-size: 24px;\">JOB4YOU</h1>\n      <p style=\"margin: 6px 0 0; opacity: 0.9; font-size: 15px;\">{{ $json.arbitrageHumain ? \"Plateforme de recrutement — suivi de candidature\" : \"Plateforme Intelligente de Recrutement\" }}</p>\n    </div>\n    <div style=\"padding: 28px 24px;\">\n      <h2 style=\"color: #1e293b; font-size: 19px; margin-top: 0;\">Bonjour {{ $json.firstName }} {{ $json.lastName }},</h2>\n      <p style=\"color: #334155; line-height: 1.6; font-size: 15px;\">\n        {{ $json.arbitrageHumain\n          ? `Votre candidature pour le poste de <strong>` + $json.jobTitle + `</strong> a été analysée et est en cours d'examen par notre équipe RH. Le score obtenu nécessite une vérification humaine avant toute décision.`\n          : `Nous avons le plaisir de vous informer que votre profil pour l'opportunité <strong>` + $json.jobTitle + `</strong> a été retenu avec succès par notre équipe de recrutement.` }}\n      </p>\n      \n      <div style=\"background: #f8fafc; border-left: 4px solid #3b82f6; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0;\">\n        <h3 style=\"margin: 0 0 8px; color: #1e40af; font-size: 16px;\">{{ $json.arbitrageHumain ? \"📋 État de votre candidature\" : \"📋 Prochaines étapes\" }}</h3>\n        <p style=\"margin: 0; color: #475569; font-size: 14px; line-height: 1.5;\">\n          {{ $json.arbitrageHumain\n            ? `Un membre de notre équipe RH examine votre dossier et reviendra vers vous pour vous confirmer la suite du processus.`\n            : `Votre candidature passe à l'étape suivante. Notre équipe RH prendra contact avec vous très prochainement pour convenir d'un premier entretien (téléphonique ou vidéo).` }}\n        </p>\n      </div>\n\n      <p style=\"color: #475569; font-size: 14px; line-height: 1.5;\">\n        {{ $json.arbitrageHumain\n          ? `Aucune action n'est requise de votre part. Vous recevrez un e-mail dès que notre équipe RH aura tranché.`\n          : `Aucune action n'est requise de votre part pour le moment. Vous recevrez une convocation officielle dès validation du créneau d'entretien.` }}\n      </p>\n      \n      <div style=\"margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; color: #94a3b8; font-size: 12px;\">\n        © 2026 JOB4YOU — Tous droits réservés.<br>\n        Email généré automatiquement par l'Agent IA d'orchestration de recrutement.\n      </div>\n    </div>\n  </div>\n</body>\n</html>",
         "options": {}
       },
       "id": "email-candidat-selection",
@@ -84,9 +84,9 @@
       ],
       "webhookId": "738e194d-59a5-4cb9-a31c-f2912d334dfc",
       "credentials": {
-        "smtp": {
-          "id": "IfwIPrT1KMjf4UMR",
-          "name": "SMTP account"
+        "gmailOAuth2": {
+          "id": "yFetNDBVgGl7N3b7",
+          "name": "Gmail account"
         }
       },
       "retryOnFail": true,
@@ -199,9 +199,9 @@
       ],
       "webhookId": "f3720ee5-5263-4eaf-a199-077ebfd52b7f",
       "credentials": {
-        "smtp": {
-          "id": "IfwIPrT1KMjf4UMR",
-          "name": "SMTP account"
+        "gmailOAuth2": {
+          "id": "yFetNDBVgGl7N3b7",
+          "name": "Gmail account"
         }
       },
       "retryOnFail": true,
@@ -229,9 +229,9 @@
       ],
       "webhookId": "8e65b739-e6e6-44bf-bc3c-e1d2e72d83d5",
       "credentials": {
-        "smtp": {
-          "id": "IfwIPrT1KMjf4UMR",
-          "name": "SMTP account"
+        "gmailOAuth2": {
+          "id": "yFetNDBVgGl7N3b7",
+          "name": "Gmail account"
         }
       },
       "retryOnFail": true,

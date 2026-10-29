@@ -56,7 +56,8 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
            countQuery = "SELECT count(c) FROM Candidate c")
     List<Candidate> findAllWithCV(Pageable pageable);
 
-    List<Candidate> findByEmail(String email);
+    /** La liste « mes candidatures » d'un candidat se lit de la demande la plus récente à la plus ancienne. */
+    List<Candidate> findByEmailOrderByApplicationDateDesc(String email);
 
     /**
      * Retourne les candidats dont le statut fait partie de la liste.

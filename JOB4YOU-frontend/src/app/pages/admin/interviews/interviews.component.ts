@@ -1,4 +1,5 @@
 import { environment } from "../../../../environments/environment";
+import { defaultOrderFor } from '../../../services/table-sort';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -442,7 +443,7 @@ export class InterviewsComponent implements OnInit {
       this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
       this.sortBy = field;
-      this.sortOrder = 'asc';
+      this.sortOrder = defaultOrderFor(field);
     }
     this.applyFilters();
   }

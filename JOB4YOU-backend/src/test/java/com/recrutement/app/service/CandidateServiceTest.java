@@ -221,6 +221,20 @@ class CandidateServiceTest {
     @DisplayName("updateCandidateStatus()")
     class UpdateCandidateStatusTests {
 
+        // withdrawApplication() exige un acteur authentifié (propriétaire ou RH/Admin) :
+        // les tests de retrait s'authentifient donc en RH plutôt que de rester anonymes.
+        private void authenticateAsHrForWithdrawal() {
+            User hr = new User();
+            hr.setId(300L);
+            hr.setUsername("rh_withdraw");
+            hr.setEmail("rh@company.com");
+            hr.setRoles(Set.of(new Role(Role.ERole.ROLE_HR)));
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken("rh_withdraw", "password",
+                            List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_HR"))));
+            when(userRepository.findByUsername("rh_withdraw")).thenReturn(Optional.of(hr));
+        }
+
         @Test
         @DisplayName("CV_REVIEWED déclenche l'email candidat (Agent 2) mais PAS encore le manager (Agent 3)")
         void shouldTriggerAgent2WhenCvReviewed() {
@@ -233,8 +247,22 @@ class CandidateServiceTest {
             verify(candidateRepository).save(argThat(c -> c.getStatus() == CandidateStatus.CV_REVIEWED));
             // Le candidat est informé (Agent 2), mais le manager n'est PAS encore notifié :
             // sa notification est déclenchée au passage en TECHNICAL_TEST.
-            verify(n8nService).triggerAgent2CvSelected(eq(10L), anyString(), anyString(), anyString(), anyString(), any());
+            verify(n8nService).triggerAgent2CvSelected(eq(10L), anyString(), anyString(), anyString(), anyString(), any(), eq(false));
             verify(n8nService, never()).triggerAgent3HrValidation(any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("CV_REVIEWED avec arbitrage humain requis : l'email candidat n'annonce pas une sélection")
+        void shouldFlagArbitrageWhenHumanReviewRequired() {
+            Candidate candidate = makeCandidate(11L, CandidateStatus.APPLIED);
+            candidate.setNeedsHumanReview(true);
+            candidate.setHumanReviewReason("Mode de secours dégradé : score calculé localement.");
+            when(candidateRepository.findById(11L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(11L, CandidateStatus.CV_REVIEWED);
+
+            verify(n8nService).triggerAgent2CvSelected(eq(11L), anyString(), anyString(), anyString(), anyString(), any(), eq(true));
         }
 
         @Test
@@ -332,13 +360,14 @@ class CandidateServiceTest {
         }
 
         @Test
-        @DisplayName("autorise la correction manuelle du score : AUTO_REJECTED → CV_REVIEWED")
+        @DisplayName("autorise la correction manuelle du score : AUTO_REJECTED → CV_REVIEWED motive")
         void shouldAllowOverrideUnreject() {
             Candidate candidate = makeCandidate(14L, CandidateStatus.AUTO_REJECTED);
             when(candidateRepository.findById(14L)).thenReturn(Optional.of(candidate));
             when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-            assertThatCode(() -> candidateService.updateCandidateStatus(14L, CandidateStatus.CV_REVIEWED))
+            assertThatCode(() -> candidateService.updateCandidateStatus(14L, CandidateStatus.CV_REVIEWED,
+                    "Score IA revu a la hausse par le RH"))
                     .doesNotThrowAnyException();
         }
 
@@ -366,6 +395,79 @@ class CandidateServiceTest {
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("motif est obligatoire");
             verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("refuser de rouvrir un dossier rejeté par l'IA sans justification")
+        void refusesUnjustifiedReopening() {
+            Candidate candidate = makeCandidate(19L, CandidateStatus.AUTO_REJECTED);
+            when(candidateRepository.findById(19L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.updateCandidateStatus(19L, CandidateStatus.CV_REVIEWED))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("justification");
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("rouvrir un refus proposé par le manager quand le RH motive son arbitrage")
+        void allowsMotivatedReopeningAfterManagerRefusal() {
+            Candidate candidate = makeCandidate(20L, CandidateStatus.MANAGER_REJECTED);
+            when(candidateRepository.findById(20L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.updateCandidateStatus(20L, CandidateStatus.CV_REVIEWED,
+                    "Refus examine par le RH : erreur d'aiguillage, dossier réinjecté");
+
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.CV_REVIEWED);
+            assertThat(candidate.getStatusReason()).contains("dossier réinjecté");
+        }
+
+        @Test
+        @DisplayName("le recalcul qui remonte au-dessus du seuil rouvre le dossier avec son motif automatique")
+        void scoreReopeningCarriesItsOwnReason() {
+            Candidate candidate = makeCandidate(23L, CandidateStatus.AUTO_REJECTED);
+            candidate.setAiScore(40);
+            when(candidateRepository.findById(23L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.saveAiScore(23L, 85, "résumé", "GOOD_MATCH");
+
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.CV_REVIEWED);
+            assertThat(candidate.getStatusReason()).contains("Réintégration dans le pipeline").contains("85/100");
+        }
+
+        @Test
+        @DisplayName("ne plus retirer une candidature déjà close par une décision")
+        void refusesWithdrawalAfterDecision() {
+            authenticateAsHrForWithdrawal();
+            for (CandidateStatus status : List.of(CandidateStatus.ACCEPTED,
+                    CandidateStatus.MANAGER_REJECTED, CandidateStatus.INTERVIEW_SCHEDULED,
+                    CandidateStatus.REJECTED, CandidateStatus.HIRED)) {
+                Long id = 400L + status.ordinal();
+                Candidate candidate = makeCandidate(id, status);
+                when(candidateRepository.findById(id)).thenReturn(Optional.of(candidate));
+
+                final CandidateStatus etat = status;
+                assertThatThrownBy(() -> candidateService.withdrawApplication(id, "plus intéressé"))
+                        .as("retrait fermé en " + etat)
+                        .isInstanceOf(IllegalArgumentException.class)
+                        .hasMessageContaining("ne peut plus être retirée");
+            }
+            verify(candidateRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("un dossier encore instruit reste retirable")
+        void allowsWithdrawalWhileInProgress() {
+            authenticateAsHrForWithdrawal();
+            Candidate candidate = makeCandidate(26L, CandidateStatus.INTERVIEW);
+            when(candidateRepository.findById(26L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.withdrawApplication(26L, "J'ai accepté une autre offre");
+
+            assertThat(candidate.getStatus()).isEqualTo(CandidateStatus.WITHDRAWN);
         }
 
         @Test
@@ -1107,6 +1209,54 @@ class CandidateServiceTest {
                     79L, CandidateStatus.REJECTED, null, "   "))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("motif");
+        }
+
+        @Test
+        @DisplayName("le RH qui a rendu lui-même l'avis doit justifier sa contre-signature")
+        void selfCountersignatureRequiresReason() {
+            Candidate candidate = candidateOwnedByManager(83L, CandidateStatus.ACCEPTED);
+            candidate.setStatusChangedBy("rh_user");
+            givenHr();
+            when(candidateRepository.findById(83L)).thenReturn(Optional.of(candidate));
+
+            assertThatThrownBy(() -> candidateService.hrFinalValidation(
+                    83L, CandidateStatus.HIRED, LocalDateTime.now().plusDays(7), null))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("contre-signature");
+
+            verify(candidateRepository, never()).save(any());
+            verify(notificationService, never()).sendHiringConvocation(any());
+        }
+
+        @Test
+        @DisplayName("auto-contreseing motive : la double casquette reste lisible dans l'audit")
+        void motivatedSelfCountersignationIsAudited() {
+            Candidate candidate = candidateOwnedByManager(84L, CandidateStatus.ACCEPTED);
+            candidate.setStatusChangedBy("rh_user");
+            LocalDateTime presentation = LocalDateTime.now().plusDays(12).withNano(0);
+            givenHr();
+            when(candidateRepository.findById(84L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            candidateService.hrFinalValidation(84L, CandidateStatus.HIRED, presentation,
+                    "Avis rendu après l'entretien technique, validé en l'état");
+
+            verify(auditLogService).log(eq("CANDIDATE"), eq(84L), eq("FINAL_VALIDATION"),
+                    eq(CandidateStatus.ACCEPTED), contains("contre-signature par l'auteur même de l'avis"));
+        }
+
+        @Test
+        @DisplayName("contre-seing croisé : un avis d'un autre compte n'exige aucune justification supplémentaire")
+        void countersignatureOfAnotherAuthorNeedsNoExtraReason() {
+            Candidate candidate = candidateOwnedByManager(85L, CandidateStatus.ACCEPTED);
+            candidate.setStatusChangedBy("manager_cs");
+            LocalDateTime presentation = LocalDateTime.now().plusDays(9).withNano(0);
+            givenHr();
+            when(candidateRepository.findById(85L)).thenReturn(Optional.of(candidate));
+            when(candidateRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            assertThatCode(() -> candidateService.hrFinalValidation(85L, CandidateStatus.HIRED, presentation, null))
+                    .doesNotThrowAnyException();
         }
 
         @Test

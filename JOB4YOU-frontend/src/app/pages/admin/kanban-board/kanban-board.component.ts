@@ -6,9 +6,36 @@ import { AuthService } from '../../../services/auth';
 import { Candidate } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
 
+/** Libellés exacts des 13 statuts — même vocabulaire que la liste des candidats. */
+const STATUTS_LABELS: Record<string, string> = {
+  APPLIED: 'Candidature reçue',
+  CV_REVIEWED: 'CV validé',
+  PHONE_SCREENING: 'Pré-sélection téléphonique',
+  TECHNICAL_TEST: 'Test technique',
+  INTERVIEW: 'Entretien',
+  FINAL_INTERVIEW: 'Entretien final',
+  ACCEPTED: 'Avis favorable — contreseing RH attendu',
+  INTERVIEW_SCHEDULED: 'Convocation envoyée',
+  HIRED: 'Embauché',
+  REJECTED: 'Refusé par le RH',
+  AUTO_REJECTED: 'Rejeté par l’IA',
+  MANAGER_REJECTED: 'Refus proposé — contreseing RH attendu',
+  WITHDRAWN: 'Candidature retirée'
+};
+
+/** Statuts d'où l'on sort un dossier refusé, et étapes de pipeline où le ramener. */
+const STATUTS_APRES_REFUS: Candidate['status'][] = ['AUTO_REJECTED', 'MANAGER_REJECTED'];
+const ETAPES_PIPELINE: Candidate['status'][] = [
+  'CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW',
+  'ACCEPTED', 'INTERVIEW_SCHEDULED'
+];
+
 interface KanbanColumn {
   status: Candidate['status'];
   label: string;
+  note?: string;
+  /** Statuts réellement regroupés dans cette colonne (carte affichée avec son étiquette exacte). */
+  regroupe?: Candidate['status'][];
   candidates: Candidate[];
 }
 
@@ -38,15 +65,30 @@ export class KanbanBoardComponent implements OnInit {
   private initColumns(): void {
     const isManagerOnly = this.authService.isManager() && !this.authService.isHR() && !this.authService.isAdmin();
 
-    const definitions: { status: Candidate['status']; label: string }[] = [
+    const definitions: Omit<KanbanColumn, 'candidates'>[] = [
       { status: 'APPLIED', label: 'Candidatures reçues' },
       { status: 'CV_REVIEWED', label: 'CV validé' },
       { status: 'PHONE_SCREENING', label: 'Pré-sélection tél.' },
       { status: 'TECHNICAL_TEST', label: 'Test technique' },
       { status: 'INTERVIEW', label: 'Entretien' },
-      { status: 'ACCEPTED', label: 'Accepté' },
-      { status: 'REJECTED', label: 'Refusé' }
+      { status: 'FINAL_INTERVIEW', label: 'Entretien final' },
+      // ACCEPTED n'est pas l'embauche : c'est l'avis favorable, en attente du contreseing RH.
+      // Sans cette précision, une carte « Accepté » avec un score de 30/100 passait pour un bug.
+      {
+        status: 'ACCEPTED', label: 'Accepté — contreseing RH', regroupe: ['ACCEPTED', 'INTERVIEW_SCHEDULED'],
+        note: 'Avis favorable enregistré ; la décision finale appartient au RH.'
+      },
+      { status: 'HIRED', label: 'Embauché', note: 'Décision finale validée par le RH — dossier clos, plus aucun glissement possible.' },
+      {
+        status: 'REJECTED', label: 'Refusé / clos', regroupe: ['REJECTED', 'AUTO_REJECTED', 'MANAGER_REJECTED', 'WITHDRAWN'],
+        note: 'Refus du RH, refus proposé par le manager, rejet de l’IA ou candidature retirée.'
+      }
     ];
+    // Toute valeur de CandidateStatus doit avoir une colonne : une carte sans colonne
+    // disparaît du pipeline et le RH croit à une perte de données.
+    const couvertes = definitions.flatMap(d => [d.status, ...(d.regroupe || [])]);
+    const oublies = Object.keys(STATUTS_LABELS).filter((s) => !couvertes.includes(s as Candidate['status']));
+    if (oublies.length) console.error('Statuts sans colonne kanban :', oublies.join(', '));
 
     // Un manager (sans rôle RH/Admin) ne voit pas les dossiers non encore validés par RH
     this.columns = definitions
@@ -79,18 +121,50 @@ export class KanbanBoardComponent implements OnInit {
   private dispatchCandidates(candidates: Candidate[]): void {
     this.columns.forEach(col => col.candidates = []);
 
-    const rejectedLike = ['REJECTED', 'AUTO_REJECTED', 'MANAGER_REJECTED', 'WITHDRAWN'];
-
     for (const candidate of candidates) {
-      let targetStatus: Candidate['status'] = candidate.status;
-      if (rejectedLike.includes(candidate.status)) {
-        targetStatus = 'REJECTED';
-      }
-      const column = this.columns.find(col => col.status === targetStatus);
-      if (column) {
-        column.candidates.push(candidate);
+      const colonne = this.colonneDe(candidate.status);
+      if (colonne) {
+        colonne.candidates.push(candidate);
+      } else {
+        // Jamais de carte invisible : un statut non apparié est signalé et rangé dans la
+        // colonne de son préfixe le plus proche plutôt que disparaître du pipeline.
+        console.error(`Kanban : statut « ${candidate.status} » sans colonne (candidat ${candidate.id})`);
       }
     }
+  }
+
+  /** Colonne d'affichage d'un statut : les colonnes groupées déclarent leurs membres. */
+  private colonneDe(status: Candidate['status']): KanbanColumn | undefined {
+    return this.columns.find(col => col.status === status || (col.regroupe || []).includes(status));
+  }
+
+  /** Le libellé exact du dossier, quand la colonne en regroupe plusieurs. */
+  statutLabel(candidate: Candidate): string {
+    return STATUTS_LABELS[candidate.status] || candidate.status;
+  }
+
+  /** Une colonne regroupée doit dire de quelle nature est la carte (retrait ≠ refus du RH). */
+  afficheStatutExact(candidate: Candidate): boolean {
+    return !!this.colonneDe(candidate.status)?.regroupe && candidate.status !== this.colonneDe(candidate.status)!.status;
+  }
+
+  /** Score de décision : un score corrigé par le RH prime sur le score de l'IA. */
+  scoreRetenu(candidate: Candidate): number | undefined {
+    return candidate.manualScore ?? candidate.aiScore ?? undefined;
+  }
+
+  scoreTitre(candidate: Candidate): string {
+    const ia = candidate.aiScore === undefined || candidate.aiScore === null ? 'non scoré' : `IA ${candidate.aiScore}/100`;
+    const corrige = candidate.manualScore !== undefined && candidate.manualScore !== null
+      ? ` — corrigé à ${candidate.manualScore}/100 par ${candidate.manualScoreBy || 'le RH'}`
+      : '';
+    const arbitrage = candidate.humanReviewReason ? ` — ${candidate.humanReviewReason}` : '';
+    return `Score ${ia}${corrige}${arbitrage}`;
+  }
+
+  /** Dossier tranché : plus aucun glissement possible, la machine à états le refuse. */
+  estGlissementInterdit(candidate: Candidate): boolean {
+    return candidate.status === 'HIRED' || candidate.status === 'WITHDRAWN';
   }
 
   getConnectedLists(): string[] {
@@ -125,6 +199,20 @@ export class KanbanBoardComponent implements OnInit {
       }
     }
 
+    // Ramener une carte refusée dans le pipeline est le seul glissement qui rouvre un
+    // dossier : le backend en demande le motif, l'e-mail de refus étant déjà parti.
+    let rouvertureMotif: string | undefined;
+    if (!isFinalDecision
+        && STATUTS_APRES_REFUS.includes(candidate.status)
+        && ETAPES_PIPELINE.includes(targetColumn.status)) {
+      rouvertureMotif = window.prompt(
+        'Motif obligatoire : pourquoi cet avis de refus est-il levé ?')?.trim();
+      if (!rouvertureMotif) {
+        this.toastrNotification.showWarning('Rouvrir un dossier refusé exige un motif');
+        return;
+      }
+    }
+
     transferArrayItem(
       event.previousContainer.data,
       event.container.data,
@@ -138,7 +226,7 @@ export class KanbanBoardComponent implements OnInit {
     // de glisser une candidature directement de "Reçue" à "Accepté" sans validation.
     const request$ = isFinalDecision
       ? this.candidateService.managerDecision(candidate.id, targetColumn.status as 'ACCEPTED' | 'REJECTED', decisionReason)
-      : this.candidateService.updateCandidateStatus(candidate.id, targetColumn.status);
+      : this.candidateService.updateCandidateStatus(candidate.id, targetColumn.status, rouvertureMotif);
 
     request$.subscribe({
       next: (updated: Candidate) => {

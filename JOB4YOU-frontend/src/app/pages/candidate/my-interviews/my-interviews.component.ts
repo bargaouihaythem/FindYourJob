@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { InterviewService } from '../../../services/interview.service';
 import { CandidateService } from '../../../services/candidate.service';
 import { AuthService } from '../../../services/auth';
+import { TableSort } from '../../../services/table-sort';
 import { Interview, Candidate } from '../../../models/interfaces';
 
 @Component({
@@ -16,6 +17,9 @@ import { Interview, Candidate } from '../../../models/interfaces';
 })
 export class MyInterviewsComponent implements OnInit {
   interviews: Interview[] = [];
+  // Un agenda d'entretiens se lit du plus proche au plus lointain (même convention que la page
+  // admin) ; la flèche de la colonne Date inverted l'ordre pour retrouver les plus anciens.
+  readonly tri = new TableSort('interviewDate', 'asc');
   loading = false;
   error: string | null = null;
   currentUser: any = null;

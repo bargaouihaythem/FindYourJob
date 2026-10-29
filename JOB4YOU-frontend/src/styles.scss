@@ -584,3 +584,19 @@ body {
   animation: logoFloat 4s ease-in-out infinite;
 }
 
+
+/* En-tête de colonne triable : même affordance que la page Candidats, pour tous les tableaux. */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+
+  i {
+    opacity: 0.65;
+    font-size: 0.8rem;
+  }
+
+  &:hover i {
+    opacity: 1;
+  }
+}

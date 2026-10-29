@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -152,7 +153,7 @@ class InterviewServiceTest {
 
         interviewService.scheduleInterview(request(13L, Interview.InterviewType.TECHNICAL));
 
-        verify(interviewRepository).save(any(Interview.class));
+        verifyInterviewSaved();
         verify(notificationService).sendInterviewInvitation(any(Interview.class));
     }
 
@@ -234,7 +235,7 @@ class InterviewServiceTest {
 
         interviewService.scheduleInterview(request(7L, Interview.InterviewType.TECHNICAL));
 
-        verify(interviewRepository).save(any(Interview.class));
+        verifyInterviewSaved();
     }
 
     @Test
@@ -376,6 +377,15 @@ class InterviewServiceTest {
         return r;
     }
 
+    /**
+     * Planifier écrit l'entretien une fois, puis une seconde fois quand l'entretien à distance
+     * reçoit sa salle produite par la plateforme (l'identifiant doit exister pour forger le lien).
+     * Ces tests vérifient que la planification a bien eu lieu, pas le nombre d'écritures.
+     */
+    private void verifyInterviewSaved() {
+        verify(interviewRepository, atLeastOnce()).save(any(Interview.class));
+    }
+
     private void stubSchedulePath(Candidate.CandidateStatus dossierStatus) {
         Candidate cand = candidate(31L, dossierStatus);
         User interviewer = new User();
@@ -416,7 +426,7 @@ class InterviewServiceTest {
 
         interviewService.scheduleInterview(requestAt(5 * 60, 60)); // 14:00
 
-        verify(interviewRepository).save(any(Interview.class));
+        verifyInterviewSaved();
     }
 
     @Test
@@ -429,7 +439,7 @@ class InterviewServiceTest {
 
         interviewService.scheduleInterview(requestAt(60, 60)); // 10:00 pile après
 
-        verify(interviewRepository).save(any(Interview.class));
+        verifyInterviewSaved();
     }
 
     @Test
@@ -442,7 +452,7 @@ class InterviewServiceTest {
 
         interviewService.scheduleInterview(requestAt(0, 60));
 
-        verify(interviewRepository).save(any(Interview.class));
+        verifyInterviewSaved();
     }
 
     @Test

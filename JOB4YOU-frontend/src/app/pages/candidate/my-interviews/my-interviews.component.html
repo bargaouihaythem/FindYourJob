@@ -42,8 +42,13 @@
                     <thead class="table-light">
                       <tr>
                         <th>Offre d'emploi</th>
-                        <th>Date & Heure</th>
-                        <th>Type</th>
+                        <th class="sortable" (click)="tri.toggle('interviewDate')"
+                            title="Trier par date (le plus proche d'abord)">
+                          <i [class]="tri.icon('interviewDate')" class="me-1"></i>Date &amp; Heure
+                        </th>
+                        <th class="sortable" (click)="tri.toggle('type')" title="Trier par type">
+                          <i [class]="tri.icon('type')" class="me-1"></i>Type
+                        </th>
                         <th>Lieu</th>
                         <th>Interviewer</th>
                         <th>Statut</th>
@@ -51,7 +56,7 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <tr *ngFor="let interview of interviews">
+                      <tr *ngFor="let interview of tri.apply(interviews)">
                         <td>
                           <div>
                             <h6 class="mb-1">{{ interview.jobOfferTitle || 'N/A' }}</h6>

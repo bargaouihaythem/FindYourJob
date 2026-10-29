@@ -668,6 +668,14 @@ public class CandidateService {
         if (effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED && effectiveReason.isBlank()) {
             effectiveReason = "Rejet automatique : score IA inférieur au seuil";
         }
+        // Rouvrir un dossier refusé annule l'e-mail de refus déjà parti : c'est un arbitrage,
+        // pas un simple déplacement de carte. Sans motif, le RH ne peut pas expliquer au
+        // candidat pourquoi le refus a été levé — et un glissement kanban involontaire
+        // suffisait à remettre le dossier en pipeline.
+        if (isReopening(previousStatus, effectiveStatus) && effectiveReason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Rouvrir un dossier après un refus exige une justification : précisez le motif de l'arbitrage.");
+        }
 
         // Le RH vient de statuer humainement sur une décision de l'IA : la revue
         // demandée par la zone grise ou le mode dégradé est soldée par son acte.
@@ -720,17 +728,24 @@ public class CandidateService {
         // (Agent 2). La notification du MANAGER est déclenchée plus tard, au passage en
         // "Test technique" (après le pré-filtrage téléphonique RH), afin que le manager ne
         // soit sollicité que pour les candidats ayant franchi cette première étape.
-        if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED) {
+        // Un dossier déjà au statut visé ne rejoue pas la notification : sans ce garde-fou,
+        // un simple « PATCH statut » répété ou un recalcul IA tardif réarmait l'Agent 2 et
+        // le candidat recevait deux fois le même e-mail dans la même minute.
+        if (effectiveStatus == Candidate.CandidateStatus.CV_REVIEWED
+                && previousStatus != effectiveStatus) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             // Simple référence pour l'e-mail du candidat : le manager n'est PAS
             // notifié ici. On n'invente aucune adresse de repli.
             ManagerRoutingService.RoutedManager reference =
                     managerRoutingService.resolve(updatedCandidate.getJobOffer()).primary();
+            // CV_REVIEWED peut être atteint sans sélection IA (mode de secours, zone grise,
+            // CV illisible) : le dossier est alors « à arbitrer », pas « retenu ».
             n8nService.triggerAgent2CvSelected(
                 updatedCandidate.getId(), updatedCandidate.getEmail(),
                 updatedCandidate.getFirstName(), updatedCandidate.getLastName(),
-                offreTitre, reference != null ? reference.email() : null
+                offreTitre, reference != null ? reference.email() : null,
+                Boolean.TRUE.equals(updatedCandidate.getNeedsHumanReview())
             );
         }
 
@@ -748,8 +763,9 @@ public class CandidateService {
         // WITHDRAWN     = retrait du candidat lui-même
         // Les avis du manager (ACCEPTED / MANAGER_REJECTED) ne notifient PAS le candidat :
         // il est prévenu par la validation finale du RH (voir hrFinalValidation()).
-        if (effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
-                || effectiveStatus == Candidate.CandidateStatus.WITHDRAWN) {
+        if ((effectiveStatus == Candidate.CandidateStatus.AUTO_REJECTED
+                || effectiveStatus == Candidate.CandidateStatus.WITHDRAWN)
+                && previousStatus != effectiveStatus) {
             String offreTitre = updatedCandidate.getJobOffer() != null
                 ? updatedCandidate.getJobOffer().getTitle() : "Candidature générale";
             n8nService.triggerAgent3FinalDecision(
@@ -763,16 +779,31 @@ public class CandidateService {
         return new CandidateResponse(updatedCandidate);
     }
 
+    /**
+     * Retrait = le candidat se désiste, tant que son dossier est encore en cours
+     * d'instruction. Un avis en attente de contreseing (ACCEPTED, MANAGER_REJECTED,
+     * INTERVIEW_SCHEDULED) ou une décision déjà notifiée (REJECTED, AUTO_REJECTED, HIRED,
+     * WITHDRAWN) ne se retire pas : le candidat a déjà reçu une réponse, et le retirer
+     * effacerait ce statut sans lui en faire parvenir une nouvelle.
+     */
+    private static final List<Candidate.CandidateStatus> RETRAIT_IMPOSSIBLE = List.of(
+            Candidate.CandidateStatus.HIRED,
+            Candidate.CandidateStatus.REJECTED,
+            Candidate.CandidateStatus.AUTO_REJECTED,
+            Candidate.CandidateStatus.MANAGER_REJECTED,
+            Candidate.CandidateStatus.ACCEPTED,
+            Candidate.CandidateStatus.INTERVIEW_SCHEDULED,
+            Candidate.CandidateStatus.WITHDRAWN
+    );
+
     @Transactional
     public CandidateResponse withdrawApplication(Long id, String reason) {
         Candidate candidate = candidateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
         assertCandidateOwnerOrPrivileged(candidate);
-        if (candidate.getStatus() == Candidate.CandidateStatus.HIRED
-                || candidate.getStatus() == Candidate.CandidateStatus.WITHDRAWN
-                || candidate.getStatus() == Candidate.CandidateStatus.MANAGER_REJECTED
-                || candidate.getStatus() == Candidate.CandidateStatus.AUTO_REJECTED) {
-            throw new IllegalArgumentException("Cette candidature ne peut plus être retirée");
+        if (RETRAIT_IMPOSSIBLE.contains(candidate.getStatus())) {
+            throw new IllegalArgumentException(
+                    "Cette candidature ne peut plus être retirée : une décision a déjà été prise ou proposée.");
         }
         String withdrawalReason = reason == null || reason.isBlank()
                 ? "Retrait demandé par le candidat" : reason.trim();
@@ -899,6 +930,28 @@ public class CandidateService {
             throw new IllegalArgumentException(
                     "Transition de statut non autorisée : " + from + " → " + to);
         }
+    }
+
+    /**
+     * Rouvrir un dossier = sortir d'un refus (celui de l'IA ou l'avis du manager) pour
+     * replacer la candidature dans le pipeline. Le RH est seul à pouvoir le faire, et le
+     * motif doit rester écrit : la machine l'exige dans updateCandidateStatus.
+     */
+    private boolean isReopening(Candidate.CandidateStatus from, Candidate.CandidateStatus to) {
+        boolean apresRefus = from == Candidate.CandidateStatus.AUTO_REJECTED
+                || from == Candidate.CandidateStatus.MANAGER_REJECTED;
+        return apresRefus && isPipelineActif(to);
+    }
+
+    /** Statut où le dossier est encore à instruire (ni clos, ni en cours de contreseing). */
+    private boolean isPipelineActif(Candidate.CandidateStatus to) {
+        return to == Candidate.CandidateStatus.CV_REVIEWED
+                || to == Candidate.CandidateStatus.PHONE_SCREENING
+                || to == Candidate.CandidateStatus.TECHNICAL_TEST
+                || to == Candidate.CandidateStatus.INTERVIEW
+                || to == Candidate.CandidateStatus.FINAL_INTERVIEW
+                || to == Candidate.CandidateStatus.ACCEPTED
+                || to == Candidate.CandidateStatus.INTERVIEW_SCHEDULED;
     }
 
     /**
@@ -1170,7 +1223,7 @@ public class CandidateService {
      */
     public List<CandidateResponse> getCandidatesByEmail(String email) {
         accessControlService.assertOwnEmailOrPrivileged(email);
-        return candidateRepository.findByEmail(email).stream()
+        return candidateRepository.findByEmailOrderByApplicationDateDesc(email).stream()
                 .map(CandidateResponse::new)
                 .collect(Collectors.toList());
     }
@@ -1196,7 +1249,17 @@ public class CandidateService {
     private CandidateResponse applyScoreDrivenStatus(Candidate candidate, Candidate.CandidateStatus newStatus,
                                                      String statusReason) {
         if (isTransitionAllowed(candidate.getStatus(), newStatus)) {
-            return updateCandidateStatus(candidate.getId(), newStatus, statusReason);
+            String reason = statusReason;
+            // La réouverture est motivée par le score lui-même : un recalcul qui remonte au-dessus
+            // du seuil n'a pas de justification humaine à demander, mais le dossier doit porter la
+            // trace de ce qui l'a rouvert — sinon updateCandidateStatus refuserait le mouvement.
+            if (isReopening(candidate.getStatus(), newStatus) && (reason == null || reason.isBlank())) {
+                Integer score = candidate.getManualScore() != null
+                        ? candidate.getManualScore() : candidate.getAiScore();
+                reason = "Réintégration dans le pipeline par un nouveau score (" + score + "/100, seuil "
+                        + AI_SCORE_THRESHOLD + ")";
+            }
+            return updateCandidateStatus(candidate.getId(), newStatus, reason);
         }
         auditLogService.log("CANDIDATE", candidate.getId(), "SCORE_STATUS_NOT_APPLIED",
                 candidate.getStatus(), newStatus + " (score "
@@ -1251,7 +1314,7 @@ public class CandidateService {
      * (technique / communication / séniorité), via Cohere si l'API répond,
      * sinon en mode simulé (fallback automatique).
      *
-     * Déclenché manuellement par le RH/Admin/Manager (bouton "Recalculer avec IA").
+     * Déclenché manuellement par le RH/Admin (bouton "Recalculer avec IA"), ou par l'Agent 1 n8n.
      */
     @Transactional
     public CandidateResponse recomputeAiScore(Long id) {
@@ -1419,6 +1482,17 @@ public class CandidateService {
             throw new IllegalArgumentException("Un motif est obligatoire pour un refus final");
         }
 
+        // Le contrôle croisé n'existe que si deux comptes différents agissent. Un RH qui a
+        // lui-même enregistré l'avis (démo, petite équipe) peut contre-signer son propre avis
+        // — bloquer casserait le parcours — mais le double rôle doit être justifié et lisible
+        // dans l'audit, sinon le dossier feint une validation croisée qui n'a pas eu lieu.
+        String avisPar = candidate.getStatusChangedBy();
+        boolean autoContreSeing = avisPar != null && avisPar.equals(currentActor());
+        if (autoContreSeing && effectiveReason.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Vous avez vous-même rendu cet avis : justifiez votre contre-signature d'un motif.");
+        }
+
         candidate.setStatus(finalDecision);
         if (!effectiveReason.isBlank()) {
             candidate.setStatusReason(effectiveReason);
@@ -1431,7 +1505,10 @@ public class CandidateService {
         candidate.setLastUpdated(LocalDateTime.now());
 
         Candidate validated = candidateRepository.save(candidate);
-        auditLogService.log("CANDIDATE", validated.getId(), "FINAL_VALIDATION", previousStatus, finalDecision);
+        auditLogService.log("CANDIDATE", validated.getId(), "FINAL_VALIDATION", previousStatus,
+                autoContreSeing
+                        ? finalDecision + " — contre-signature par l'auteur même de l'avis (" + avisPar + ")"
+                        : finalDecision);
 
         if (finalDecision == Candidate.CandidateStatus.HIRED) {
             notificationService.sendHiringConvocation(validated);

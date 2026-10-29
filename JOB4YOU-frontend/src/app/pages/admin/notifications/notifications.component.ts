@@ -5,6 +5,7 @@ import { NotificationService, EmailHistory } from '../../../services/notificatio
 import { CandidateService } from '../../../services/candidate.service';
 import { EmailComposerComponent } from '../../../components/email/email-composer.component';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { TableSort } from '../../../services/table-sort';
 
 @Component({
   selector: 'app-notifications',
@@ -15,9 +16,13 @@ import { ToastrNotificationService } from '../../../services/toastr-notification
 })
 export class NotificationsComponent implements OnInit {
   emailHistory: EmailHistory[] = [];
+  // Historique de messagerie : le dernier envoi prime, on vérifie d'abord ce qui vient de partir.
+  readonly tri = new TableSort('sentAt', 'desc');
   candidates: any[] = [];
   loading = true;
   error: string | null = null;
+  // true quand l'API ne sert pas d'historique d'envois (limites de périmètre, pas une panne).
+  historiqueNonServi = false;
   
   // Filtres
   selectedCandidate = '';
@@ -50,7 +55,13 @@ export class NotificationsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Erreur lors du chargement de l\'historique des emails:', error);
-        this.error = 'Erreur lors du chargement de l\'historique des emails';
+        // L'API ne sert aucun magasin d'e-mails (aucune table, aucun endpoint /history) : ce n'est
+        // pas une panne du jour mais une limite du périmètre. Elle s'annonce en clair plutôt que
+        // d'afficher une bande rouge qui ferait croire à une régression de la chaîne d'envoi.
+        this.historiqueNonServi = error.status === 404 || error.status === 500 || error.status === 0;
+        if (!this.historiqueNonServi) {
+          this.error = 'Erreur lors du chargement de l\'historique des emails';
+        }
         this.loading = false;
       }
     });
@@ -68,7 +79,8 @@ export class NotificationsComponent implements OnInit {
   }
 
   getFilteredHistory(): EmailHistory[] {
-    return this.emailHistory.filter(email => {
+    // Le dernier e-mail parti doit être le premier visible : c'est lui que l'on vérifie.
+    return this.tri.apply(this.emailHistory.filter(email => {
       const matchesCandidate = !this.selectedCandidate || 
         email.to.includes(this.selectedCandidate);
       const matchesStatus = !this.selectedStatus || 
@@ -77,7 +89,7 @@ export class NotificationsComponent implements OnInit {
         email.type === this.selectedType;
       
       return matchesCandidate && matchesStatus && matchesType;
-    });
+    }));
   }
 
   openEmailModal(candidate?: any): void {

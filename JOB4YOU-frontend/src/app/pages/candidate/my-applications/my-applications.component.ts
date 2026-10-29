@@ -6,6 +6,7 @@ import { CandidateService } from '../../../services/candidate.service';
 import { CVService } from '../../../services/cv.service';
 import { AuthService } from '../../../services/auth';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { TableSort } from '../../../services/table-sort';
 import { Candidate } from '../../../models/interfaces';
 
 @Component({
@@ -17,6 +18,8 @@ import { Candidate } from '../../../models/interfaces';
 })
 export class MyApplicationsComponent implements OnInit {
   applications: Candidate[] = [];
+  // Une file de candidatures se lit de la plus récente à la plus ancienne.
+  readonly tri = new TableSort('applicationDate', 'desc');
   loading = false;
   error: string | null = null;
   currentUser: any = null;
@@ -138,8 +141,34 @@ export class MyApplicationsComponent implements OnInit {
   withdrawReason = '';
   isWithdrawing = false;
 
+  /**
+   * Le retrait se ferme dès qu'une réponse — même seulement proposée — a été enregistrée :
+   * le candidat a déjà été notifié ou est en cours de l'être. Le bouton disparaît et cette
+   * note en dit la raison (mêmes statuts que RETRAIT_IMPOSSIBLE côté backend).
+   */
+  retraitFermePour(status: string): string | null {
+    switch (status) {
+      case 'ACCEPTED':
+        return 'Une suite favorable est en cours de validation par le recrutement : le retrait n\'est plus possible.';
+      case 'INTERVIEW_SCHEDULED':
+        return 'Votre convocation est enregistrée : le retrait n\'est plus possible, prévenez l\'équipe de recrutement.';
+      case 'MANAGER_REJECTED':
+        return 'Une décision est en cours de validation : le retrait n\'est plus possible.';
+      case 'AUTO_REJECTED':
+        return 'Votre dossier a déjà reçu une réponse : le retrait n\'a plus d\'objet.';
+      case 'REJECTED':
+        return 'Votre candidature a déjà reçu une réponse définitive.';
+      case 'HIRED':
+        return 'Votre candidature est aboutie : contactez l\'équipe de recrutement pour toute modification.';
+      case 'WITHDRAWN':
+        return 'Votre candidature est déjà retirée.';
+      default:
+        return null;
+    }
+  }
+
   canWithdraw(application: Candidate): boolean {
-    return !['HIRED', 'WITHDRAWN', 'MANAGER_REJECTED', 'AUTO_REJECTED'].includes(application.status);
+    return this.retraitFermePour(application.status) === null;
   }
 
   openWithdrawModal(application: Candidate): void {

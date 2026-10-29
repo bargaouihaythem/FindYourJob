@@ -23,12 +23,20 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="table-light">
           <tr>
-            <th>Date</th>
-            <th>Entité</th>
-            <th>Action</th>
+            <th class="sortable" (click)="trier('performedAt')" title="Trier par date, la plus récente d'abord">
+              <i [class]="tri.icon('performedAt')" class="me-1"></i>Date
+            </th>
+            <th class="sortable" (click)="trier('entityType')" title="Trier par entité">
+              <i [class]="tri.icon('entityType')" class="me-1"></i>Entité
+            </th>
+            <th class="sortable" (click)="trier('action')" title="Trier par action">
+              <i [class]="tri.icon('action')" class="me-1"></i>Action
+            </th>
             <th>Ancienne valeur</th>
             <th>Nouvelle valeur</th>
-            <th>Effectué par</th>
+            <th class="sortable" (click)="trier('performedBy')" title="Trier par auteur">
+              <i [class]="tri.icon('performedBy')" class="me-1"></i>Effectué par
+            </th>
           </tr>
         </thead>
         <tbody>

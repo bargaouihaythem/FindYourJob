@@ -136,6 +136,11 @@ dans la outbox et ne modifie pas le statut de la candidature.
 | Dossier transmis au manager | Passage à la phase d’évaluation technique | Agent 3 |
 | Décision finale | Acceptation, rejet automatique, rejet manager ou embauche | Agent 3 |
 
+Un entretien créé n’adresse **qu’un seul** e-mail de convocation : dès que le webhook de l’Agent 2
+est configuré, Spring renonce à son propre envoi (`NotificationService.sendInterviewInvitation`)
+et laisse l’Agent 2 adresser la convocation avec le lien de visio. Les deux canaux actifs en
+parallèle doublonnaient la notification dans la boîte du candidat.
+
 ## Sécurité des webhooks
 
 Les URLs n8n et les clés d’API ne doivent pas être stockées avec des valeurs réelles dans Git. En production, chaque webhook doit être protégé par une clé de service, une signature HMAC ou un mécanisme équivalent. Les appels n8n doivent être journalisés sans enregistrer de CV ou de secrets dans les logs.

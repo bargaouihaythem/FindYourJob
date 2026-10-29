@@ -337,7 +337,7 @@
                 <ng-template #noScore>
                   <div class="d-flex flex-column align-items-center gap-1">
                     <span class="small text-muted">Analyse non effectuée</span>
-                    <button *ngIf="canRecompute(candidate.status)"
+                    <button *ngIf="canRecompute(candidate.status) && !isManagerView"
                             class="btn btn-sm btn-outline-primary py-0 px-2"
                             style="font-size: 0.72rem;"
                             [disabled]="recomputingId === candidate.id"
@@ -346,6 +346,9 @@
                       <i class="fas me-1"
                          [ngClass]="recomputingId === candidate.id ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'"></i>{{ recomputingId === candidate.id ? 'Analyse en cours…' : "Lancer l'analyse" }}
                     </button>
+                    <span *ngIf="isManagerView && canRecompute(candidate.status)"
+                          class="small fst-italic text-muted"
+                          title="Le score est posé par l'Agent 1 à la réception du CV : seule l'équipe RH peut relancer l'analyse.">Analyse réservée au RH</span>
                     <span *ngIf="!canRecompute(candidate.status)"
                           class="small fst-italic text-muted"
                           title="Dossier clos (refus validé, embauche ou retrait) : un nouveau score n'aurait plus de destinataire.">Dossier clos — analyse sans objet</span>

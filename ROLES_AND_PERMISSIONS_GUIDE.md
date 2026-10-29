@@ -61,6 +61,45 @@ Voici les 7 rôles définis dans votre application :
 - **Description** : Membres d'équipe générique
 - **Permissions actuelles** : Pas de permissions spécifiques définies
 
+## Garde-fous du pipeline (cohérence des statuts)
+
+La machine à états `CandidateStatus` (13 statuts) ne se parcourt que vers l'avant. Les arcs
+arrière sont décidés par `CandidateService.isTransitionAllowed(from, to)` ; `from == to` est
+idempotent et ne déclenche aucun e-mail. Cinq garde-fous complètent cette règle :
+
+| Garde-fou | Règle | Verrouillé pour qui | Réponse renvoyée |
+|---|---|---|---|
+| **Réouverture après refus** | Sortir d'un `AUTO_REJECTED` ou `MANAGER_REJECTED` pour replacer le dossier en pipeline exige un **motif** non vide, tracé dans l'audit. | RH, ADMIN (le glissement kanban sans motif est refusé) | HTTP 400 — « Rouvrir un dossier après un refus exige une justification : précisez le motif de l'arbitrage. » |
+| **Retrait après décision** | Un dossier déjà jugé ou déjà notifié (`HIRED`, `ACCEPTED`, `INTERVIEW_SCHEDULED`, `REJECTED`, `AUTO_REJECTED`, `MANAGER_REJECTED`, `WITHDRAWN`) ne se retire plus : la liste est dans `CandidateService.RETRAIT_IMPOSSIBLE`. | Le candidat (et tout rôle qui agit pour son dossier) | HTTP 400 — « Cette candidature ne peut plus être retirée : une décision a déjà été prise ou proposée. » |
+| **Propriété du dossier** | Toute écriture sur un dossier est réservée à son auteur candidat ou à un rôle privilégié (`assertCandidateOwnerOrPrivileged`). | Candidature | 403 — « Authentification requise » / « Accès refusé » |
+| **Auto-contre-signature RH** | Quand le RH qui valide la décision finale est aussi l'auteur de l'avis technique, la contre-signature est **autorisée mais justifiée** : motif obligatoire, et l'entrée d'audit garde la mention « contre-signature par l'auteur même de l'avis (…) ». | RH | HTTP 400 — « Vous avez vous-même rendu cet avis : justifiez votre contre-signature d'un motif. » |
+| **Recalcul du score IA** | `POST /api/candidates/{id}/ai-score/recompute` et `PATCH /api/candidates/{id}/ai-score` = `ROLE_N8N`, `ROLE_HR`, `ROLE_ADMIN` ; `PATCH …/ai-score/override` = `ROLE_HR`, `ROLE_ADMIN`. Un MANAGER qui demande un recalcul reçoit un 403 : il consulte le score, il ne l'écrit pas. | MANAGER (exclu) | HTTP 403 |
+
+Ces garde-fous sont testés : 12 vérifications en base réelle (`test_garde_fous_statuts.mjs`,
+`test_autoreseing_rh.mjs`) et les scénarios correspondants dans `CandidateServiceTest`.
+
+Reflet côté interface, pour qu'aucun garde-fou ne se découvre seulement par un message d'erreur :
+le kanban (`kanban-board.component.ts`) demande le motif au clavier avant un glissement qui refuse
+ou qui rouvre un dossier, et « Mes candidatures » remplace le bouton **Retirer** par une ligne
+cadenas (`fa-lock`) qui explique pourquoi le retrait est fermé sur ce statut.
+
+## Convention de tri des dates dans les tableaux
+
+Deux lectures coexistent volontairement, toutes deux accessibles au clic sur l'en-tête de colonne
+(asc / desc) :
+
+- **Files de travail** — candidatures, e-mails, journal d'audit, retours : **la demande la plus
+  récente en premier** (`desc`). C'est ce que cherche un RH qui reprend la main.
+- **Agendas d'entretiens** — `/candidate/my-interviews`, `/admin/interviews` : **l'entretien le
+  plus proche en premier** (`asc`), y compris côté API (`findByCandidateEmailOrderBy… ASC`).
+
+Le tri par défaut est déclaré dans chaque composant via `TableSort`
+(`JOB4YOU-frontend/src/app/services/table-sort.ts`) ; les composants plus anciens
+(Candidats, Retours, Entretiens admin, Offres) réinitialisent leur ordre avec
+`defaultOrderFor(champ)`. Côté API la même règle est écrite dans la requête, avant que les
+données n'arrivent au front : `CandidateRepository.findByEmailOrderByApplicationDateDesc` et
+`ORDER BY i.interviewDate ASC` dans `InterviewRepository.findByCandidateEmail`.
+
 ## Qui peut effectuer des entretiens ?
 
 ### **Créer des entretiens** :

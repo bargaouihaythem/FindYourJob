@@ -262,18 +262,24 @@ public class N8nService {
     // AGENT 2 — Déclenchement automatique : profil sélectionné par IA
     //
     // DÉCLENCHEUR : score IA >= seuil → statut CV_REVIEWED
-    // ACTION n8n  : email "profil retenu" au candidat
-    //               email "à planifier" au manager/RH
+    // ACTION n8n  : email « profil retenu » (ou « dossier à l'étude » si l'IA n'a pas
+    //               tranché) au candidat, email « à planifier » au manager/RH
     // ================================================================
 
     /**
      * Appel ASYNCHRONE déclenché automatiquement quand le score IA sélectionne
      * un candidat (CV_REVIEWED). Envoie un email de pré-sélection au candidat
      * et une notification à l'équipe RH pour planifier l'entretien.
+     *
+     * @param arbitrageHumain true quand le dossier est en CV_REVIEWED uniquement parce
+     *                        qu'une décision humaine est requise (mode de secours IA, zone
+     *                        grise, CV illisible) : l'e-mail candidat doit alors annoncer un
+     *                        dossier à l'étude, pas une sélection.
      */
     @Async
     public void triggerAgent2CvSelected(Long candidateId, String email, String firstName,
-                                         String lastName, String jobOfferTitle, String managerEmail) {
+                                         String lastName, String jobOfferTitle, String managerEmail,
+                                         boolean arbitrageHumain) {
         if (isBlank(agent2Webhook)) {
             log.warn("[N8N Agent2] Webhook non configuré — saisir n8n.webhook.agent2 dans application.properties");
             return;
@@ -289,11 +295,19 @@ public class N8nService {
         payload.put("interviewType", "A_PLANIFIER");
         payload.put("interviewerName", "Équipe RH JOB4YOU");
         payload.put("scheduledDate", "");
-        payload.put("notes", "Votre candidature a été retenue par notre IA. L'équipe RH vous contactera pour fixer la date d'entretien.");
+        payload.put("arbitrageHumain", arbitrageHumain);
+        payload.put("notes", arbitrageHumain
+                ? "Dossier en attente d'arbitrage RH : l'IA n'a pas tranché, un membre de l'équipe RH examinera la candidature."
+                : "Votre candidature a été retenue par notre IA. L'équipe RH vous contactera pour fixer la date d'entretien.");
         payload.put("managerEmail", managerEmail);
 
         enqueueOrSend(candidateId + ":CV_SELECTIONNE", agent2Webhook,
                 "Agent 2 (CV Sélectionné)", payload);
+    }
+
+    /** L'Agent 2 est-il branché ? Quand il l'est, il est le seul à envoyer la convocation. */
+    public boolean isAgent2Configured() {
+        return !isBlank(agent2Webhook);
     }
 
     private void enqueueOrSend(String eventKey, String webhookUrl, String agentName,

@@ -11,6 +11,7 @@ import { AuditLogService } from '../../../services/audit-log.service';
 import { UserService } from '../../../services/user.service';
 import { Candidate, JobOffer, Interview, Feedback, Reminder, AuditLog, User } from '../../../models/interfaces';
 import { ToastrNotificationService } from '../../../services/toastr-notification.service';
+import { TableSort } from '../../../services/table-sort';
 
 interface DashboardStats {
   totalCandidates: number;
@@ -328,7 +329,9 @@ export class DashboardComponent implements OnInit {
   private loadPendingFeedbacks(): void {
     this.feedbackService.getPendingFeedbacks().subscribe({
       next: (feedbacks: Feedback[]) => {
-        this.pendingFeedbacks = feedbacks.slice(0, 5); // Limiter à 5 feedbacks
+        // Les 5 plus récents : sans ce tri, la vignette affichait les 5 premiers renvoyés par
+        // l'API, c'est-à-dire souvent les plus anciens du backlog.
+        this.pendingFeedbacks = new TableSort('createdAt', 'desc').apply(feedbacks).slice(0, 5);
       },
       error: (error: any) => {
         this.toastrNotification.showError('Erreur lors du chargement des feedbacks en attente');

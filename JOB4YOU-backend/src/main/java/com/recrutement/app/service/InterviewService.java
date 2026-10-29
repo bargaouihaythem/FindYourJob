@@ -107,6 +107,13 @@ public class InterviewService {
             throw new IllegalArgumentException(
                     "Impossible de planifier un entretien : ce dossier est clos (statut " + candidate.getStatus() + ")");
         }
+        // Un dossier embauché est clos, mais positivement : la liste ci-dessus ne couvre que
+        // les issues négatives, et un entretien pouvait encore être posé sur un candidat HIRED
+        // (nouvelle invitation + doublon de convocation côté e-mails).
+        if (candidate.getStatus() == Candidate.CandidateStatus.HIRED) {
+            throw new IllegalArgumentException(
+                    "Ce candidat est embauché : la planification d'un entretien est fermée.");
+        }
         // Le CV doit d'abord avoir été examiné par le RH : on ne planifie pas d'entretien
         // sur une candidature encore au stade "soumise" (garde-fou de la machine à états).
         if (candidate.getStatus() == Candidate.CandidateStatus.APPLIED) {
@@ -157,8 +164,13 @@ public class InterviewService {
         // Rappels automatiques : candidat J-1, interviewer H-2
         reminderService.createInterviewReminders(savedInterview);
 
-        // Envoyer un e-mail d'invitation via Spring Mail
-        notificationService.sendInterviewInvitation(savedInterview);
+        // Envoyer un e-mail d'invitation via Spring Mail — seulement si l'Agent 2 ne prend
+        // pas la main : quand son webhook est configuré, c'est lui qui adresse la convocation
+        // (avec le lien de visio) au candidat et l'e-mail au interviewer. Les deux canaux
+        // ensemble doublonnaient la notification dans la boîte du candidat.
+        if (!n8nService.isAgent2Configured()) {
+            notificationService.sendInterviewInvitation(savedInterview);
+        }
 
         // Déclencher l'Agent 3 n8n (Google Calendar + email enrichi) en arrière-plan
         n8nService.triggerAgent2InterviewScheduler(savedInterview);

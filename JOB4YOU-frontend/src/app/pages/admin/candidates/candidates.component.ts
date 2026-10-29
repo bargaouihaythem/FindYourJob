@@ -1,4 +1,5 @@
 import { Component, OnInit, OnDestroy, HostListener } from '@angular/core';
+import { defaultOrderFor } from '../../../services/table-sort';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -624,7 +625,7 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
     } else {
       this.sortBy = field;
-      this.sortOrder = 'asc';
+      this.sortOrder = defaultOrderFor(field);
     }
     this.applyFilters();
   }
@@ -1195,9 +1196,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateCandidateStatus(candidate: Candidate, newStatus: string): void {
+  updateCandidateStatus(candidate: Candidate, newStatus: string, reason?: string): void {
     const backendStatus = this.mapStatusToBackend(newStatus);
-    this.candidateService.updateCandidateStatus(candidate.id, backendStatus).subscribe({
+    this.candidateService.updateCandidateStatus(candidate.id, backendStatus, reason).subscribe({
       next: (updated: Candidate) => {
         const t = this.statusChangeToast(backendStatus);
         this.toastrNotification.showSuccess(t.message, t.title);
@@ -1295,6 +1296,16 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       + 'utilisez « Corriger le score » dans la fiche du candidat.';
   }
 
+  /**
+   * Ramener un dossier refusé dans le pipeline est un arbitrage : le backend en demande
+   * le motif, parce que l'e-mail de refus est déjà parti et que la levée doit rester
+   * explicable au candidat.
+   */
+  estReouvertureDepuis(from: string, to: string): boolean {
+    const refuse = from === 'AUTO_REJECTED' || from === 'MANAGER_REJECTED';
+    return refuse && to !== 'REJECTED' && to !== 'WITHDRAWN';
+  }
+
   /** Applique la transition choisie dans la liste contextuelle. */
   onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' | 'final-hire' | 'final-reject' }): void {
     if (t.kind === 'accept') { this.acceptCandidate(candidate); }
@@ -1304,6 +1315,14 @@ export class CandidatesComponent implements OnInit, OnDestroy {
     // La transmission au manager passe toujours par la modale : le destinataire est
     // un choix du RH, jamais le résultat automatique de l'aiguillage.
     else if (t.key === 'TECHNICAL_TEST') { this.openTransmissionModal(candidate); }
+    else if (this.estReouvertureDepuis(candidate.status, t.key)) {
+      const motif = window.prompt('Motif obligatoire : pourquoi cet avis de refus est-il levé ?');
+      if (!motif?.trim()) {
+        this.toastrNotification.showCandidateError('La réouverture d\'un dossier refusé exige un motif.');
+        return;
+      }
+      this.updateCandidateStatus(candidate, t.key, motif.trim());
+    }
     else { this.updateCandidateStatus(candidate, t.key); }
   }
 
@@ -1367,9 +1386,21 @@ export class CandidatesComponent implements OnInit, OnDestroy {
    * l'entretien dit si le rendez-vous a déjà eu lieu. Sans cette précision, la liste
    * propose « Planifier l'entretien » sur un entretien terminé et le manager croit avoir
    * raté une étape — ou planifie un doublon.
+   * Un créneau passé mais jamais clôturé compte comme tenu : côté serveur l'entretien
+   * reste SCHEDULED, et proposer « Planifier l'entretien » laisserait croire qu'aucun
+   * rendez-vous n'a eu lieu.
    */
   interviewAlreadyHeld(candidate: Candidate): boolean {
-    return candidate.lastInterviewStatus === 'COMPLETED';
+    if (candidate.lastInterviewStatus === 'COMPLETED') return true;
+    return this.interviewSlotPassed(candidate);
+  }
+
+  /** Entretien posé (non annulé) dont le créneau est derrière nous. */
+  interviewSlotPassed(candidate: Candidate): boolean {
+    if (!candidate.lastInterviewDate || !['SCHEDULED', 'IN_PROGRESS', 'RESCHEDULED'].includes(candidate.lastInterviewStatus || '')) {
+      return false;
+    }
+    return new Date(candidate.lastInterviewDate).getTime() <= Date.now();
   }
 
   planInterviewLabel(candidate: Candidate): string {
@@ -1382,6 +1413,9 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       .toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
     if (candidate.lastInterviewStatus === 'COMPLETED') {
       return `Entretien du ${date} effectué — votre avis est attendu`;
+    }
+    if (this.interviewSlotPassed(candidate)) {
+      return `Entretien du ${date} — compte rendu à saisir avant l'avis`;
     }
     if (['INTERVIEW', 'FINAL_INTERVIEW', 'TECHNICAL_TEST'].includes(candidate.status)) {
       return `Entretien planifié le ${date}`;
