@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -363,6 +364,12 @@ public class InterviewService {
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
         assertCanAccessInterview(interview);
 
+        // Instantané avant mutation : la re-planification des rappels ne se déclenche que
+        // si l'un des trois éléments réellement cités dans le message a bougé.
+        LocalDateTime dateAvant = interview.getInterviewDate();
+        Long candidatAvant = interview.getCandidate().getId();
+        Long interviewerAvant = interview.getInterviewer().getId();
+
         // Vérifier si le candidat existe
         if (!interview.getCandidate().getId().equals(interviewRequest.getCandidateId())) {
             Candidate candidate = candidateRepository.findById(interviewRequest.getCandidateId())
@@ -388,6 +395,16 @@ public class InterviewService {
                 interviewRequest.getInterviewDate(), interviewRequest.getDurationMinutes(), id);
 
         Interview updatedInterview = interviewRepository.save(interview);
+
+        // Le corps du rappel est pré-rendu à la planification : un créneau déplacé, un
+        // candidat ou un interviewer différent rendrait le rappel en attente faux de date,
+        // muet pour le nouvel intervenant, ou destiné à un dossier qui n'est plus le sien.
+        if (!Objects.equals(dateAvant, updatedInterview.getInterviewDate())
+                || !Objects.equals(candidatAvant, updatedInterview.getCandidate().getId())
+                || !Objects.equals(interviewerAvant, updatedInterview.getInterviewer().getId())) {
+            reminderService.createInterviewReminders(updatedInterview);
+        }
+
         return new InterviewResponse(updatedInterview);
     }
 
@@ -399,6 +416,9 @@ public class InterviewService {
         Interview interview = interviewRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Entretien non trouvé avec l'ID: " + id));
         assertCanAccessInterview(interview);
+        // Le créneau disparaît : les rappels déjà planifiés pour ce dossier ne doivent pas
+        // survivre à sa suppression et annoncer un entretien qui n'existe plus.
+        reminderService.cancelInterviewReminders(id);
         interviewRepository.delete(interview);
     }
 
@@ -484,8 +504,14 @@ public class InterviewService {
         // Notifier le candidat uniquement si le statut change réellement
         // (évite un email en double si l'admin re-soumet le même statut).
         if (status != previousStatus) {
-            if (status == Interview.InterviewStatus.CANCELLED) {
+            // Entretien tenu ou annulé : il n'a plus rien à annoncer. Les rappels en attente
+            // sont purgés ici, sinon ils partent à la date planifiée prévenir d'un
+            // rendez-vous déjà passé.
+            if (status == Interview.InterviewStatus.COMPLETED
+                    || status == Interview.InterviewStatus.CANCELLED) {
                 reminderService.cancelInterviewReminders(id);
+            }
+            if (status == Interview.InterviewStatus.CANCELLED) {
                 notificationService.sendInterviewCancellation(updatedInterview);
             } else if (status == Interview.InterviewStatus.RESCHEDULED) {
                 notificationService.sendInterviewReschedule(updatedInterview);

@@ -4,6 +4,7 @@ import com.recrutement.app.entity.Candidate;
 import com.recrutement.app.entity.Interview;
 import com.recrutement.app.entity.JobOffer;
 import com.recrutement.app.entity.Reminder;
+import com.recrutement.app.repository.InterviewRepository;
 import com.recrutement.app.repository.ReminderRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +35,9 @@ public class ReminderService {
     private ReminderRepository reminderRepository;
 
     @Autowired
+    private InterviewRepository interviewRepository;
+
+    @Autowired
     private TemplateEngine templateEngine;
 
     @Autowired
@@ -47,6 +51,10 @@ public class ReminderService {
         LocalDateTime interviewDate = interview.getInterviewDate();
         if (interviewDate == null) return;
 
+        // Re-planifier efface d'abord l'ancienne vague : sans ce nettoyage, déplacer un
+        // entretien laisserait partir le rappel « demain » sur la date périmée.
+        cancelInterviewReminders(interview.getId());
+
         // Rappel candidat : 1 jour avant, à 9h
         LocalDateTime candidateReminderDate = interviewDate.minusDays(1).with(LocalTime.of(9, 0));
         if (candidateReminderDate.isAfter(LocalDateTime.now())) {
@@ -57,7 +65,8 @@ public class ReminderService {
             candidateVars.put("location", interview.getLocation() != null ? interview.getLocation() : "À confirmer");
 
             createReminder(
-                    "Rappel entretien (candidat) — " + candidate.getEmail(),
+                    "Rappel J-1 — " + candidate.getFirstName() + " " + candidate.getLastName()
+                            + " / " + jobOfferTitle,
                     render("emails/reminder-candidate", candidateVars),
                     candidateReminderDate,
                     Reminder.RelatedType.INTERVIEW,
@@ -77,7 +86,8 @@ public class ReminderService {
             interviewerVars.put("location", interview.getLocation() != null ? interview.getLocation() : "À confirmer");
 
             createReminder(
-                    "Rappel entretien (interviewer) — " + interview.getInterviewer().getUsername(),
+                    "Rappel H-2 — " + candidate.getFirstName() + " " + candidate.getLastName()
+                            + " / " + jobOfferTitle,
                     render("emails/reminder-interviewer", interviewerVars),
                     interviewerReminderDate,
                     Reminder.RelatedType.INTERVIEW,
@@ -113,6 +123,12 @@ public class ReminderService {
     public void dispatchDueReminders() {
         List<Reminder> due = reminderRepository.findBySentFalseAndReminderDateLessThanEqual(LocalDateTime.now());
         for (Reminder reminder : due) {
+            if (isOrphaned(reminder)) {
+                reminderRepository.delete(reminder);
+                log.info("[ReminderService] Rappel #{} purgé : son entretien n'est plus à tenir.",
+                        reminder.getId());
+                continue;
+            }
             try {
                 emailService.sendHtmlEmail(reminder.getRecipientEmail(), reminder.getTitle(), reminder.getMessage());
                 reminder.setSent(true);
@@ -126,8 +142,24 @@ public class ReminderService {
     }
 
     /**
-     * Annule les rappels pas encore envoyés d'un entretien (utilisé quand
-     * l'entretien est annulé/reprogrammé, pour éviter un rappel obsolète).
+     * Un rappel ne survit pas à l'entretien qu'il annonce : supprimé, clôturé ou annulé,
+     * il partirait prévenir d'un rendez-vous qui n'aura pas lieu. Le corps du message est
+     * pré-rendu à la création, donc rien dans la ligne ne dit encore que le créneau a changé.
+     */
+    private boolean isOrphaned(Reminder reminder) {
+        if (reminder.getRelatedType() != Reminder.RelatedType.INTERVIEW || reminder.getRelatedId() == null) {
+            return false;
+        }
+        return interviewRepository.findById(reminder.getRelatedId())
+                .map(i -> i.getStatus() == Interview.InterviewStatus.COMPLETED
+                        || i.getStatus() == Interview.InterviewStatus.CANCELLED)
+                .orElse(true);
+    }
+
+    /**
+     * Annule les rappels pas encore envoyés d'un entretien : entretien supprimé, clôturé,
+     * annulé ou re-planifié. Sans cet appel, la boîte du candidat continue de recevoir la
+     * vague planifiée pour un créneau qui n'existe plus.
      */
     @Transactional
     public void cancelInterviewReminders(Long interviewId) {
