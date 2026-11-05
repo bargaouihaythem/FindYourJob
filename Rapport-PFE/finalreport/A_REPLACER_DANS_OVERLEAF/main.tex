@@ -1270,7 +1270,7 @@ La figure~\ref{fig_3_2a} isole la partie sécurité. La classe User centralise l
 \end{figure}
 \endgroup
 
-Le dernier volet réunit les entités qui prolongent le dossier sans toucher à son cycle de vie : file d’attente n8n, notes internes, rappels et profil de pondération. Deux liens se passent de clé étrangère : l’historique se retrouve par convention sur \texttt{event\_key}, et le profil de pondération s’applique par famille de métier et niveau d’ancienneté.
+Le dernier volet réunit les entités qui prolongent le dossier sans toucher à son cycle de vie : file d’attente n8n, notes internes, rappels et profil de pondération. Deux liens se passent de clé étrangère : l’historique se retrouve par convention sur \texttt{event\_key}, et le profil de pondération s’applique par famille de métier et niveau d’ancienneté. Le calibrage du seuil y ajoute deux prolongements : la table \texttt{gold\_set\_cases}, qui garde le corpus annoté avec son origine, et trois colonnes portées par la candidature pour l’étiquette « Profil Gold » — statut, auteur et horodatage de la décision RH.
 
 \section{Séquence technique — Soumission asynchrone et scoring IA}
 \label{sec_3_4}
@@ -1362,7 +1362,7 @@ La figure~\ref{fig_3_6} ne montre que le calcul du score et le cas où l’analy
 \begin{itemize}
 \item le texte extrait est absent ou compte moins de cinquante caractères ;
 \item un écart de séniorité sévère plafonne le score ;
-\item le score tombe dans la zone grise comprise entre 55 et 65 ;
+\item le score tombe dans la zone grise, à cinq points au-dessous ou au-dessus du seuil du profil ;
 \item le service d’analyse est indisponible : le score est alors marqué à titre indicatif (section~\ref{sec_4_4_6}).
 \end{itemize}
 
@@ -1405,11 +1405,11 @@ La figure~\ref{fig_3_8} donne la machine à états du dossier. Elle ne dessine q
 
 Le statut « entretien programmé » suit l’avis favorable : il matérialise la confirmation de l’agenda et précède la décision finale, sans désigner une étape d’évaluation. Planifier un entretien fait avancer le dossier à l’étape du type retenu (téléphonique, test, entretien, entretien final) ; si la machine à états refuse cette avancée, le dossier reste en place et l’entretien n’est pas annulé.
 
-Un embranchement dépend du score : « CV validé » au-dessus du seuil de 60/100, « écarté d’office » en dessous. Les dossiers signalés (CV inexploitable, écart de séniorité sévère, zone grise de 55 à 65, service indisponible) échappent au rejet automatique et rejoignent l’examen humain (section~\ref{sec_4_4_6}). Le signalement et son motif, pas le statut, distinguent les deux cas.
+Un embranchement dépend du score : « CV validé » au-dessus du seuil du profil (60/100 par défaut), « écarté d’office » en dessous. Les dossiers signalés (CV inexploitable, écart de séniorité sévère, zone grise autour du seuil, service indisponible) échappent au rejet automatique et rejoignent l’examen humain (section~\ref{sec_4_4_6}). Le signalement et son motif, pas le statut, distinguent les deux cas.
 
 La décision est à deux niveaux : avis du manager, puis contreseing du responsable RH. « Retenu » exige la date de présentation des documents, « refusé » exige un motif, et aucun des deux n’est atteint sans ce contreseing. Le RH peut aussi prononcer un refus final depuis n’importe quelle étape d’évaluation. Les trois états terminaux n’admettent plus aucune modification, mais « écarté d’office » reste entièrement révisable.
 
-Deux garde-fous complètent cette décision, vérifiés par une série de refus contrôlés. D’abord « une personne, un poste » : l’identité retenue est l’adresse électronique assortie du prénom et du nom, et une personne déjà embauchée ne peut être embauchée une seconde fois ni déposer une nouvelle candidature. Les deux refus nomment l’offre et le dossier existants — « Cette personne est déjà embauchée sur l’offre … (dossier #…) » côté RH, « Une personne en poste ne dépose pas de nouvelle candidature : contactez le RH si vous souhaitez changer de poste » côté candidat — pour que personne ne croie à une panne et ne représente le dossier ailleurs. Ensuite, un entretien ne peut être affecté qu’à un manager destinataire du dossier : le formulaire RH ne propose que ces destinataires, et le serveur refuse toute affectation extérieure à la création comme au changement de dossier ou d’intervieweur. Une affectation hors périmètre produirait en effet un entretien enregistré mais invisible dans le calendrier de ce manager, donc jamais conduit.
+Deux garde-fous complètent cette décision, vérifiés par une série de refus contrôlés. D’abord « une personne, un poste » : l’identité retenue est l’adresse électronique assortie du prénom et du nom, et une personne déjà embauchée ne peut être embauchée une seconde fois ni déposer une nouvelle candidature. Les deux refus nomment l’offre et le dossier existants — « Cette personne est déjà embauchée sur l’offre … (dossier \#…) » côté RH, « Une personne en poste ne dépose pas de nouvelle candidature : contactez le RH si vous souhaitez changer de poste » côté candidat — pour que personne ne croie à une panne et ne représente le dossier ailleurs. Ensuite, un entretien ne peut être affecté qu’à un manager destinataire du dossier : le formulaire RH ne propose que ces destinataires, et le serveur refuse toute affectation extérieure à la création comme au changement de dossier ou d’intervieweur. Une affectation hors périmètre produirait en effet un entretien enregistré mais invisible dans le calendrier de ce manager, donc jamais conduit.
 
 Ce rejet automatique n’a rien de définitif, ni d’entièrement hors de contrôle humain. À tout moment, le responsable RH ou l’administrateur dispose de deux issues :
 
@@ -1460,9 +1460,9 @@ Poids par défaut & 0,5 / 0,2 / 0,3 ; somme contrôlée à $\pm$0,01 près \\
 \hline
 Profils de pondération & douze profils (table \texttt{scoring\_weight\_profiles}), choisis par famille de métier et niveau de séniorité \\
 \hline
-Seuil de décision & 60/100 \\
+Seuil de décision & 60/100 par défaut, calibrable profil par profil sur le Gold Set (\texttt{decision\_threshold}) \\
 \hline
-Zone grise d’arbitrage & 55 à 65 \\
+Zone grise d’arbitrage & cinq points au-dessous ou au-dessus du seuil du profil \\
 \hline
 \end{tabular}
 \end{table}
@@ -1761,7 +1761,7 @@ La figure~\ref{fig_4_7} donne la liste des dossiers de l’espace RH : contact, 
 \label{fig_4_8}
 \end{figure}
 
-Le détail d’une candidature, reproduit en figure~\ref{fig_4_8}, va au-delà du score global visible en liste (figure~\ref{fig_4_7}). Il expose la répartition par critère (technique, communication, adéquation séniorité) et le bouton « Corriger le score ». Une correction manuelle du RH s’y affiche avec sa justification, conformément au contrôle humain décrit en section~\ref{sec_4_6}, ainsi que les notes internes et l’activité des agents n8n sur le dossier.
+Le détail d’une candidature, reproduit en figure~\ref{fig_4_8}, va au-delà du score global visible en liste (figure~\ref{fig_4_7}). Il expose la répartition par critère (technique, communication, adéquation séniorité) et le bouton « Corriger le score ». Une correction manuelle du RH s’y affiche avec sa justification, conformément au contrôle humain décrit en section~\ref{sec_4_6}, ainsi que les notes internes et l’activité des agents n8n sur le dossier. S’y ajoute l’étiquette « Profil Gold » : proposée par la machine quand un score atteint la barre d’excellence sur une analyse sûre, elle n’existe pour le manager qu’après confirmation du recruteur (section~\ref{sec_4_4_5}).
 
 % figure 4.9
 \setcounter{figure}{8}
@@ -1878,7 +1878,7 @@ La figure~\ref{fig_4_14} présente la modale « Confirmer le refus », où le RH
 \end{landscape}
 \endgroup
 
-Un manager ne voit que les dossiers de son périmètre — le destinataire désigné par le RH, gelé sur la candidature (section 3.5.4) — à partir de leur entrée en évaluation technique. La figure~\ref{fig_4_15a} montre cette vue : chaque ligne porte le score et « Planifier l’entretien », et se déplie sur le contact, l’analyse IA, la synthèse et le motif du statut (figure~\ref{fig_4_15b}).
+Un manager ne voit que les dossiers de son périmètre — le destinataire désigné par le RH, gelé sur la candidature (section 3.5.4) — à partir de leur entrée en évaluation technique. La figure~\ref{fig_4_15a} montre cette vue : chaque ligne porte le score retenu et le motif du statut — « Planifier l’entretien » tant que la date reste à fixer, « Avis favorable — à valider » quand le manager s’est prononcé — et se déplie sur le contact, l’analyse IA et la synthèse (figure~\ref{fig_4_15b}). Une étoile « Profil Gold », en lecture seule, y signale le profil de référence que le RH a validé pour cette offre ; le manager ne peut ni la poser ni l’enlever.
 
 % figure 4.16
 \setcounter{figure}{15}
@@ -1916,8 +1916,7 @@ Chaque carte porte l’heure, le jour, le candidat, le poste, le type d’entret
 \end{figure}
 \endgroup
 
-La grille mensuelle (figure~
-ef{fig_4_16b}) colore chaque créneau : l’ambre, marqué d’un sablier, signale un avis qui attend encore le contreseing du RH ; le gris, une décision déjà prise. Seules les colonnes mardi, mercredi et jeudi sont reproduites, les quatre autres jours de la semaine ne portant aucun rendez-vous dans cette base de démonstration. Le titre « Novembre 2026 » et les boutons de changement de mois restent également hors cadre.
+La grille mensuelle (figure~\ref{fig_4_16b}) colore chaque créneau : l’ambre, marqué d’un sablier, signale un avis qui attend encore le contreseing du RH ; le gris, une décision déjà prise. Seules les colonnes mardi, mercredi et jeudi sont reproduites, les quatre autres jours de la semaine ne portant aucun rendez-vous dans cette base de démonstration. Le titre « Novembre 2026 » et les boutons de changement de mois restent également hors cadre.
 
 % figure 4.16c
 \setcounter{figure}{15}
@@ -1969,7 +1968,9 @@ L’écran de la figure~\ref{fig_4_17} permet à l’administrateur de gérer le
 \clearpage
 \end{landscape}
 
-Réservé à l’administrateur, l’écran de la figure~\ref{fig_4_18} permet d’ajuster la pondération technique / communication / séniorité que l’agent IA utilise pour calculer un score. Le réglage porte sur chaque famille de métier et chaque niveau de séniorité ; une colonne de contrôle vérifie avant l’enregistrement que les trois poids totalisent bien 100 \%.
+Réservé à l’administrateur et aux recruteurs, l’écran de la figure~\ref{fig_4_18} permet d’ajuster la pondération technique / communication / séniorité que l’agent IA utilise pour calculer un score. Le réglage porte sur chaque famille de métier et chaque niveau de séniorité ; une colonne de contrôle vérifie avant l’enregistrement que les trois poids totalisent bien 100 \%.
+
+Le même écran héberge, sous ce tableau, une carte « Gold Set » : elle rejoue les vingt cas annotés dans le service de notation et affiche, pour chaque profil, le nombre de cas, le F1 mesuré au seuil en vigueur, le seuil recommandé et sa marge ; une proposition n’est applicable que si le contrôle qualité passe (section~\ref{sec_4_4_5}). Un recruteur peut y déposer un cas d’issue connue, anonymisé, qui vient enrichir le corpus sans modifier le socle.
 
 % figure 4.19
 \setcounter{figure}{18}
@@ -2153,13 +2154,13 @@ J’ai aussi rejoué le parcours complet de bout en bout : candidature, analyse 
 
 \subsection{Évaluation du matching sur un jeu de référence annoté (Gold Set)}
 \label{sec_4_4_5}
-Ces tests vérifient le fonctionnement de la plateforme, pas la pertinence du score. J’ai donc constitué un Gold Set \cite{ref21} de vingt curriculum vitæ synthétiques, inspirés de profils réalistes mais fictifs : aucun CV réel n’a été employé.
+Ces tests vérifient le fonctionnement de la plateforme, pas la pertinence du score. J’ai donc constitué un Gold Set \cite{ref21} de vingt curriculum vitæ synthétiques, inspirés de profils réalistes mais fictifs : aucun CV réel n’a été employé. Le corpus vit ensuite dans l’application même, et non dans un script d’évaluation à côté : la table \texttt{gold\_set\_cases} conserve, pour chaque cas, l’offre de calibration, la vérité terrain, le dernier score observé et son origine — \texttt{REFERENCE} pour le socle de vingt cas, qui ne bouge pas, \texttt{EXTENSION\_RH} pour un dossier dont l’issue est connue et qu’un recruteur ajoute après anonymisation. Une candidature réelle, même embauchée, ne rejoint jamais le corpus d’office : l’horloge de référence reste celle que l’humain a choisie.
 
-Les vingt profils couvrent les trois familles visées : Développeur Backend Java/Spring (offre 115, sept profils), DevOps Engineer (offre 117, six) et Business Analyst (offre 122, sept).
+Les vingt profils couvrent les trois familles visées : Développeur Backend Java/Spring (offre 115, sept cas), DevOps Engineer (offre 117, six) et Business Analyst (offre 122, sept).
 
-Chaque CV porte une vérité terrain binaire, « pertinent » ou « non pertinent », arrêtée sur des critères objectifs (compétences indispensables, séniorité) et non d’après la sortie du modèle. Onze profils sont pertinents ; neuf sont volontairement hors cible (autre domaine, séniorité insuffisante ou outillage sans rapport).
+Chaque cas porte une vérité terrain binaire, « pertinent » ou « non pertinent », arrêtée sur des critères objectifs (compétences indispensables, séniorité) et non d’après la sortie du modèle. Onze profils sont pertinents ; neuf sont volontairement hors cible (autre domaine, séniorité insuffisante ou outillage sans rapport).
 
-Un point d’entrée de réévaluation, réservé à l’administrateur, rejoue la chaîne complète sur un CV et une offre sans créer de candidature ; la décision est confrontée à la vérité terrain (tableau~\ref{tab_4_2}, trois seuils).
+L’écran « Gold Set » du paramétrage du scoring rejoue le corpus dans le service de notation lui-même — même extraction, même normalisation de compétences, même modèle — sur des dossiers éphémères qui n’entrent pas dans le pipeline. Le seuil de décision est balayé de 40 à 95 et la matrice de confusion est mesurée à chaque cran, globalement (tableau~\ref{tab_4_2}) et par profil.
 
 % tableau 4.2
 \setcounter{table}{1}
@@ -2191,22 +2192,41 @@ Exactitude & 70 \% & 95 \% & 95 \% \\
 \hline
 \end{tabular}
 \end{table}
-Réévaluation du 27 octobre 2026, vingt CV notés sans mode dégradé : au seuil de 60/100, dix-neuf bonnes décisions sur vingt, rappel de 100 \%, précision de 91,7 \% avec un seul hors cible retenu à tort (GOLD\_18, 77/100). À 50, cinq dossiers hors cible s’ajoutent et la précision retombe à 64,7 \% ; à 70, rien ne change.
+Réévaluation du 5 novembre 2026, vingt cas notés sans mode dégradé : au seuil de 60/100, dix-neuf bonnes décisions sur vingt, rappel de 100 \%, précision de 91,7 \% avec un seul hors cible retenu à tort (GOLD\_18, 74/100). À 50, cinq dossiers hors cible s’ajoutent et la précision retombe à 64,7 \% ; à 70, rien ne change.
 
 La distribution justifie ce seuil : huit des neuf hors cible s’arrêtent à 57/100 ou moins, le plus faible profil pertinent atteint 71/100. Le seuil de 60/100 reste un réglage opérationnel, pas un optimum démontré ; le faux positif de GOLD\_18 lui subsisterait aux trois seuils, car seul le recruteur arbitre la proximité sémantique entre deux métiers voisins.
 
-Le même corpus a été rejoué le 5 novembre 2026 par l’entrée réelle de l’application : les vingt CV ont été déposés comme candidatures à part entière — confirmation par e-mail, agent de lecture, recalcul et transition de statut appliqués au dossier — puis relus une minute et demie plus tard. La matrice de confusion est identique à celle du tableau~\ref{tab_4_2}, et les scores des deux points d’entrée concordent : 89 contre 89, 54 contre 54, 44 contre 44 ; GOLD\_18 seul varie, 81 contre 77, d’une réponse du modèle à l’autre. Surtout, la plateforme a tranché elle-même : quinze dossiers conduits en revue technique, cinq écartés d’office, le score étant posé en 0,9 minute en médiane et 1,1 minute au pire. Sur ces vingt décisions, seize sont conformes à la vérité terrain, deux ne le sont pas, et deux scores tombés dans la zone grise de 55 à 65 ont été transmis au RH sans que la plateforme tranche : ce renvoi est le comportement attendu du calibrage, pas une erreur du moteur.
+Le balayage est aussi mené profil par profil — la famille et le niveau portés par l’offre, le seuil étant stocké dans la table de pondérations de chaque profil (figure~\ref{fig_4_23}). Un seuil recommandé n’est appliqué que sous double condition : au moins quatre cas \texttt{REFERENCE} et un F1 mesuré à ce seuil d’au moins 90 \%. Le 5 novembre, les trois profils couverts obtiennent un F1 de 100 \% et recommandent 64/100 pour Consultant / Customer Success confirmé, 81/100 pour Product Ops senior — le seul déjà calibré et appliqué — et 67/100 pour les autres familles confirmées. La marge est la distance au score le plus proche du corpus : sept points pour les deux premiers profils, dix pour le troisième, donc aucun dossier ne frôle la frontière. Vingt cas ne verrouillent pas trois profils : deux restent au défaut 60/100.
 
-Une limite pèse sur la comparaison : les scores ne sont pas parfaitement reproductibles. GOLD\_18 est passé de 81/100 le 18 octobre 2026 à 71, puis 77/100 le 27 ; GOLD\_14 de 67 à 71/100. Cette dérive de quatre à dix points place certains dossiers à la limite d’un seuil : la décision s’appuie sur la zone d’incertitude, et ce calibrage préliminaire reste à confirmer sur un corpus plus large.
+% figure 4.23 - capture 900 x 512 px CSS (dpr 2), ratio 1,76 : la banniere de l ecran,
+% deja dite dans le paragraphe, est coupee au recadrage. En paysage, l image tient alors en
+% largeur (702 x 400 pt) et non plus en hauteur : 12,5 pt imprimes pour les 16 px CSS du
+% tableau, 10,9 pt pour les mentions de 14 px, 10,0 pt pour les pastilles de seuil.
+\setcounter{figure}{22}
+\begin{landscape}
+\pagestyle{lscape}
+\begin{figure}[p]
+\centering
+\includegraphics[width=0.98\linewidth, height=0.90\textheight, keepaspectratio]{fig4_23}
+\caption{Paramétrage du scoring — écran « Gold Set » : rejouage du corpus et seuil recommandé par profil}
+\label{fig_4_23}
+\end{figure}
+\clearpage
+\end{landscape}
 
-Vingt cas construits pour l’évaluation ne sont pas une mesure de performance réelle. Le Gold Set valide un mécanisme de décision et un calibrage de seuil, pas le suivi en production des faux positifs et faux négatifs constatés par les recruteurs.
+
+Le même corpus a été rejoué le 5 novembre 2026 par l’entrée réelle de l’application : vingt candidatures à part entière — confirmation par e-mail, agent de lecture, recalcul et transition de statut — relues une minute et demie plus tard. La matrice obtenue est identique à celle du tableau~\ref{tab_4_2}, les deux points d’entrée concordent (89 contre 89, 54 contre 54, 44 contre 44) et la plateforme a tranché seule : quinze dossiers conduits en revue technique, cinq écartés d’office, notation en 0,9 minute en médiane. Seize décisions sur vingt sont conformes à la vérité terrain, deux divergent, deux scores tombés en zone grise ont été transmis au RH sans que la machine tranche : c’est le comportement attendu du calibrage, pas une erreur du moteur.
+
+Le corpus sert enfin d’étalon de confiance sur un dossier réel. Quand un score atteint la barre d’excellence (85/100) sur une analyse que le moteur ne signale ni incertaine ni dégradée, la fiche RH affiche une proposition « Profil Gold » : le recruteur la confirme ou l’écarte, et ni un recalcul ni le temps ne réveillent une décision déjà prise. Seule l’étiquette confirmée parvient au manager, qui lit alors, à côté du score retenu, un repère validé par un humain. Une candidature réelle n’alimente pour autant jamais le corpus d’évaluation : l’étiquette qualifie un dossier, le Gold Set étalonne le seuil.
+
+Deux limites pèsent sur la comparaison. Les scores ne sont pas parfaitement reproductibles : GOLD\_18 est passé de 81 à 77 puis 74/100 selon les réponses du modèle, GOLD\_14 de 67 à 71/100 ; certains dossiers frôlent le seuil, et la zone d’incertitude existe pour cela. Vingt cas construits pour l’évaluation ne mesurent pas non plus la performance réelle : le Gold Set valide un mécanisme de décision et un calibrage de seuil, pas le suivi en production des faux positifs et faux négatifs constatés par les recruteurs.
 
 \subsection{Validation humaine du score et explicabilité}
 \label{sec_4_4_6}
 Un moteur de présélection n’est fiable que s’il sait dire quand il ne l’est pas. Le service de scoring allume un drapeau d’arbitrage, avec un motif lisible, dans trois situations :
 \begin{itemize}
 \item texte extrait du CV trop court (moins de cinquante caractères : scan, image ou fichier dégradé) ;
-\item score en zone grise entre 55 et 65, de part et d’autre du seuil ;
+\item score en zone grise, à cinq points au-dessous ou au-dessus du seuil du profil (55 à 65 pour le défaut de 60) ;
 \item mode dégradé : le service d’analyse est indisponible ou inexploitable, et le score calculé localement porte l’origine « simulée ».
 \end{itemize}
 Le dossier signalé demande un arbitrage humain au lieu d’un tri automatique.
@@ -2385,7 +2405,8 @@ Entretien téléphonique RH obligatoire avant acceptation & Réalisée \\
 Calendrier manager dédié (filtré sur l’intervieweur connecté) & Réalisée \\
 Retrait de candidature en libre-service par le candidat & Réalisée \\
 Assistant conversationnel candidat (chatbot IA via OpenRouter, connaissance des candidatures réelles et de la plateforme) & Réalisée \\
-Évaluation du matching sur un Gold Set de vingt CV annotés & Réalisée \\
+Gold Set de vingt CV annotés, rejoué et calibré dans l’application (écran d’étalonnage par profil) & Réalisée \\
+Étiquette « Profil Gold » : proposition automatique, décision RH, repère visible du manager & Réalisée \\
 Human-in-the-Loop : signalement des dossiers à arbitrer & Réalisée \\
 Explicabilité du score : compétences validées / manquantes, source du score & Réalisée \\
 Décision à deux niveaux : avis manager contresigné par le RH (convocation ou refus motivé) & Réalisée \\
@@ -2418,7 +2439,7 @@ Plusieurs pistes d’évolution restent ouvertes pour poursuivre ce travail.
 \begin{itemize}
 \item \textbf{Fonctionnel} : un module d’analyse prédictive du taux de transformation des candidatures, une intégration plus poussée avec les plateformes d’emploi externes, et le report côté serveur du tri des candidatures RH, aujourd’hui limité à la page affichée.
 \item \textbf{Tests} : la suite compte déjà 264 méthodes unitaires et de contrôleur (JUnit 5 / Mockito) ; lui restent à ajouter des tests d’intégration avec la base, des parcours de bout en bout (Playwright ou Cypress) et des tests automatisés des composants Angular.
-\item \textbf{Évaluation de l’IA} : le jeu de référence de vingt profils, mobilisé pour calibrer le seuil de décision, devrait s’enrichir de candidatures réelles annotées par les recruteurs — seul moyen d’obtenir une mesure de performance en conditions d’exploitation.
+\item \textbf{Évaluation de l’IA} : le jeu de référence de vingt profils, qui calibre désormais le seuil de décision depuis l’application, doit s’enrichir des cas d’issue connue que les recruteurs y déposeront anonymisés — seul moyen d’obtenir une mesure de performance en conditions d’exploitation.
 \item \textbf{Industrialisation} : une chaîne d’intégration et de déploiement continus, puis un déploiement sur une infrastructure cloud, renforceraient la fiabilité et la scalabilité de la plateforme sur le long terme.
 \end{itemize}
 
