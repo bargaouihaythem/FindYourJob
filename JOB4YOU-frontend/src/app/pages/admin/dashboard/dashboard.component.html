@@ -123,12 +123,12 @@
             <div class="row no-gutters align-items-center">
               <div class="col mr-2">
                 <div class="text-xs font-weight-bold text-uppercase mb-1" style="color: #8B5CF6;">
-                  🤖 Score IA Moyen
+                  🤖 Score moyen retenu
                 </div>
                 <div class="h5 mb-0 font-weight-bold" style="color: #8B5CF6;">
-                  {{ stats.avgAiScore > 0 ? stats.avgAiScore + '/100' : '—' }}
+                  {{ stats.scoredCandidates > 0 ? stats.avgAiScore + '/100' : '—' }}
                 </div>
-                <div class="small text-muted mt-1">Basé sur {{ stats.totalCandidates }} CV analysés</div>
+                <div class="small text-muted mt-1">Basé sur {{ stats.scoredCandidates }} CV notés, correction RH incluse</div>
               </div>
               <div class="col-auto">
                 <i class="fas fa-robot fa-2x" style="color: #e9d5ff;"></i>

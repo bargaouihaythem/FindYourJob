@@ -310,15 +310,15 @@
                   </div>
                 </ng-container>
               </td>
-              <!-- Score retenu (correction RH incluse), comme dans la fiche détail -->
+              <!-- Score retenu (correction RH incluse), comme dans la fiche détail.
+                   Le test porte sur null : un score de 0 est une décision, pas une absence d'analyse. -->
               <td class="text-center">
-                <ng-container *ngIf="listScore(candidate) as score; else noScore">
+                <ng-container *ngIf="listScore(candidate) !== null; else noScore">
                   <div class="d-flex flex-column align-items-center gap-1">
                     <span class="badge rounded-pill px-2 py-1"
-                          [style.background-color]="score >= 80 ? '#d1fae5' : score >= 60 ? '#fef3c7' : '#fee2e2'"
-                          [style.color]="score >= 80 ? '#065f46' : score >= 60 ? '#92400e' : '#991b1b'"
+                          [ngStyle]="scoreBadgeStyle(candidate)"
                           [title]="scoreTitle(candidate)">
-                      <i class="fas fa-robot me-1"></i>{{ score }}/100
+                      <i class="fas fa-robot me-1"></i>{{ listScore(candidate) }}/100
                     </span>
                     <span *ngIf="candidate.manualScore != null"
                           class="badge rounded-pill bg-info text-dark px-2 py-1"
@@ -910,14 +910,14 @@
                 <div class="d-flex align-items-center mb-2">
                   <i class="fas fa-robot text-success me-2"></i>
                   <h6 class="mb-0 text-success">Analyse IA — Agent 1 n8n</h6>
-                  <span *ngIf="selectedCandidate.effectiveScore != null && selectedCandidate.effectiveScore > 0"
+                  <span *ngIf="selectedCandidate.effectiveScore != null"
                         class="ms-auto badge rounded-pill px-3 py-2 fs-6"
                         [style.background-color]="selectedCandidate.effectiveScore >= 80 ? '#dcfce7' : selectedCandidate.effectiveScore >= 60 ? '#fef9c3' : '#fee2e2'"
                         [style.color]="selectedCandidate.effectiveScore >= 80 ? '#15803d' : selectedCandidate.effectiveScore >= 60 ? '#a16207' : '#dc2626'">
-                    Score : {{ selectedCandidate.effectiveScore }}/100
+                    Score retenu : {{ selectedCandidate.effectiveScore }}/100
                     <span *ngIf="selectedCandidate.manualScore != null"> (corrigé RH)</span>
                   </span>
-                  <span *ngIf="!selectedCandidate.effectiveScore || selectedCandidate.effectiveScore === 0"
+                  <span *ngIf="selectedCandidate.effectiveScore == null"
                         class="ms-auto text-muted small">En attente d'analyse…</span>
                 </div>
                 <!-- Alerte Human-in-the-Loop (Remarque 2) -->
@@ -929,7 +929,7 @@
                   </div>
                 </div>
 
-                <div *ngIf="selectedCandidate.effectiveScore != null && selectedCandidate.effectiveScore > 0">
+                <div *ngIf="selectedCandidate.effectiveScore != null">
                   <div class="progress mb-2" style="height: 8px;">
                     <div class="progress-bar"
                          role="progressbar"
@@ -1046,7 +1046,9 @@
                 <span class="badge rounded-pill me-2" style="background:#dbeafe;color:#1d4ed8;min-width:90px;font-size:0.7rem;">🤖 Agent 1</span>
                 <span class="small text-muted me-2">{{ formatDate(selectedCandidate.applicationDate) }}</span>
                 <span class="small">CV reçu et analysé
-                  <span *ngIf="selectedCandidate.aiScore != null && selectedCandidate.aiScore > 0"> — Score {{ selectedCandidate.aiScore }}/100</span>
+                  <!-- Le flux de l'Agent 1 rend le score de l'IA tel quel : c'est le score original,
+                       pas le score retenu après une éventuelle correction RH. -->
+                  <span *ngIf="selectedCandidate.aiScore != null"> — Score IA {{ selectedCandidate.aiScore }}/100</span>
                 </span>
               </div>
               <div class="d-flex align-items-start mb-2">
@@ -1220,6 +1222,13 @@
             Entretien téléphonique validé : le dossier passe en « Test technique ».
           </span>
         </p>
+
+        <!-- Le doute signale par l'analyse doit etre visible au moment ou le RH choisit le
+             destinataire : c'est lui qui transmet, donc c'est lui qui tranche. -->
+        <div *ngIf="transmissionCandidate.needsHumanReview" class="alert alert-light border small mb-3">
+          <i class="fas fa-exclamation-triangle text-warning me-1"></i>
+          Cette analyse a demandé un arbitrage humain : {{ transmissionCandidate.humanReviewReason }}
+        </div>
 
         <div *ngIf="transmissionLoading" class="text-center py-4">
           <span class="spinner-border spinner-border-sm me-2"></span>

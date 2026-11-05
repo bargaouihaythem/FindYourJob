@@ -29,6 +29,11 @@ export class InterviewsComponent implements OnInit {
   filteredInterviews: Interview[] = [];
   candidates: any[] = [];
   interviewers: Interviewer[] = [];
+  /**
+   * E-mails des managers destinataires du dossier choisi (aiguillage serveur, la même règle
+   * que la visibilité) ; null = aucun dossier choisi, la liste reste donc complète.
+   */
+  destinatairesEmails: string[] | null = null;
   readonly interviewTypes = [
     { value: 'PHONE_SCREENING', label: 'Entretien téléphonique', rhOnly: true },
     { value: 'TECHNICAL', label: 'Entretien technique', rhOnly: false },
@@ -235,6 +240,61 @@ export class InterviewsComponent implements OnInit {
 
   get currentUserId(): number | null {
     return this.authService.getCurrentUser()?.id ?? null;
+  }
+
+  /**
+   * Le dossier choisi restreint le choix de l'intervieweur : un entretien affecté à un manager
+   * qui n'est pas destinataire du dossier partait quand même (HTTP 201) mais restait invisible
+   * dans son agenda, le calendrier filtrant par la visibilité. Le serveur refuse désormais ce
+   * couple ; la liste doit le dire avant la saisie, pas après un message d'erreur.
+   */
+  onInterviewCandidateChange(): void {
+    const candidateId = Number(this.interviewForm.get('candidateId')?.value);
+    this.destinatairesEmails = null;
+    if (!candidateId) {
+      return;
+    }
+    this.candidateService.getRoutingPreview(candidateId).subscribe({
+      next: (preview: any) => {
+        this.destinatairesEmails = (preview && preview.managers || [])
+          .map((m: any) => String(m.email || '').toLowerCase())
+          .filter((email: string) => email.length > 0);
+        this.clearIneligibleInterviewer();
+      },
+      error: () => { this.destinatairesEmails = null; }
+    });
+  }
+
+  isInterviewerEligible(interviewer: Interviewer): boolean {
+    if (this.destinatairesEmails === null) {
+      return true;
+    }
+    // Seuls les managers « purs » sont tenus par l'aiguillage ; un RH, un Tech Lead ou un
+    // développeur senior restent des intervieweurs possibles.
+    if (interviewer.role !== 'Manager') {
+      return true;
+    }
+    return this.destinatairesEmails.indexOf(String(interviewer.email || '').toLowerCase()) !== -1;
+  }
+
+  /** Les managers non destinataires ne sont pas proposés : choisir un intervieweur dont
+   * l'agenda ne verra jamais l'entretien n'a aucun sens. */
+  get eligibleInterviewers(): Interviewer[] {
+    return this.interviewers.filter(i => this.isInterviewerEligible(i));
+  }
+
+  /** Un choix déjà saisi devient faux quand le dossier change : on le retire et on l'explique. */
+  private clearIneligibleInterviewer(): void {
+    const choisi = Number(this.interviewForm.get('interviewerId')?.value);
+    if (!choisi) {
+      return;
+    }
+    const interviewer = this.interviewers.find(i => i.id === choisi);
+    if (interviewer && !this.isInterviewerEligible(interviewer)) {
+      this.interviewForm.get('interviewerId')?.setValue('');
+      this.toastrNotification.showWarning(interviewer.name
+        + " n'est pas destinataire de ce dossier : choisissez un manager destinataire.");
+    }
   }
 
   get ownInterviewerLabel(): string {
@@ -473,6 +533,7 @@ export class InterviewsComponent implements OnInit {
 
     this.openInterviewModal();
     this.interviewForm.get('candidateId')?.setValue(String(candidateId));
+    this.onInterviewCandidateChange();
     if (this.plansOwnAgendaOnly) {
       // Un manager qui se programme lui-même ouvre un entretien avec le manager.
       this.interviewForm.get('type')?.setValue('MANAGER');
@@ -497,6 +558,7 @@ export class InterviewsComponent implements OnInit {
         notes: interview.notes
       });
     } else {
+      this.destinatairesEmails = null;
       this.interviewForm.reset();
       this.interviewForm.patchValue({
         type: 'TECHNICAL',
@@ -524,6 +586,7 @@ export class InterviewsComponent implements OnInit {
   closeInterviewModal(): void {
     this.showInterviewModal = false;
     this.selectedInterview = null;
+    this.destinatairesEmails = null;
     this.interviewForm.reset();
   }
 

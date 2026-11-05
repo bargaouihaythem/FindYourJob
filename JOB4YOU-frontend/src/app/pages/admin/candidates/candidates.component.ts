@@ -532,7 +532,17 @@ export class CandidatesComponent implements OnInit, OnDestroy {
    */
   listScore(candidate: Candidate): number | null {
     const score = candidate.effectiveScore ?? candidate.aiScore;
-    return score && score > 0 ? score : null;
+    // Un score à 0 est une note, pas une absence de note : le formulaire RH l'autorise
+    // explicitement, et `score && score > 0` l'aurait effacé de la liste.
+    return typeof score === 'number' ? score : null;
+  }
+
+  /** Fond et texte du badge : vert au-dessus de 80, ambre au-dessus du seuil, rouge en dessous. */
+  scoreBadgeStyle(candidate: Candidate): { [key: string]: string } {
+    const score = this.listScore(candidate) ?? 0;
+    if (score >= 80) return { 'background-color': '#d1fae5', 'color': '#065f46' };
+    if (score >= 60) return { 'background-color': '#fef3c7', 'color': '#92400e' };
+    return { 'background-color': '#fee2e2', 'color': '#991b1b' };
   }
 
   scoreTitle(candidate: Candidate): string {

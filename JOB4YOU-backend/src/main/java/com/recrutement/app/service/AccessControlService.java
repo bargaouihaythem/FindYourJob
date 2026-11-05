@@ -61,10 +61,19 @@ public class AccessControlService {
     public boolean currentIsPureManager() {
         Authentication authentication = currentAuthentication();
         User currentUser = authentication != null ? findCurrentUser(authentication) : null;
-        return currentUser != null
-                && hasRole(currentUser, Role.ERole.ROLE_MANAGER)
-                && !hasRole(currentUser, Role.ERole.ROLE_HR)
-                && !hasRole(currentUser, Role.ERole.ROLE_ADMIN);
+        return isPureManagerAccount(currentUser);
+    }
+
+    /**
+     * Le compte visé est-il un manager sans prérogative RH/Admin ? Son périmètre est alors
+     * exactement l'aiguillage (ManagerScopeService), règle réutilisée pour valider un
+     * intervieweur proposé par le RH.
+     */
+    public boolean isPureManagerAccount(User user) {
+        return user != null
+                && hasRole(user, Role.ERole.ROLE_MANAGER)
+                && !hasRole(user, Role.ERole.ROLE_HR)
+                && !hasRole(user, Role.ERole.ROLE_ADMIN);
     }
 
     public boolean canAccessCandidate(Candidate candidate) {

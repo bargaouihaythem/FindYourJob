@@ -52,6 +52,9 @@ public class InterviewService {
     @Autowired
     private CandidateService candidateService;
 
+    @Autowired
+    private ManagerScopeService managerScopeService;
+
     /**
      * Planifie un nouvel entretien
      */
@@ -128,6 +131,8 @@ public class InterviewService {
 
         // Un manager qui planifie ne le fait que pour son propre agenda.
         assertInterviewerAssignmentAllowed(interviewer);
+        // Un RH, lui, choisit l'intervieweur : ce choix doit rester lisible dans l'agenda visé.
+        assertInterviewerPeutSuivreLeDossier(interviewer, candidate);
 
         // Deux rendez-vous en même temps, c'est physiquement impossible — même le même jour.
         assertNoOverlapWithInterviewerAgenda(interviewer.getId(), interviewRequest.getInterviewDate(),
@@ -296,6 +301,28 @@ public class InterviewService {
     }
 
     /**
+     * Un entretien affecté à un manager qui n'est pas destinataire du dossier est bien créé
+     * (HTTP 201) mais reste invisible à vie : le calendrier du manager filtre par
+     * canAccessCandidate. La règle est donc celle de l'aiguillage, lue au même endroit que la
+     * visibilité — un RH ne peut pas fabriquer un rendez-vous que personne ne verra.
+     */
+    private void assertInterviewerPeutSuivreLeDossier(User interviewer, Candidate candidate) {
+        if (!accessControlService.isPureManagerAccount(interviewer)) {
+            return;
+        }
+        if (managerScopeService.isRecipient(candidate, interviewer)) {
+            return;
+        }
+        String nom = interviewer.getUsername() != null ? interviewer.getUsername() : "ce compte";
+        List<String> destinataires = managerScopeService.recipientsOf(candidate);
+        throw new IllegalArgumentException(nom + " n'est pas destinataire de ce dossier : cet entretien"
+                + " n'apparaîtrait jamais dans son agenda. Intervieweurs possibles : "
+                + (destinataires.isEmpty() ? "aucun (l'aiguillage de l'offre ne résout personne)"
+                        : String.join(", ", destinataires))
+                + ". À défaut, faites d'abord transmettre le dossier au manager voulu.");
+    }
+
+    /**
      * Refuse un créneau qui en chevauche un déjà réservé par le même intervieweur.
      * Plusieurs entretiens le même jour restent autorisés : ce qui est physiquement impossible,
      * c'est d'être à deux rendez-vous en même temps. Sans ce contrôle, l'agent n8n pose deux
@@ -384,6 +411,18 @@ public class InterviewService {
                     .orElseThrow(() -> new ResourceNotFoundException("Utilisateur non trouvé avec l'ID: " + interviewRequest.getInterviewerId()));
             assertInterviewerAssignmentAllowed(interviewer);
             interview.setInterviewer(interviewer);
+        }
+
+        // Le couple dossier / intervieweur doit rester cohérent après l'une OU l'autre des deux
+        // mutations : changer de candidat sans changer d'intervieweur peut tout autant sortir
+        // du périmètre de ce dernier. Une affectation inchangée ne peut pas être rendue
+        // responsable de la règle : les entretiens posés avant elle doivent rester
+        // reprogrammables et annulables.
+        boolean affectationModifiee =
+                !candidatAvant.equals(interview.getCandidate().getId())
+                        || !interviewerAvant.equals(interview.getInterviewer().getId());
+        if (affectationModifiee) {
+            assertInterviewerPeutSuivreLeDossier(interview.getInterviewer(), interview.getCandidate());
         }
 
         mapRequestToEntity(interviewRequest, interview);

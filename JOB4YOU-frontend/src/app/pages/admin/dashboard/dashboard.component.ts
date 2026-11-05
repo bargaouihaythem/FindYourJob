@@ -23,6 +23,9 @@ interface DashboardStats {
   newCandidatesThisMonth: number;
   completedInterviews: number;
   avgAiScore: number;
+  // Nombre de dossiers portant un score retenu : la carte doit l'afficher, sinon le chiffre
+  // « basé sur N CV » ne correspond plus à la moyenne réellement calculée.
+  scoredCandidates: number;
   autoRejected: number;
   managerRejected: number;
   interviewScheduled: number;
@@ -62,6 +65,7 @@ export class DashboardComponent implements OnInit {
     newCandidatesThisMonth: 0,
     completedInterviews: 0,
     avgAiScore: 0,
+    scoredCandidates: 0,
     autoRejected: 0,
     managerRejected: 0,
     interviewScheduled: 0,
@@ -146,10 +150,14 @@ export class DashboardComponent implements OnInit {
                  candidateDate.getFullYear() === currentYear;
         }).length;
 
-        // Calculer le score IA moyen
-        const scored = candidates.filter((c: any) => c.aiScore != null && c.aiScore > 0);
-        this.stats.avgAiScore = scored.length > 0
-          ? Math.round(scored.reduce((sum: number, c: any) => sum + c.aiScore, 0) / scored.length)
+        // Le chiffre de référence est le score retenu, correction RH incluse : une moyenne
+        // calculée sur le seul score IA contredirait la liste RH après un override.
+        const retenus = candidates
+          .map((c: any) => (c.effectiveScore ?? c.aiScore))
+          .filter((s: any) => typeof s === 'number');
+        this.stats.scoredCandidates = retenus.length;
+        this.stats.avgAiScore = retenus.length > 0
+          ? Math.round(retenus.reduce((sum: number, s: number) => sum + s, 0) / retenus.length)
           : 0;
 
         // Compteurs par statut

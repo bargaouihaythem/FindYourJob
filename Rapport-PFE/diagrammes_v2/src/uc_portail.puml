@@ -7,17 +7,17 @@ actor "Visiteur" as VIS
 actor "Candidat" as CAND
 
 rectangle "Plateforme JOB4YOU — Portail Candidat & Visiteur" {
-  usecase "Consulter et rechercher\nles offres d'emploi" as UC_OFFRES
-  usecase "Obtenir des suggestions\n« Job idéal » (matching CV)" as UC_MATCHING
-  usecase "Échanger avec l'assistant\nconversationnel" as UC_CHATBOT
+  usecase "Consulter et rechercher\nles offres" as UC_OFFRES
+  usecase "Suggestions « Job idéal »\n(matching CV)" as UC_MATCHING
+  usecase "Échanger avec\nl'assistant" as UC_CHATBOT
   usecase "Postuler à une offre" as UC_POSTULER
-  usecase "Suivre l'état de\nses candidatures" as UC_SUIVRE
-  usecase "Retirer une candidature\nnon close" as UC_RETRAIT
-  usecase "Consulter le détail\nd'une offre active" as UC_DETAIL
-  usecase "Créer un compte\ncandidat" as UC_INSC
-  usecase "Consulter ses entretiens\nplanifiés" as UC_MYINT
-  usecase "S'authentifier\n(JWT)" as UC_AUTH
-  usecase "Déposer un CV\n(PDF, DOC, DOCX — 5 Mo\ndans le formulaire)" as UC_CV
+  usecase "Suivre ses candidatures" as UC_SUIVRE
+  usecase "Retirer une candidature" as UC_RETRAIT
+  usecase "Détail d'une offre active" as UC_DETAIL
+  usecase "Créer un compte" as UC_INSC
+  usecase "Consulter ses entretiens" as UC_MYINT
+  usecase "S'authentifier (JWT)" as UC_AUTH
+  usecase "Déposer un CV\n(PDF, DOC, DOCX - 5 Mo)" as UC_CV
 }
 
 CAND --|> VIS
@@ -38,11 +38,12 @@ UC_RETRAIT  ..> UC_AUTH : <<include>>
 UC_MYINT    ..> UC_AUTH : <<include>>
 UC_CHATBOT  ..> UC_AUTH : <<include>>
 
-note bottom of UC_AUTH
+note top of UC_DETAIL
   L'assistant conversationnel et le suivi des
-  candidatures sont réservés au compte candidat
-  (ROLE_USER) ; la création de compte précède
-  toute candidature, le visiteur étant renvoyé
-  vers le formulaire d'inscription.
+  candidatures sont réservés au compte
+  candidat (ROLE_USER) ; la création de
+  compte précède toute candidature, le
+  visiteur étant renvoyé vers le formulaire
+  d'inscription.
 end note
 @enduml

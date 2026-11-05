@@ -85,6 +85,13 @@ public class CandidateService {
         JobOffer jobOffer = jobOfferRepository.findById(applicationRequest.getJobOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offre d'emploi non trouvée avec l'ID: " + applicationRequest.getJobOfferId()));
 
+        // Une personne déjà embauchée occupe un poste : elle ne dépose pas une seconde
+        // candidature pendant qu'elle l'occupe. Règle symétrique de la validation finale
+        // (assertNotAlreadyHired) : sans elle, le refus d'une deuxième embauche se
+        // contenterait de bloquer le dossier plus tard, après un parcours complet.
+        assertNotAlreadyHiredForApplication(applicationRequest.getEmail(),
+                applicationRequest.getFirstName(), applicationRequest.getLastName());
+
         // Un dossier est unique par (e-mail, offre) : contrainte d'unicité en base.
         // Un retrait n'est pourtant pas une fin de parcours — le candidat qui se
         // rétracte puis change d'avis doit pouvoir postuler à nouveau. On réactive
@@ -1476,6 +1483,9 @@ public class CandidateService {
             throw new IllegalArgumentException(
                     "La date de présentation des documents est obligatoire pour valider l'embauche");
         }
+        if (finalDecision == Candidate.CandidateStatus.HIRED) {
+            assertNotAlreadyHired(candidate);
+        }
 
         String effectiveReason = reason != null ? reason.trim() : "";
         if (finalDecision == Candidate.CandidateStatus.REJECTED && effectiveReason.isBlank()) {
@@ -1517,6 +1527,71 @@ public class CandidateService {
         }
 
         return new CandidateResponse(validated);
+    }
+
+    /**
+     * Une personne n'occupe qu'un seul poste. L'identité retenue est le couple e-mail + prénom
+     * nom : l'e-mail seul rattache déjà les dossiers d'un même candidat entre plusieurs offres
+     * (contrainte unique (email, job_offer_id) sur Candidate), mais une même boîte de test peut
+     * porter plusieurs dossiers au nom différent ; les traiter comme une seule personne
+     * refuserait une embauche légitime. Sans ce contrôle croisé, la machine à états validait
+     * deux embauches séparées et « Mes candidatures » affichait deux fois « Embauché » pour la
+     * même personne.
+     */
+    private void assertNotAlreadyHired(Candidate candidate) {
+        if (candidate.getEmail() == null || candidate.getEmail().isBlank()) {
+            return;
+        }
+        for (Candidate autre : candidateRepository.findByEmailIgnoreCaseAndStatus(
+                candidate.getEmail(), Candidate.CandidateStatus.HIRED)) {
+            if (autre.getId().equals(candidate.getId()) || !memePersonne(candidate, autre)) {
+                continue;
+            }
+            String offre = autre.getJobOffer() != null && autre.getJobOffer().getTitle() != null
+                    ? autre.getJobOffer().getTitle()
+                    : "une autre offre";
+            throw new IllegalArgumentException("Cette personne est déjà embauchée sur l'offre « "
+                    + offre + " » (dossier #" + autre.getId() + "). Une personne ne peut occuper"
+                    + " qu'un seul poste : clôturez d'abord ce dossier, ou validez celui-ci par un refus.");
+        }
+    }
+
+    /** Deux dossiers portent le même nom sur la même adresse : c'est la même personne. */
+    private boolean memePersonne(Candidate a, Candidate b) {
+        return nomComplet(a).equalsIgnoreCase(nomComplet(b));
+    }
+
+    private String nomComplet(Candidate c) {
+        return (c.getFirstName() == null ? "" : c.getFirstName().trim())
+                + " " + (c.getLastName() == null ? "" : c.getLastName().trim());
+    }
+
+    private String nomComplet(String firstName, String lastName) {
+        return (firstName == null ? "" : firstName.trim())
+                + " " + (lastName == null ? "" : lastName.trim());
+    }
+
+    /**
+     * Règle symétrique de la validation finale : pendant qu'il occupe un poste, un candidat
+     * ne relance pas un second parcours. Le message nomme l'offre et le dossier existants,
+     * sinon la personne croit à une panne et représente sa candidature ailleurs.
+     */
+    private void assertNotAlreadyHiredForApplication(String email, String firstName, String lastName) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        String demandeur = nomComplet(firstName, lastName);
+        for (Candidate embauche : candidateRepository.findByEmailIgnoreCaseAndStatus(
+                email, Candidate.CandidateStatus.HIRED)) {
+            if (!nomComplet(embauche).equalsIgnoreCase(demandeur)) {
+                continue;
+            }
+            String offre = embauche.getJobOffer() != null && embauche.getJobOffer().getTitle() != null
+                    ? embauche.getJobOffer().getTitle() : "une offre";
+            throw new IllegalArgumentException("Vous êtes déjà embauché sur l'offre « " + offre
+                    + " » (dossier #" + embauche.getId() + "). Une personne en poste ne dépose pas"
+                    + " de nouvelle candidature : contactez le RH si vous souhaitez changer de poste.");
+        }
     }
 
     /**

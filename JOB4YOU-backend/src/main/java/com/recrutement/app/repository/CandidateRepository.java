@@ -30,6 +30,8 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
 
     Optional<Candidate> findByEmailAndJobOfferId(String email, Long jobOfferId);
 
+    List<Candidate> findByEmailIgnoreCaseAndStatus(String email, Candidate.CandidateStatus status);
+
     @Query("SELECT c FROM Candidate c WHERE c.firstName LIKE %:name% OR c.lastName LIKE %:name%")
     List<Candidate> findByFirstNameOrLastNameContaining(@Param("name") String name);
 
