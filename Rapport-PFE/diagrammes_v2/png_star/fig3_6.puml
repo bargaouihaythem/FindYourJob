@@ -1,0 +1,26 @@
+@startuml fig3_6
+!include skin.iuml
+participant ":CandidateService" as CS
+participant ":ManagerRoutingService" as MRS
+database "PostgreSQL\n(SGBD)" as DB
+participant ":NotificationService" as NS
+actor "Manager" as MGR
+
+CS -> MRS : Résoudre les managers concernés\n(entrée en TECHNICAL_TEST)
+MRS -> DB : 1) Managers du département
+DB --> MRS : Liste (si trouvée)
+MRS -> DB : 2) À défaut : famille de métier
+DB --> MRS : Liste (si trouvée)
+MRS -> DB : 3) À défaut : e-mail manager de l'offre
+DB --> MRS : Manager responsable
+MRS --> CS : Managers du périmètre
+CS -> NS : Notifier les managers
+NS --> MGR : E-mail de candidature à évaluer
+
+note right of NS
+  L'envoi est réalisé par le back-end ; les
+  agents n8n (entretien, décision) appellent
+  l'API de notification pour déclencher les
+  e-mails de leur périmètre.
+end note
+@enduml

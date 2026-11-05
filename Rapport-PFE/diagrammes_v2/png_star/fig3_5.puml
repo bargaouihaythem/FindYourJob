@@ -1,0 +1,23 @@
+@startuml fig3_5
+!include skin.iuml
+participant "Agent n8n 1" as N8N
+participant ":CandidateController" as CC
+participant ":AiScoringService" as AIS
+database "PostgreSQL\n(SGBD)" as DB
+participant ":CohereClient" as COHC
+participant "API Cohere" as COH
+
+N8N -> CC : POST /api/candidates/{id}/ai-score/recompute
+CC -> AIS : computeScore(cvText, jobFamily, seniority)
+AIS -> DB : Lire le profil de pondération
+DB --> AIS : Poids des critères
+AIS -> COHC : chat(messages)
+COHC -> COH : POST /v2/chat
+COH --> COHC : Sous-scores et synthèse
+COHC --> AIS : Scores technique / communication / séniorité
+AIS -> AIS : Score global pondéré (seuil 60)
+AIS -> DB : Enregistrer score et statut automatique
+DB --> AIS : Confirmation
+AIS --> CC : Résultat du scoring
+CC --> N8N : 200 OK
+@enduml

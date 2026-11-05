@@ -1,0 +1,81 @@
+@startuml fig3_2a
+!include skin.iuml
+!pragma layout smetana
+hide circle
+skinparam classAttributeIconSize 0
+
+class Department {
+  id : Long
+  name : String
+  code : String
+}
+class JobOffer {
+  id : Long
+  title : String
+  description : String
+  requiredSkills : String
+  jobFamily : String
+  seniorityLevel : String
+  status : String
+  deadline : Date
+}
+class User {
+  id : Long
+  username : String
+  email : String
+  jobFamily : String
+}
+class Candidate {
+  id : Long
+  firstName : String
+  lastName : String
+  email : String
+  phone : String
+  status : CandidateStatus
+  applicationDate : Date
+  aiScore : Integer
+  aiSummary : String
+  manualScore : Integer
+}
+class CV {
+  id : Long
+  originalFilename : String
+  filePath : String
+  extractedText : Text
+}
+class Interview {
+  id : Long
+  interviewDate : Date
+  type : String
+  status : String
+  meetLink : String
+}
+class Feedback {
+  id : Long
+  content : Text
+  rating : Integer
+  status : String
+  isSentToCandidate : Boolean
+}
+class ScoringWeightProfile {
+  id : Long
+  jobFamily : String
+  seniorityLevel : String
+  weightTechnical : Double
+  weightCommunication : Double
+  weightSeniority : Double
+}
+
+Department "1" -- "0..*" JobOffer : rattache
+JobOffer "1" -- "0..*" Candidate : reçoit
+Candidate "1" -- "0..1" CV : dépose
+Candidate "1" -- "0..*" Interview : passe
+Interview "1" -- "0..*" Feedback : donne lieu à
+Candidate "1" -- "0..*" Feedback : concerne
+
+User "1" -- "0..*" JobOffer : crée
+User "1" -- "0..*" Interview : mène
+User "1" -- "0..*" Feedback : rédige
+
+ScoringWeightProfile ..> JobOffer : pondère selon\njobFamily + seniorityLevel
+@enduml

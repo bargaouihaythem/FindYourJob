@@ -1,0 +1,39 @@
+@startuml fig3_9
+!include skin.iuml
+!pragma layout smetana
+node "Poste client" as CLIENT {
+  artifact "Navigateur web" as NAV
+}
+node "Poste / serveur local" as HOST {
+  artifact "Application Angular (SPA)\nservie en local" as ANG
+  artifact "API REST Spring Boot" as API
+  artifact "Stockage fichiers CV (volume)" as FS
+  artifact "n8n (Agents 1, 2, 3)" as N8N
+  database "PostgreSQL" as DB
+}
+cloud "Services externes" {
+  artifact "API Cohere (scoring IA)" as COH
+  artifact "API LLM (chatbot)" as LLM
+  artifact "Google Calendar / Meet" as GC
+  artifact "Serveur SMTP" as SMTP
+}
+
+NAV --> ANG : HTTP local
+ANG --> API : REST + JWT
+API --> DB : JDBC
+API --> FS : écriture CV
+API --> N8N : webhooks
+N8N --> API : callbacks (recompute, lien d'entretien)
+N8N ..> GC : évolution prévue (non actif)
+API --> COH : scoring IA
+API --> LLM : chatbot
+
+note bottom of GC
+  Aucun événement Google Calendar authentifié
+  n'est créé par le workflow actuel : le lien
+  d'entretien est un lien de démonstration.
+  L'intégration Calendar / Meet est une
+  évolution prévue.
+end note
+API --> SMTP : e-mails (EmailService,\ncertains déclenchés par n8n)
+@enduml

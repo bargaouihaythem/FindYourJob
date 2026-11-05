@@ -1,0 +1,164 @@
+@startuml fig3_8w
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+hide circle
+skinparam classAttributeIconSize 0
+
+entity "users" as users {
+  * id : bigint <<PK>>
+  --
+  username : varchar
+  email : varchar
+  password : varchar
+  first_name : varchar
+  last_name : varchar
+  job_family : varchar
+  * department_id : bigint <<FK>>
+}
+entity "roles" as roles {
+  * id : bigint <<PK>>
+  --
+  name : varchar
+}
+entity "user_roles" as user_roles {
+  * user_id : bigint <<FK>>
+  * role_id : bigint <<FK>>
+}
+entity "departments" as departments {
+  * id : bigint <<PK>>
+  --
+  name : varchar
+  code : varchar
+}
+entity "job_offers" as job_offers {
+  * id : bigint <<PK>>
+  --
+  title : varchar
+  description : text
+  required_skills : varchar
+  job_family : varchar
+  seniority_level : varchar
+  status : varchar
+  manager_email : varchar
+  deadline : timestamp
+  * department_id : bigint <<FK>>
+  * created_by : bigint <<FK>>
+}
+entity "candidates" as candidates {
+  * id : bigint <<PK>>
+  --
+  first_name : varchar
+  last_name : varchar
+  email : varchar
+  phone : varchar
+  address : text
+  linkedin_profile : varchar
+  cover_letter : text
+  status : varchar
+  status_reason : text
+  status_changed_by : varchar
+  ai_score : integer
+  ai_score_source : varchar
+  ai_summary : text
+  ai_recommendation : varchar
+  manual_score : integer
+  manual_score_reason : text
+  manual_score_by : varchar
+  application_date : timestamp
+  last_updated : timestamp
+  * job_offer_id : bigint <<FK>>
+}
+note bottom of candidates
+  Colonnes principales ; les sous-scores IA
+  (technique, communication, adéquation) et
+  les horodatages de la surcharge manuelle
+  figurent dans le script DDL.
+end note
+entity "cvs" as cvs {
+  * id : bigint <<PK>>
+  --
+  original_filename : varchar
+  stored_filename : varchar
+  file_path : varchar
+  extracted_text : text
+  * candidate_id : bigint <<FK>>
+}
+entity "interviews" as interviews {
+  * id : bigint <<PK>>
+  --
+  interview_date : timestamp
+  type : varchar
+  status : varchar
+  meet_link : varchar
+  * candidate_id : bigint <<FK>>
+  * interviewer_id : bigint <<FK>>
+}
+entity "feedbacks" as feedbacks {
+  * id : bigint <<PK>>
+  --
+  content : text
+  rating : integer
+  status : varchar
+  is_sent_to_candidate : boolean
+  * candidate_id : bigint <<FK>>
+  * author_id : bigint <<FK>>
+  * interview_id : bigint <<FK>>
+}
+entity "internal_notes" as internal_notes {
+  * id : bigint <<PK>>
+  --
+  content : text
+  * candidate_id : bigint <<FK>>
+  * created_by : bigint <<FK>>
+}
+entity "scoring_weight_profiles" as swp {
+  * id : bigint <<PK>>
+  --
+  job_family : varchar
+  seniority_level : varchar
+  weight_technical : double
+  weight_communication : double
+  weight_seniority : double
+}
+entity "audit_logs" as audit_logs {
+  * id : bigint <<PK>>
+  --
+  entity_type : varchar
+  action : varchar
+  entity_id : bigint
+  old_value / new_value : text
+  performed_by : varchar
+  performed_at : timestamp
+}
+entity "n8n_outbox_events" as outbox {
+  * id : bigint <<PK>>
+  --
+  event_key : varchar
+  webhook_url : varchar
+  payload_json : text
+  status : varchar
+}
+entity "password_reset_tokens" as prt {
+  * id : bigint <<PK>>
+  --
+  token : varchar
+  expiry_date : timestamp
+  * user_id : bigint <<FK>>
+}
+
+users ||--o{ user_roles
+roles ||--o{ user_roles
+departments ||--o{ users
+departments ||--o{ job_offers
+users ||--o{ job_offers : created_by
+job_offers ||--o{ candidates
+candidates ||--o| cvs
+candidates ||--o{ interviews
+users ||--o{ interviews : interviewer
+candidates ||--o{ feedbacks
+users ||--o{ feedbacks : author
+interviews ||--o{ feedbacks
+candidates ||--o{ internal_notes
+users ||--o{ prt
+@enduml

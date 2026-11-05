@@ -1,0 +1,29 @@
+@startuml uc_portail
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Visiteur" as VIS
+actor "Candidat" as CAND
+
+rectangle "Plateforme JOB4YOU — Portail Candidat & Visiteur" {
+  usecase "Consulter et rechercher\nles offres d'emploi" as UC_OFFRES
+  usecase "Obtenir des suggestions\n« Job idéal » (matching CV)" as UC_MATCHING
+  usecase "Échanger avec l'assistant\nconversationnel" as UC_CHATBOT
+  usecase "Postuler à une offre" as UC_POSTULER
+  usecase "Suivre l'état de\nses candidatures" as UC_SUIVRE
+  usecase "Retirer une candidature\nnon close" as UC_RETRAIT
+  usecase "Consulter le détail\nd'une offre active" as UC_DETAIL
+  usecase "Déposer un CV\n(PDF, DOC, DOCX — 10 Mo max)" as UC_CV
+}
+
+CAND --|> VIS
+VIS --> UC_OFFRES
+VIS --> UC_MATCHING
+CAND --> UC_POSTULER
+CAND --> UC_SUIVRE
+CAND --> UC_RETRAIT
+
+UC_OFFRES ..> UC_DETAIL : <<include>>
+UC_POSTULER ..> UC_CV : <<include>>
+@enduml

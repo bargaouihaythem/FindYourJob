@@ -1,0 +1,20 @@
+@startuml fig3_3
+!include skin.iuml
+actor "Responsable RH" as RH
+participant ":InterviewService" as IS
+database "PostgreSQL\n(SGBD)" as DB
+participant "Agent n8n 2" as N8N
+participant "Google Calendar" as GC
+
+RH -> IS : Planifier un entretien
+IS -> IS : Garde-fou : candidat dans un statut\ncompatible et créneau non pourvu
+IS -> DB : Enregistrer l'entretien (SCHEDULED)
+DB --> IS : Entretien persisté
+IS -> N8N : Déclencher la planification
+N8N -> GC : Créer l'événement
+GC --> N8N : Lien Meet
+N8N -> IS : Retourner le lien Meet
+IS -> DB : Mettre à jour l'entretien
+DB --> IS : Confirmation
+IS --> RH : Entretien planifié + convocation candidat
+@enduml

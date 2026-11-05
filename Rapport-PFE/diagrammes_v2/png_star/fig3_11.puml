@@ -1,0 +1,57 @@
+@startuml fig3_11
+!include skin.iuml
+!pragma layout smetana
+
+|Candidat|
+start
+:Consulter les offres et postuler
+(dépôt du CV) — statut APPLIED;
+note right
+  Le candidat peut se retirer
+  (statut WITHDRAWN) à tout
+  moment du processus.
+end note
+
+|Système (IA)|
+:Extraction du texte du CV et
+calcul du score IA sur 100
+(automatisation n8n + Cohere);
+if (score ≥ 60 ?) then (oui)
+  :statut CV_REVIEWED;
+else (non)
+  :statut AUTO_REJECTED;
+  :e-mail de refus automatique;
+  note right
+    Un rejet IA peut être corrigé
+    manuellement par le RH (override)
+    → retour en CV_REVIEWED.
+  end note
+  stop
+endif
+
+|Responsable RH|
+:Examiner le dossier et le score IA;
+:Entretien téléphonique de présélection
+— statut PHONE_SCREENING;
+
+|Manager|
+:Test technique — statut TECHNICAL_TEST;
+:Entretien puis entretien final
+— statuts INTERVIEW / FINAL_INTERVIEW;
+:Rédiger les feedbacks;
+if (Décision finale ?) then (Accepter)
+  |Responsable RH|
+  :statut ACCEPTED;
+  :Planifier l'agenda — statut INTERVIEW_SCHEDULED;
+  :statut HIRED;
+else (Refuser)
+  :statut MANAGER_REJECTED;
+endif
+
+|Système (IA)|
+:Notifier le candidat et journaliser;
+
+|Candidat|
+:Recevoir la décision;
+stop
+@enduml

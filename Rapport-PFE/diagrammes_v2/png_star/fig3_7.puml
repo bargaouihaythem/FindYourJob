@@ -1,0 +1,30 @@
+@startuml fig3_7
+!include skin.iuml
+!pragma layout smetana
+hide empty description
+
+[*] --> APPLIED : candidature soumise
+APPLIED --> AUTO_REJECTED : score IA < 60
+APPLIED --> WITHDRAWN : retrait du candidat
+
+state "En évaluation" as EVAL {
+  CV_REVIEWED --> PHONE_SCREENING : présélection
+  PHONE_SCREENING --> TECHNICAL_TEST : test technique
+  TECHNICAL_TEST --> INTERVIEW : entretien technique
+  INTERVIEW --> FINAL_INTERVIEW : entretien final
+}
+APPLIED --> CV_REVIEWED : score IA >= 60
+EVAL --> ACCEPTED : acceptation (RH ou manager)
+EVAL --> MANAGER_REJECTED : refus du manager
+EVAL --> WITHDRAWN : retrait du candidat
+AUTO_REJECTED --> CV_REVIEWED : override RH justifié
+
+ACCEPTED --> INTERVIEW_SCHEDULED : entretien planifié
+ACCEPTED --> HIRED : recrutement confirmé
+INTERVIEW_SCHEDULED --> HIRED : prise de poste
+INTERVIEW_SCHEDULED --> WITHDRAWN : retrait du candidat
+
+HIRED --> [*]
+WITHDRAWN --> [*]
+MANAGER_REJECTED --> [*]
+@enduml

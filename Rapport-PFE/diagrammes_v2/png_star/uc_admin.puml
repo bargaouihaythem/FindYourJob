@@ -1,0 +1,36 @@
+@startuml uc_admin
+!include skin.iuml
+!pragma layout smetana
+left to right direction
+
+actor "Administrateur" as ADM
+actor "Responsable RH" as RH
+
+rectangle "Plateforme JOB4YOU — Administration & Paramétrage" {
+  usecase "Gérer les comptes\net les rôles" as UC_ROLES
+  usecase "Rattacher un utilisateur à un\ndépartement / famille de métier" as UC_RATTACH
+  usecase "Administrer les départements\net les familles de métier" as UC_REF
+  usecase "Paramétrer le scoring IA\n(profils de pondération)" as UC_SCORING
+  usecase "Consulter le journal\nd'audit" as UC_AUDIT
+  usecase "Trancher la décision\nen l'absence du manager" as UC_DEBLOC
+}
+
+ADM --> UC_ROLES
+ADM --> UC_RATTACH
+ADM --> UC_REF
+ADM --> UC_SCORING
+ADM --> UC_AUDIT
+ADM --> UC_DEBLOC
+RH --> UC_AUDIT
+
+note bottom of UC_AUDIT
+  Les deux fonctions encadrées ici — journal
+  d'audit et profils de pondération du scoring
+  IA — sont réservées à l'Administrateur et au
+  Responsable RH : le périmètre est fixé par
+  les gardes de route Angular. Côté API, les
+  endpoints /api/audit et /api/scoring-profiles
+  exigent une session valide sans vérifier le
+  rôle : l'écran reste le seul filtre effectif.
+end note
+@enduml

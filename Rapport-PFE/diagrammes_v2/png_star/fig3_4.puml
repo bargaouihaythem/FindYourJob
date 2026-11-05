@@ -1,0 +1,23 @@
+@startuml fig3_4
+!include skin.iuml
+actor "Manager" as MGR
+participant ":CandidateService" as CS
+database "PostgreSQL\n(SGBD)" as DB
+participant ":NotificationService" as NS
+
+MGR -> CS : Décision ACCEPTED /\nMANAGER_REJECTED + motif
+CS -> DB : Lire la candidature
+DB --> CS : Statut courant
+CS -> CS : Vérifier la transition autorisée
+CS -> DB : Enregistrer le statut final
+DB --> CS : Confirmation
+CS -> NS : Notifier le candidat et le RH
+CS --> MGR : Décision enregistrée
+
+note right of NS
+  Les e-mails sont envoyés par le back-end
+  (NotificationService / EmailService) ;
+  l'agent n8n de routage déclenche certains
+  envois via l'API de notification.
+end note
+@enduml

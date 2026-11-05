@@ -1,0 +1,20 @@
+@startuml dss_noir
+!include skin.iuml
+!pragma layout smetana
+hide footbox
+
+actor "Candidat" as CAND
+participant "Système JOB4YOU" as SYS
+
+CAND -> SYS : soumettreCandidature(formulaire, CV.pdf)
+activate SYS
+SYS --> CAND : Confirmation (HTTP 201 Created,\nstatut APPLIED)
+deactivate SYS
+
+note over SYS
+  Traitements asynchrones en arrière-plan :
+  extraction du texte du CV, scoring IA,
+  orientation du dossier et notification
+  de confirmation par e-mail.
+end note
+@enduml
