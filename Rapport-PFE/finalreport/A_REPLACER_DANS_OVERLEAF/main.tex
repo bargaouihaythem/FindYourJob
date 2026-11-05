@@ -430,7 +430,10 @@
 \raisebox{\dimexpr\topskip+1in+\topmargin+\headheight+\headsep-\paperheight\relax}[0pt][0pt]{%
 \includegraphics[width=\paperwidth,height=\paperheight]{garde_page1_officielle}}%
 \par
-\afterpage{\blankpage}
+% L'image etant posee dans une boite de hauteur nulle, elle ne remplit pas la
+% page : sans coupure explicite, le bloc signatures coulait par-dessus la garde.
+\clearpage
+\blankpage
        % ======== fin tpl/title_page ========
         % ======== tpl/signatures ========
 \thispagestyle{empty}
