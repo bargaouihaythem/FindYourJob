@@ -99,6 +99,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   isRefreshing = false;
   /** Dossier dont la relance d'analyse est en cours (ligne affichée en chargement). */
   recomputingId: number | null = null;
+  /** Dossier dont la décision « Profil Gold » est en cours d'enregistrement. */
+  goldBusyId: number | null = null;
 
   /** Statut connu de chaque dossier à la dernière synchro : permet de détecter, entre
    *  deux rafraîchissements, les avis enregistrés par un manager sur un autre poste. */
@@ -578,6 +580,45 @@ export class CandidatesComponent implements OnInit, OnDestroy {
           err?.error?.message || "L'analyse n'a pas pu être relancée.", 'Erreur');
       }
     });
+  }
+
+  /**
+   * L'étoile « Profil Gold » est une décision RH : la machine la propose, l'humain la valide.
+   * Une recalculation du score ne revient pas dessus une fois confirmée ou écartée.
+   */
+  decideGold(candidate: Candidate, decision: 'CONFIRME' | 'REJETE'): void {
+    this.goldBusyId = candidate.id;
+    this.candidateService.decideGoldStatus(candidate.id, decision).subscribe({
+      next: (updated: any) => {
+        this.goldBusyId = null;
+        if (updated) {
+          candidate.goldStatus = updated.goldStatus;
+          candidate.goldProposed = updated.goldProposed;
+          candidate.goldStatusBy = updated.goldStatusBy;
+          candidate.goldStatusAt = updated.goldStatusAt;
+        }
+        if (this.selectedCandidate && this.selectedCandidate.id === candidate.id) {
+          this.selectedCandidate = candidate;
+        }
+        this.toastrNotification.showSuccess(
+          decision === 'CONFIRME'
+            ? `Profil Gold confirmé pour ${candidate.firstName} ${candidate.lastName} : l'étoile est visible du manager.`
+            : `Proposition « Profil Gold » écartée pour ${candidate.firstName} ${candidate.lastName}.`,
+          'Profil Gold');
+      },
+      error: (err: any) => {
+        this.goldBusyId = null;
+        this.toastrNotification.showError(
+          err?.error?.message || "La décision n'a pas pu être enregistrée.", 'Erreur');
+      }
+    });
+  }
+
+  /** L'étoile doit dire qui l'a accordée : elle engage le RH, pas seulement le modèle. */
+  goldTooltip(candidate: Candidate): string {
+    const when = candidate.goldStatusAt ? this.formatDate(candidate.goldStatusAt) : null;
+    return `Profil de référence validé par ${candidate.goldStatusBy || 'le RH'}`
+      + (when ? ` le ${when}` : '') + ' : score excellent et analyse sûre.';
   }
 
   sortCandidates(): void {

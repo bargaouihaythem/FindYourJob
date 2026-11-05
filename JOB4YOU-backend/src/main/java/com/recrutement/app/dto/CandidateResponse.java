@@ -62,6 +62,16 @@ public class CandidateResponse {
     private Boolean needsHumanReview;
     private String humanReviewReason;
 
+    /**
+     * Étiquette « Profil Gold ». Le manager ne lit ici que CONFIRME : la proposition de la
+     * machine reste un travail interne RH jusqu'à la validation.
+     */
+    private Candidate.GoldStatus goldStatus;
+    /** Proposition machine en attente d'arbitrage RH (score d'excellence et dossier non incertain). */
+    private Boolean goldProposed;
+    private String goldStatusBy;
+    private LocalDateTime goldStatusAt;
+
     /** Destination du dossier : gelée à la transmission au manager, jamais déduite du score IA. */
     private String routedManagerName;
     private String routedManagerEmails;
@@ -118,6 +128,11 @@ public class CandidateResponse {
         this.missingSkills = candidate.getMissingSkills();
         this.needsHumanReview = candidate.getNeedsHumanReview();
         this.humanReviewReason = candidate.getHumanReviewReason();
+        this.goldProposed = candidate.getGoldStatus() == Candidate.GoldStatus.PROPOSE;
+        this.goldStatus = candidate.getGoldStatus() == Candidate.GoldStatus.CONFIRME
+                ? Candidate.GoldStatus.CONFIRME : Candidate.GoldStatus.AUCUN;
+        this.goldStatusBy = candidate.getGoldStatusBy();
+        this.goldStatusAt = candidate.getGoldStatusAt();
         this.routedManagerEmails = candidate.getRoutedManagerEmails();
         this.routedAt = candidate.getRoutedAt();
         this.routingBasis = candidate.getRoutingBasis();

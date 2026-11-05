@@ -34,8 +34,8 @@ const RUN_JSON = path.join(ROOT, 'gold_set', 'live_run.json');
 const REPORT = path.join(ROOT, 'gold_set', 'live_run_report.md');
 
 const THRESHOLD = 60;
-const GREY_LOW = 55;   // miroir de AiScoringService.GREY_ZONE_LOW / HIGH
-const GREY_HIGH = 65;
+const GREY_LOW = 55;   // seuil par défaut de l'application (ai.score.decision.threshold) ± GREY_ZONE_MARGIN
+const GREY_HIGH = 65;  // un profil calibré sur le Gold Set déplace cette bande autour de son seuil
 const POLL_MS = 4000;
 const POLL_MAX_MS = 90000;
 

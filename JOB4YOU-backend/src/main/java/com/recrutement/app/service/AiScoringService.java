@@ -32,12 +32,19 @@ public class AiScoringService {
     private final SkillNormalizationService skillNormalizationService;
 
     /**
-     * Bande d'incertitude autour du seuil de décision : un score qui tombe là ne doit
-     * jamais déclencher un rejet automatique, qu'il vienne de Cohere, du mode dégradé ou
-     * d'un score transmis par un appelant externe (PATCH /ai-score).
+     * Bande d'incertitude autour du seuil de décision effectif du profil : un score qui tombe
+     * là ne doit jamais déclencher un rejet automatique, qu'il vienne de Cohere, du mode dégradé
+     * ou d'un score transmis par un appelant externe (PATCH /ai-score). Elle suit le seuil calibré
+     * sur le Gold Set : un profil calibré à 85 a sa zone grise à 80-90, pas à 55-65.
      */
-    public static final int GREY_ZONE_LOW = 55;
-    public static final int GREY_ZONE_HIGH = 65;
+    public static final int GREY_ZONE_MARGIN = 5;
+
+    /**
+     * Barre absolue d'excellence : au-dessus, le dossier est proposé « Profil Gold » au RH.
+     * 85 vient de la mesure sur le Gold Set : à ce niveau, aucun cas hors cible du corpus
+     * n'est proposé (le pire abusif mesuré est à 81) et les profils concernés sont tous pertinents.
+     */
+    public static final int EXCELLENT_SCORE = 85;
 
     /**
      * Plafond appliqué quand le CV est très loin du minimum d'expérience exigé par l'offre
@@ -46,8 +53,8 @@ public class AiScoringService {
      */
     public static final int SENIORITY_GATE_MAX_SCORE = 45;
 
-    public static boolean isGreyZone(int score) {
-        return score >= GREY_ZONE_LOW && score <= GREY_ZONE_HIGH;
+    public static boolean isGreyZone(int score, int threshold) {
+        return Math.abs(score - threshold) <= GREY_ZONE_MARGIN;
     }
 
     public AiScoringService(CohereClient cohereClient,
@@ -74,6 +81,9 @@ public class AiScoringService {
         /** Années lues dans le CV et minimum d'années exigé par l'offre (null = non chiffrable). */
         public Integer candidateExperienceYears;
         public Integer requiredExperienceMinYears;
+        /** Seuil de décision du profil utilisé pour cette candidature, et proposition « Profil Gold ». */
+        public int decisionThreshold;
+        public boolean goldProposed;
     }
 
     public AiScoreResult computeScore(Candidate candidate, JobOffer jobOffer) {
@@ -116,6 +126,7 @@ public class AiScoringService {
         ScoringWeightProfileService.ScoringWeights weights = scoringWeightProfileService.resolveWeights(
                 jobOffer != null ? jobOffer.getJobFamily() : null,
                 jobOffer != null ? jobOffer.getSeniorityLevel() : null);
+        int decisionThreshold = scoringWeightProfileService.resolveDecisionThreshold(jobOffer);
 
         int finalScore = (int) Math.round(
                 technical * weights.technical
@@ -129,8 +140,10 @@ public class AiScoringService {
         // Le score est plafonné sous le seuil d'auto-rejet pour que l'arbitrage revienne au RH.
         int seniorityGap = seniorityMeasurable ? requiredMinYears - candidateYears : 0;
         boolean severeSeniorityGap = seniorityMeasurable && seniorityGap >= 2 && requiredMinYears >= 3;
+        // Le plafond doit rester sous la zone grise quelle que soit la valeur calibrée du seuil.
+        int seniorityCeiling = Math.min(SENIORITY_GATE_MAX_SCORE, decisionThreshold - GREY_ZONE_MARGIN - 1);
         if (severeSeniorityGap) {
-            finalScore = Math.min(finalScore, SENIORITY_GATE_MAX_SCORE);
+            finalScore = Math.min(finalScore, seniorityCeiling);
         }
 
         AiScoreResult result = new AiScoreResult();
@@ -148,7 +161,7 @@ public class AiScoringService {
         // 3. Détection d'erreurs et cas nécessitant une intervention humaine (Remarque 2)
         boolean hasParsingIssue = candidate.getCv() != null
                 && (candidate.getCv().getExtractedText() == null || candidate.getCv().getExtractedText().trim().length() < 50);
-        boolean isGrayZone = isGreyZone(finalScore);
+        boolean isGrayZone = isGreyZone(finalScore, decisionThreshold);
         boolean isDegradedMode = "SIMULATED".equals(source);
 
         if (hasParsingIssue) {
@@ -158,12 +171,13 @@ public class AiScoringService {
             result.needsHumanReview = true;
             result.humanReviewReason = String.format(Locale.FRANCE,
                     "Écart de séniorité : %d an(s) d'expérience détecté(s) dans le CV pour un minimum de %d an(s) exigé par l'offre (%s). "
-                            + "Score plafonné à %d/100 sous le seuil d'auto-rejet : le dossier reste à arbitrer par le RH et n'est pas transmis à un manager.",
-                    candidateYears, requiredMinYears, experienceLevel, SENIORITY_GATE_MAX_SCORE);
+                            + "Score plafonné à %d/100 sous le seuil d'auto-rejet (%d) : le dossier reste à arbitrer par le RH et n'est pas transmis à un manager.",
+                    candidateYears, requiredMinYears, experienceLevel, seniorityCeiling, decisionThreshold);
         } else if (isGrayZone) {
             result.needsHumanReview = true;
             result.humanReviewReason = String.format(Locale.FRANCE,
-                    "Score en zone grise incertaine (%d/100, seuil critique = 60) : arbitrage humain recommandé.", finalScore);
+                    "Score en zone grise incertaine (%d/100, seuil de décision = %d) : arbitrage humain recommandé.",
+                    finalScore, decisionThreshold);
         } else if (isDegradedMode) {
             result.needsHumanReview = true;
             result.humanReviewReason = "Mode de secours dégradé activé (API IA indisponible, délai dépassé ou réponse invalide) : score calculé localement, validation humaine requise.";
@@ -184,9 +198,19 @@ public class AiScoringService {
                 "Technique : %d/100 · Communication : %d/100 · Séniorité : %d/100 (source : %s)%s%s",
                 technical, communication, seniorityMatch, source, experienceResume, skillsResume);
 
-        result.recommendation = finalScore >= 85 ? "EXCELLENT_MATCH"
-                : finalScore >= 60 ? "GOOD_MATCH"
+        result.decisionThreshold = decisionThreshold;
+        // « Bon » se lit par rapport au seuil calibré du profil ; la barre d'excellence reste
+        // absolue (85) mais ne peut jamais descendre sous le seuil : un profil exigeant n'a pas
+        // d'excellence en dessous de ce qu'il retient.
+        int excellentBar = Math.max(EXCELLENT_SCORE, decisionThreshold);
+        result.recommendation = finalScore >= excellentBar ? "EXCELLENT_MATCH"
+                : finalScore >= decisionThreshold ? "GOOD_MATCH"
                 : "WEAK_MATCH";
+        // Le RH seul confirme l'étiquette ; la machine ne fait qu'une proposition, et jamais
+        // sur un dossier qu'elle signale elle-même comme incertain ou dégradé.
+        result.goldProposed = finalScore >= excellentBar
+                && !result.needsHumanReview
+                && "COHERE".equals(source);
 
         return result;
     }

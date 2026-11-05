@@ -162,6 +162,11 @@ export class KanbanBoardComponent implements OnInit {
     return `Score ${ia}${corrige}${arbitrage}`;
   }
 
+  /** Étoile accordée par le RH, jamais par la machine seule : le manager la lit comme une référence. */
+  candidatGoldTitre(candidate: Candidate): string {
+    return `Profil de référence validé par ${candidate.goldStatusBy || 'le RH'} : score excellent et analyse sûre.`;
+  }
+
   /** Dossier tranché : plus aucun glissement possible, la machine à états le refuse. */
   estGlissementInterdit(candidate: Candidate): boolean {
     return candidate.status === 'HIRED' || candidate.status === 'WITHDRAWN';

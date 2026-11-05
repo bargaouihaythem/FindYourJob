@@ -1,0 +1,626 @@
+{
+  "evaluatedAt": "2026-11-05T21:43:22.5119966",
+  "source": "COHERE",
+  "global": {
+    "jobFamily": null,
+    "seniorityLevel": null,
+    "caseCount": 20,
+    "referenceCount": 20,
+    "pertinentCount": 11,
+    "borderlineCount": 8,
+    "scores": [
+      30,
+      44,
+      47,
+      52,
+      52,
+      54,
+      57,
+      57,
+      71,
+      74,
+      77,
+      78,
+      81,
+      84,
+      85,
+      85,
+      88,
+      88,
+      89,
+      91
+    ],
+    "appliedThreshold": 60,
+    "appliedIsCalibrated": false,
+    "recommendedThreshold": 64,
+    "recommendedMargin": 7,
+    "f1": 0.9565,
+    "precision": 0.9167,
+    "recall": 1,
+    "f1AtAppliedThreshold": 0.9565,
+    "appliedConfusion": {
+      "truePositive": 11,
+      "falsePositive": 1,
+      "falseNegative": 0,
+      "trueNegative": 8
+    },
+    "cases": [
+      {
+        "caseRef": "GOLD_01",
+        "candidateName": "Alexandre Mercier",
+        "jobOfferId": 115,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 89,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_02",
+        "candidateName": "Camille Bernard",
+        "jobOfferId": 115,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 85,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_03",
+        "candidateName": "Julien Rouve",
+        "jobOfferId": 115,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 84,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_04",
+        "candidateName": "Guillaume Delorme",
+        "jobOfferId": 115,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 57,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_05",
+        "candidateName": "Sébastien Vasseur",
+        "jobOfferId": 117,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 91,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_06",
+        "candidateName": "Nadia Khemir",
+        "jobOfferId": 117,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 88,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_07",
+        "candidateName": "Thierry Gauthier",
+        "jobOfferId": 117,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 54,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_08",
+        "candidateName": "Éléonore Faure",
+        "jobOfferId": 117,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 30,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_09",
+        "candidateName": "Marc Lemaire",
+        "jobOfferId": 122,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 85,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_10",
+        "candidateName": "Sophie Moreau",
+        "jobOfferId": 122,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 88,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_11",
+        "candidateName": "Valérie Dubois",
+        "jobOfferId": 122,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 47,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_12",
+        "candidateName": "Karim Belhadj",
+        "jobOfferId": 122,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": false,
+        "origin": "REFERENCE",
+        "score": 52,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_13",
+        "candidateName": "Lucas Pires",
+        "jobOfferId": 115,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 52,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_14",
+        "candidateName": "Manon Girard",
+        "jobOfferId": 115,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 71,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_15",
+        "candidateName": "Romain Mercier",
+        "jobOfferId": 117,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 44,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_16",
+        "candidateName": "Inès Benali",
+        "jobOfferId": 122,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 81,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_17",
+        "candidateName": "Hugo Delaunay",
+        "jobOfferId": 115,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 77,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_18",
+        "candidateName": "Nadia Ostermann",
+        "jobOfferId": 117,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 74,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_19",
+        "candidateName": "Claire Fontaine",
+        "jobOfferId": 122,
+        "groundTruth": "PERTINENT",
+        "expected": true,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 78,
+        "source": "COHERE"
+      },
+      {
+        "caseRef": "GOLD_20",
+        "candidateName": "Yanis Moureaux",
+        "jobOfferId": 122,
+        "groundTruth": "NON_PERTINENT",
+        "expected": false,
+        "borderline": true,
+        "origin": "REFERENCE",
+        "score": 57,
+        "source": "COHERE"
+      }
+    ]
+  },
+  "byProfile": [
+    {
+      "jobFamily": "CS",
+      "seniorityLevel": "MID",
+      "caseCount": 7,
+      "referenceCount": 7,
+      "pertinentCount": 5,
+      "borderlineCount": 3,
+      "scores": [
+        52,
+        57,
+        71,
+        77,
+        84,
+        85,
+        89
+      ],
+      "appliedThreshold": 60,
+      "appliedIsCalibrated": false,
+      "recommendedThreshold": 64,
+      "recommendedMargin": 7,
+      "f1": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1AtAppliedThreshold": 1,
+      "appliedConfusion": {
+        "truePositive": 5,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "trueNegative": 2
+      },
+      "cases": [
+        {
+          "caseRef": "GOLD_01",
+          "candidateName": "Alexandre Mercier",
+          "jobOfferId": 115,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 89,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_02",
+          "candidateName": "Camille Bernard",
+          "jobOfferId": 115,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 85,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_03",
+          "candidateName": "Julien Rouve",
+          "jobOfferId": 115,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 84,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_04",
+          "candidateName": "Guillaume Delorme",
+          "jobOfferId": 115,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 57,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_13",
+          "candidateName": "Lucas Pires",
+          "jobOfferId": 115,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 52,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_14",
+          "candidateName": "Manon Girard",
+          "jobOfferId": 115,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 71,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_17",
+          "candidateName": "Hugo Delaunay",
+          "jobOfferId": 115,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 77,
+          "source": "COHERE"
+        }
+      ]
+    },
+    {
+      "jobFamily": "PRODOPS",
+      "seniorityLevel": "SENIOR",
+      "caseCount": 6,
+      "referenceCount": 6,
+      "pertinentCount": 2,
+      "borderlineCount": 2,
+      "scores": [
+        30,
+        44,
+        54,
+        74,
+        88,
+        91
+      ],
+      "appliedThreshold": 81,
+      "appliedIsCalibrated": true,
+      "recommendedThreshold": 81,
+      "recommendedMargin": 7,
+      "f1": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1AtAppliedThreshold": 1,
+      "appliedConfusion": {
+        "truePositive": 2,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "trueNegative": 4
+      },
+      "cases": [
+        {
+          "caseRef": "GOLD_05",
+          "candidateName": "Sébastien Vasseur",
+          "jobOfferId": 117,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 91,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_06",
+          "candidateName": "Nadia Khemir",
+          "jobOfferId": 117,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 88,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_07",
+          "candidateName": "Thierry Gauthier",
+          "jobOfferId": 117,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 54,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_08",
+          "candidateName": "Éléonore Faure",
+          "jobOfferId": 117,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 30,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_15",
+          "candidateName": "Romain Mercier",
+          "jobOfferId": 117,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 44,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_18",
+          "candidateName": "Nadia Ostermann",
+          "jobOfferId": 117,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 74,
+          "source": "COHERE"
+        }
+      ]
+    },
+    {
+      "jobFamily": "OTHER",
+      "seniorityLevel": "MID",
+      "caseCount": 7,
+      "referenceCount": 7,
+      "pertinentCount": 4,
+      "borderlineCount": 3,
+      "scores": [
+        47,
+        52,
+        57,
+        78,
+        81,
+        85,
+        88
+      ],
+      "appliedThreshold": 60,
+      "appliedIsCalibrated": false,
+      "recommendedThreshold": 67,
+      "recommendedMargin": 10,
+      "f1": 1,
+      "precision": 1,
+      "recall": 1,
+      "f1AtAppliedThreshold": 1,
+      "appliedConfusion": {
+        "truePositive": 4,
+        "falsePositive": 0,
+        "falseNegative": 0,
+        "trueNegative": 3
+      },
+      "cases": [
+        {
+          "caseRef": "GOLD_09",
+          "candidateName": "Marc Lemaire",
+          "jobOfferId": 122,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 85,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_10",
+          "candidateName": "Sophie Moreau",
+          "jobOfferId": 122,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 88,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_11",
+          "candidateName": "Valérie Dubois",
+          "jobOfferId": 122,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 47,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_12",
+          "candidateName": "Karim Belhadj",
+          "jobOfferId": 122,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": false,
+          "origin": "REFERENCE",
+          "score": 52,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_16",
+          "candidateName": "Inès Benali",
+          "jobOfferId": 122,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 81,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_19",
+          "candidateName": "Claire Fontaine",
+          "jobOfferId": 122,
+          "groundTruth": "PERTINENT",
+          "expected": true,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 78,
+          "source": "COHERE"
+        },
+        {
+          "caseRef": "GOLD_20",
+          "candidateName": "Yanis Moureaux",
+          "jobOfferId": 122,
+          "groundTruth": "NON_PERTINENT",
+          "expected": false,
+          "borderline": true,
+          "origin": "REFERENCE",
+          "score": 57,
+          "source": "COHERE"
+        }
+      ]
+    }
+  ],
+  "goldTier": {
+    "seuil_80": {
+      "proposes": 8,
+      "abusifs": 0,
+      "references": [
+        "GOLD_01",
+        "GOLD_02",
+        "GOLD_03",
+        "GOLD_05",
+        "GOLD_06",
+        "GOLD_09",
+        "GOLD_10",
+        "GOLD_16"
+      ]
+    },
+    "seuil_85": {
+      "proposes": 6,
+      "abusifs": 0,
+      "references": [
+        "GOLD_01",
+        "GOLD_02",
+        "GOLD_05",
+        "GOLD_06",
+        "GOLD_09",
+        "GOLD_10"
+      ]
+    },
+    "seuil_90": {
+      "proposes": 1,
+      "abusifs": 0,
+      "references": [
+        "GOLD_05"
+      ]
+    },
+    "barre_appliquee": 85
+  }
+}

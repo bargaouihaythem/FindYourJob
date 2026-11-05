@@ -200,6 +200,8 @@ record_two_complete_scenarios.js
 Rapport-PFE/finalreport/**/diff_*.txt
 Rapport-PFE/finalreport/**/sauvegarde_*/
 Rapport-PFE/finalreport/**/img/rapport.bak_*/
+Rapport-PFE/finalreport/**/main_backup_*.tex
+scripts/gold_captures/
 Rapport-PFE/finalreport/**/*-blx.bib
 Rapport-PFE/diagrammes_v2/*backup*/
 Rapport-PFE/diagrammes_v2/diagrammes_v2/
@@ -217,3 +219,8 @@ scripts/reactivate_offers.js
 scripts/seed_new_offers.js
 scripts/seed_test_users.js
 
+
+# Corpus Gold Set : les 20 CVs synthétiques annotés sont la référence de calibration,
+# ils sont versionnés malgré le *.pdf global (aucune donnée candidate réelle)
+gold_set/cvs/*.pdf
+!gold_set/cvs/CV_*.pdf

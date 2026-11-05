@@ -237,6 +237,23 @@ public class CandidateController {
         }
     }
 
+    @PatchMapping("/{id}/gold-status")
+    @PreAuthorize("hasRole('HR') or hasRole('ADMIN')")
+    @Operation(summary = "Trancher l'étiquette « Profil Gold » (RH)",
+            description = "CONFIRME rend l'étiquette visible du manager, REJETE l'éteint durablement. "
+                    + "La machine ne fait que proposer : aucun dossier n'est Gold tant que le RH n'a pas validé.")
+    public ResponseEntity<?> decideGoldStatus(
+            @PathVariable Long id,
+            @RequestParam Candidate.GoldStatus decision,
+            Authentication authentication) {
+        try {
+            String actingUser = authentication != null ? authentication.getName() : "RH";
+            return ResponseEntity.ok(candidateService.decideGoldStatus(id, decision, actingUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(new MessageResponse(e.getMessage()));
+        }
+    }
+
     @GetMapping("/job-offer/{jobOfferId}/ranking")
     @PreAuthorize("hasRole('HR') or hasRole('ADMIN') or hasRole('MANAGER')")
     @Operation(summary = "Classement des candidats d'une offre", description = "Retourne les candidats triés par score effectif décroissant (score manuel RH si présent, sinon score IA)")

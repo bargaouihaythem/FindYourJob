@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,14 @@ public class ScoringWeightProfileService {
     @Value("${ai.score.weight.seniority:0.3}")
     private double defaultWeightSeniority;
 
+    /**
+     * Seuil de décision appliqué quand le profil (famille × séniorité) de l'offre n'a jamais
+     * été calibré sur le Gold Set. C'est le seuil historique de l'application, pas une valeur
+     * de réglage : un profil calibré le remplace explicitement en base.
+     */
+    @Value("${ai.score.decision.threshold:60}")
+    private int defaultDecisionThreshold;
+
     public List<ScoringWeightProfileResponse> listAll() {
         return scoringWeightProfileRepository.findAll().stream()
                 .map(ScoringWeightProfileResponse::new)
@@ -57,6 +66,60 @@ public class ScoringWeightProfileService {
 
     private ScoringWeights defaultWeights() {
         return new ScoringWeights(defaultWeightTechnical, defaultWeightCommunication, defaultWeightSeniority);
+    }
+
+    /**
+     * Seuil de décision effectif pour une offre : celui calibré sur son profil s'il existe,
+     * sinon le seuil par défaut de l'application. Ne renvoie jamais null : la décision doit
+     * toujours avoir une borne explicite, y compris sur une offre sans famille renseignée.
+     */
+    public int resolveDecisionThreshold(JobOffer.JobFamily jobFamily, JobOffer.SeniorityLevel seniorityLevel) {
+        if (jobFamily != null && seniorityLevel != null) {
+            Integer calibrated = scoringWeightProfileRepository
+                    .findByJobFamilyAndSeniorityLevel(jobFamily, seniorityLevel)
+                    .map(ScoringWeightProfile::getDecisionThreshold)
+                    .orElse(null);
+            if (calibrated != null) return calibrated;
+        }
+        return defaultDecisionThreshold;
+    }
+
+    public int resolveDecisionThreshold(JobOffer jobOffer) {
+        return jobOffer == null
+                ? defaultDecisionThreshold
+                : resolveDecisionThreshold(jobOffer.getJobFamily(), jobOffer.getSeniorityLevel());
+    }
+
+    public int getDefaultDecisionThreshold() {
+        return defaultDecisionThreshold;
+    }
+
+    /**
+     * Enregistre le seuil calibré d'un profil sans toucher aux pondérations.
+     * La validation métier (qualité mesurée sur le Gold Set) appartient à l'appelant.
+     */
+    @Transactional
+    public ScoringWeightProfile saveDecisionThreshold(JobOffer.JobFamily jobFamily,
+                                                      JobOffer.SeniorityLevel seniorityLevel,
+                                                      Integer threshold, Double measuredF1,
+                                                      String updatedBy) {
+        ScoringWeightProfile profile = scoringWeightProfileRepository
+                .findByJobFamilyAndSeniorityLevel(jobFamily, seniorityLevel)
+                .orElseGet(() -> {
+                    ScoringWeightProfile p = new ScoringWeightProfile();
+                    p.setJobFamily(jobFamily);
+                    p.setSeniorityLevel(seniorityLevel);
+                    p.setWeightTechnical(defaultWeightTechnical);
+                    p.setWeightCommunication(defaultWeightCommunication);
+                    p.setWeightSeniority(defaultWeightSeniority);
+                    return p;
+                });
+
+        profile.setDecisionThreshold(threshold);
+        profile.setCalibratedF1(measuredF1);
+        profile.setCalibratedAt(threshold == null ? null : LocalDateTime.now());
+        profile.setUpdatedBy(updatedBy);
+        return scoringWeightProfileRepository.save(profile);
     }
 
     @Transactional

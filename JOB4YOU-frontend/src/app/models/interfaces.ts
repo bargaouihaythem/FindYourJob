@@ -214,8 +214,71 @@ export interface ScoringWeightProfile {
   weightTechnical: number;
   weightCommunication: number;
   weightSeniority: number;
+  /** Seuil calibré sur le Gold Set ; null = le profil utilise le seuil par défaut de l'application. */
+  decisionThreshold?: number | null;
+  /** F1 mesuré sur le noyau de référence AU seuil calibré, tracé au moment de l'application. */
+  calibratedF1?: number | null;
+  calibratedAt?: Date | null;
   updatedBy?: string;
   updatedAt?: Date;
+}
+
+/** Un cas du corpus de référence, tel que renvoyé par l'atelier d'étalonnage (sans le texte du CV). */
+export interface GoldSetCaseView {
+  id: number;
+  caseRef: string;
+  candidateName: string;
+  originalFilename?: string;
+  jobOfferId: number;
+  jobOfferTitle: string;
+  jobFamily: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';
+  seniorityLevel: 'JUNIOR' | 'MID' | 'SENIOR';
+  groundTruth: 'PERTINENT' | 'NON_PERTINENT';
+  expected: boolean;
+  borderline: boolean;
+  origin: 'REFERENCE' | 'EXTENSION_RH';
+  lastScore?: number | null;
+  lastScoreSource?: string | null;
+  lastEvaluatedAt?: Date | null;
+  extractedTextLength: number;
+}
+
+/** Mesure de la décision pour un profil (ou globalement quand famille et niveau sont null). */
+export interface GoldSetProfileReport {
+  jobFamily: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER' | null;
+  seniorityLevel: 'JUNIOR' | 'MID' | 'SENIOR' | null;
+  caseCount: number;
+  referenceCount: number;
+  pertinentCount: number;
+  borderlineCount: number;
+  scores: number[];
+  appliedThreshold: number;
+  appliedIsCalibrated: boolean;
+  recommendedThreshold: number;
+  recommendedMargin: number;
+  f1: number;
+  precision: number;
+  recall: number;
+  f1AtAppliedThreshold?: number | null;
+  cases: {
+    caseRef: string;
+    candidateName: string;
+    jobOfferId: number;
+    groundTruth: string;
+    expected: boolean;
+    borderline: boolean;
+    origin: string;
+    score: number | null;
+    source: string | null;
+  }[];
+}
+
+export interface GoldSetCalibrationReport {
+  evaluatedAt: Date;
+  source: string;
+  global: GoldSetProfileReport;
+  byProfile: GoldSetProfileReport[];
+  goldTier: Record<string, any>;
 }
 
 export interface ScoringWeightProfileRequest {
@@ -268,6 +331,12 @@ export interface Candidate {
   missingSkills?: string;
   needsHumanReview?: boolean;
   humanReviewReason?: string;
+  /** Étiquette « Profil Gold » : CONFIRME uniquement après validation RH ; jamais automatique. */
+  goldStatus?: 'AUCUN' | 'PROPOSE' | 'CONFIRME' | 'REJETE';
+  /** La machine propose l'étoile, le RH décide : la proposition n'est pas une confirmation. */
+  goldProposed?: boolean;
+  goldStatusBy?: string;
+  goldStatusAt?: Date;
   jobOfferId: number;
   jobOfferTitle: string;
   jobFamily?: 'CS' | 'PRODOPS' | 'RSD' | 'OTHER';

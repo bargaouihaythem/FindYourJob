@@ -110,6 +110,16 @@ export class CandidateService {
     return this.http.post<Candidate>(`${this.apiUrl}/${id}/ai-score/recompute`, null, { headers });
   }
 
+  /**
+   * Le RH valide ou écarte la proposition « Profil Gold ». Une recalculation ne franchit
+   * jamais cette porte : l'étoile est une décision humaine, pas une sortie de modèle.
+   */
+  decideGoldStatus(id: number, decision: 'CONFIRME' | 'REJETE'): Observable<Candidate> {
+    const headers = this.authService.getAuthHeaders();
+    const params = new HttpParams().set('decision', decision);
+    return this.http.patch<Candidate>(`${this.apiUrl}/${id}/gold-status`, null, { params, headers });
+  }
+
   uploadCV(candidateId: number, file: File): Observable<any> {
     const formData = new FormData();
     formData.append('cv', file);

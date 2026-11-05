@@ -19,6 +19,9 @@ public class ScoringWeightProfileResponse {
     private double weightTechnical;
     private double weightCommunication;
     private double weightSeniority;
+    private Integer decisionThreshold;
+    private Double calibratedF1;
+    private LocalDateTime calibratedAt;
     private String updatedBy;
     private LocalDateTime updatedAt;
 
@@ -29,6 +32,9 @@ public class ScoringWeightProfileResponse {
         this.weightTechnical = profile.getWeightTechnical();
         this.weightCommunication = profile.getWeightCommunication();
         this.weightSeniority = profile.getWeightSeniority();
+        this.decisionThreshold = profile.getDecisionThreshold();
+        this.calibratedF1 = profile.getCalibratedF1();
+        this.calibratedAt = profile.getCalibratedAt();
         this.updatedBy = profile.getUpdatedBy();
         this.updatedAt = profile.getUpdatedAt();
     }

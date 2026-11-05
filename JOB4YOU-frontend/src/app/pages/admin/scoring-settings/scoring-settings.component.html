@@ -61,4 +61,196 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Atelier d'étalonnage : le seuil de décision ne se décrète plus, il se mesure sur le corpus de référence. -->
+  <div class="card mt-4" *ngIf="canCalibrate">
+    <div class="card-header bg-white d-flex justify-content-between align-items-start flex-wrap gap-2">
+      <div>
+        <h5 class="mb-1"><i class="fas fa-award me-2"></i>Gold Set — étalonnage du seuil de décision</h5>
+        <p class="text-muted small mb-0" style="max-width: 70ch;">
+          {{ cases.length }} cas de CV annotés (pertinent / non pertinent) sont rejoués dans le circuit de
+          décision, sans créer de candidature. Le seuil recommandé est celui qui donne le meilleur F1 ;
+          il n'est appliqué que si la mesure atteint 90&nbsp;% et que le profil s'appuie sur au moins
+          4 cas de référence.
+        </p>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-sm btn-primary" (click)="calibrate()" [disabled]="calibrating">
+          <span *ngIf="calibrating" class="spinner-border spinner-border-sm me-1"></span>
+          {{ calibrating ? 'Rejeu en cours…' : 'Rejouer le corpus et mesurer' }}
+        </button>
+        <button class="btn btn-sm btn-outline-secondary" (click)="loadGoldReport()" [disabled]="calibrating"
+                title="Relire la dernière mesure sans rappeler l'IA">Mesure enregistrée</button>
+        <button class="btn btn-sm btn-outline-secondary" (click)="showCases = !showCases">
+          {{ showCases ? 'Masquer le corpus' : 'Voir le corpus' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card-body">
+      <div *ngIf="goldLoading" class="text-center py-4">
+        <div class="spinner-border text-primary" role="status"></div>
+      </div>
+
+      <div *ngIf="goldError && !goldLoading" class="alert alert-secondary mb-3">{{ goldError }}</div>
+
+      <ng-container *ngIf="!goldLoading && goldGlobal">
+        <div class="d-flex flex-wrap gap-4 mb-3 small">
+          <span><strong>F1 global :</strong> {{ fmtRate(goldGlobal.f1) }}</span>
+          <span><strong>au seuil en vigueur :</strong> {{ fmtRate(goldGlobal.f1AtAppliedThreshold) }}</span>
+          <span><strong>cas :</strong> {{ goldGlobal.caseCount }} ({{ goldGlobal.referenceCount }} de référence,
+                {{ goldGlobal.pertinentCount }} pertinents, {{ goldGlobal.borderlineCount }} limites)</span>
+          <span><strong>source des scores :</strong> {{ goldSource }}</span>
+          <span><strong>mesuré le :</strong> {{ offsetDate(goldEvaluatedAt) }}</span>
+          <span title="Étoile « Profil Gold » proposée par la machine au-delà de cette barre, après confirmation RH.">
+            <strong>Étoile Profil Gold :</strong> ≥ {{ goldTierBar() }}/100
+          </span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Profil (famille / niveau)</th>
+                <th class="text-center">Cas</th>
+                <th class="text-center">Réf.</th>
+                <th class="text-center">Seuil en vigueur</th>
+                <th class="text-center">F1 à ce seuil</th>
+                <th class="text-center">Seuil recommandé</th>
+                <th class="text-center">Marge</th>
+                <th style="width: 260px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of goldRows">
+                <td>{{ profileLabel(row) }}</td>
+                <td class="text-center">{{ row.caseCount }}</td>
+                <td class="text-center">{{ row.referenceCount }}</td>
+                <td class="text-center">
+                  <span class="badge"
+                        [class.bg-primary]="row.appliedIsCalibrated"
+                        [class.bg-secondary]="!row.appliedIsCalibrated">
+                    {{ row.appliedThreshold }}
+                  </span>
+                  <div class="small text-muted">{{ row.appliedIsCalibrated ? 'calibré' : 'défaut' }}</div>
+                </td>
+                <td class="text-center">
+                  <span class="badge" [ngClass]="f1Class(row)">{{ fmtRate(row.f1AtAppliedThreshold) }}</span>
+                </td>
+                <td class="text-center fw-bold">{{ row.recommendedThreshold }}</td>
+                <td class="text-center"
+                        title="Distance au score de cas le plus proche : plus elle est grande, moins le seuil est fragile.">
+                  {{ row.recommendedMargin }}
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary me-1"
+                          [disabled]="!isCalibrable(row) || isAlreadyRecommended(row) || row.applying"
+                          [title]="!isCalibrable(row)
+                            ? 'Corpus de référence trop mince sur ce profil : la mesure ne serait pas représentative.'
+                            : 'Appliquer ce seuil aux prochaines candidatures de ce profil.'">
+                    <span *ngIf="row.applying" class="spinner-border spinner-border-sm me-1"></span>
+                    <span *ngIf="isAlreadyRecommended(row)" class="fas fa-check me-1"></span>
+                    Appliquer
+                  </button>
+                  <button class="btn btn-sm btn-outline-secondary" *ngIf="row.appliedIsCalibrated"
+                          [disabled]="row.resetting"
+                          title="Sortir de la calibration et revenir au seuil par défaut de l'application.">
+                    <span *ngIf="row.resetting" class="spinner-border spinner-border-sm me-1"></span>
+                    Rétablir le défaut
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </ng-container>
+
+      <div *ngIf="showCases && !goldLoading" class="mt-4">
+        <h6 class="mb-2"><i class="fas fa-folder-open me-2"></i>Corpus de référence</h6>
+        <div class="mb-3" style="max-height: 340px; overflow: auto;">
+          <div class="table-responsive">
+          <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Réf.</th>
+                <th>Candidat</th>
+                <th>Offre</th>
+                <th class="text-center">Vérité terrain</th>
+                <th class="text-center">Limite</th>
+                <th class="text-center">Origine</th>
+                <th class="text-center">Dernier score</th>
+                <th class="text-center">Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let c of cases">
+                <td class="fw-bold">{{ c.caseRef }}</td>
+                <td>{{ c.candidateName }}</td>
+                <td>{{ c.jobOfferTitle }}</td>
+                <td class="text-center">
+                  <span class="badge" [class.bg-success]="c.expected" [class.bg-secondary]="!c.expected">
+                    {{ c.expected ? 'à retenir' : 'à écarter' }}
+                  </span>
+                </td>
+                <td class="text-center">{{ c.borderline ? 'oui' : '' }}</td>
+                <td class="text-center">
+                  <span class="badge bg-light text-dark border">{{ c.origin }}</span>
+                </td>
+                <td class="text-center">{{ c.lastScore === null ? '—' : c.lastScore }}</td>
+                <td class="small text-muted text-center">{{ c.lastScoreSource || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          </div>
+        </div>
+
+        <!-- Enrichissement RH : un dossier dont l'issue est connue rejoint le corpus, sur la même offre. -->
+        <div class="border rounded p-3 mt-3 bg-light">
+          <h6 class="mb-2">Ajouter un cas (anonymisé)</h6>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Référence</label>
+              <input class="form-control form-control-sm" [(ngModel)]="newCase.caseRef"
+                     placeholder="EXT_01" maxlength="20">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Nom affiché</label>
+              <input class="form-control form-control-sm" [(ngModel)]="newCase.candidateName" maxlength="80">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">Offre de référence</label>
+              <select class="form-select form-select-sm" [(ngModel)]="newCase.jobOfferId">
+                <option [ngValue]="null">Choisir…</option>
+                <optgroup *ngFor="let g of offers" [label]="g.label">
+                  <option *ngFor="let o of g.offers" [ngValue]="o.id">{{ o.title }}</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small mb-1">Décision attendue</label>
+              <select class="form-select form-select-sm" [(ngModel)]="newCase.groundTruth">
+                <option value="PERTINENT">À retenir</option>
+                <option value="NON_PERTINENT">À écarter</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small mb-1">CV (PDF, DOC ou DOCX)</label>
+              <input type="file" class="form-control form-control-sm" accept=".pdf,.doc,.docx"
+                     (change)="onCaseFileSelected($event)">
+            </div>
+          </div>
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="form-check small mb-0">
+              <input class="form-check-input" type="checkbox" id="caseBorderline" [(ngModel)]="newCase.borderline">
+              <label class="form-check-label" for="caseBorderline">Cas limite (au voisinage du seuil)</label>
+            </div>
+            <button class="btn btn-sm btn-primary" [disabled]="!canSubmitCase() || addingCase" (click)="addCase()">
+              <span *ngIf="addingCase" class="spinner-border spinner-border-sm me-1"></span>
+              Ajouter au corpus
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

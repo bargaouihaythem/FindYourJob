@@ -61,6 +61,12 @@ class CandidateServiceTest {
     @Mock CvTextExtractionService cvTextExtractionService;
     @Mock UserRepository      userRepository;
     /**
+     * Le seuil de décision est lu sur le profil de pondération de l'offre ; sans ce simulacre,
+     * tout ce qui touche le seuil (zone grise, Gold, transitions pilotées par le score) lève un
+     * NullPointerException au lieu d'exercer la règle.
+     */
+    @Mock ScoringWeightProfileService scoringWeightProfileService;
+    /**
      * La chaîne d'aiguillage est réelle (Repository simulé) : c'est elle qui décide qui
      * voit quoi. La simuler laisserait les tests de périmètre sans objet.
      */
@@ -74,6 +80,7 @@ class CandidateServiceTest {
     void wireRoutingChain() {
         ReflectionTestUtils.setField(managerRoutingService, "userRepository", userRepository);
         ReflectionTestUtils.setField(managerScopeService, "managerRoutingService", managerRoutingService);
+        lenient().when(scoringWeightProfileService.resolveDecisionThreshold(any())).thenReturn(60);
     }
 
     @AfterEach

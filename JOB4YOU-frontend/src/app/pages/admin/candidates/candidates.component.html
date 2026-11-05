@@ -332,6 +332,34 @@
                           [title]="candidate.humanReviewReason || 'Arbitrage RH recommandé'">
                       <i class="fas fa-exclamation-triangle me-1"></i>Arbitrage RH
                     </span>
+                    <!-- Étoile « Profil Gold » : le manager ne la voit qu'après validation RH. -->
+                    <span *ngIf="candidate.goldStatus === 'CONFIRME'"
+                          class="badge rounded-pill px-2 py-1"
+                          style="font-size: 0.72rem; background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b;"
+                          [title]="goldTooltip(candidate)">
+                      <i class="fas fa-star me-1"></i>Profil Gold
+                    </span>
+                    <ng-container *ngIf="candidate.goldProposed && !isManagerView">
+                      <span class="badge rounded-pill bg-light text-dark border px-2 py-1"
+                            style="font-size: 0.72rem;"
+                            title="Score excellent et analyse sûre : la machine propose ce dossier comme profil de référence. Un dossier n'est « Profil Gold » que si le RH le confirme.">
+                        <i class="far fa-star me-1"></i>Gold à confirmer
+                      </span>
+                      <span class="d-flex gap-1 justify-content-center">
+                        <button class="btn btn-sm btn-outline-warning py-0 px-2" style="font-size: 0.7rem;"
+                                [disabled]="goldBusyId === candidate.id"
+                                title="Valider : le dossier devient une référence visible du manager."
+                                (click)="decideGold(candidate, 'CONFIRME')">
+                          <i class="fas me-1"
+                             [ngClass]="goldBusyId === candidate.id ? 'fa-spinner fa-spin' : 'fa-star'"></i>Confirmer
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size: 0.7rem;"
+                                [disabled]="goldBusyId === candidate.id"
+                                title="Écarter la proposition : le dossier reste un dossier ordinaire."
+                                (click)="decideGold(candidate, 'REJETE')">Écarter
+                        </button>
+                      </span>
+                    </ng-container>
                   </div>
                 </ng-container>
                 <ng-template #noScore>
@@ -926,6 +954,43 @@
                   <div>
                     <strong class="text-dark d-block">Arbitrage humain requis (Human-in-the-Loop) :</strong>
                     <span class="text-secondary small">{{ selectedCandidate.humanReviewReason }}</span>
+                  </div>
+                </div>
+
+                <!-- Étoile « Profil Gold » : proposition de la machine, décision du RH, visible du manager qu'après validation. -->
+                <div class="d-flex align-items-center flex-wrap gap-2 mt-2 mb-2 py-2 px-3 rounded-3 border"
+                     style="background: #fffbeb; border-color: #fcd34d !important;"
+                     *ngIf="selectedCandidate.goldStatus === 'CONFIRME' || (selectedCandidate.goldProposed && isHrOrAdmin()) || (selectedCandidate.goldStatus === 'REJETE' && isHrOrAdmin())">
+                  <i class="fas fa-star fs-5 flex-shrink-0"
+                     [style.color]="selectedCandidate.goldStatus === 'CONFIRME' ? '#d97706' : '#9ca3af'"></i>
+                  <div class="flex-grow-1">
+                    <strong class="d-block text-dark" *ngIf="selectedCandidate.goldStatus === 'CONFIRME'">
+                      Profil Gold — profil de référence validé par {{ selectedCandidate.goldStatusBy || 'le RH' }}
+                      <span *ngIf="selectedCandidate.goldStatusAt">le {{ formatDate(selectedCandidate.goldStatusAt) }}</span>
+                    </strong>
+                    <strong class="d-block text-dark" *ngIf="selectedCandidate.goldProposed">
+                      Profil Gold proposé par l'analyse : à confirmer ou à écarter par le RH.
+                    </strong>
+                    <strong class="d-block text-secondary" *ngIf="selectedCandidate.goldStatus === 'REJETE'">
+                      Proposition « Profil Gold » écartée par {{ selectedCandidate.goldStatusBy || 'le RH' }} :
+                      le dossier reste un dossier ordinaire.
+                    </strong>
+                    <span class="text-secondary small" *ngIf="selectedCandidate.goldProposed">
+                      Un dossier n'est présenté comme référence que sur décision humaine ; une nouvelle analyse
+                      IA ne revient pas sur une décision déjà prise.
+                    </span>
+                  </div>
+                  <div class="d-flex gap-2" *ngIf="selectedCandidate.goldProposed">
+                    <button class="btn btn-sm btn-warning"
+                            [disabled]="goldBusyId === selectedCandidate.id"
+                            (click)="decideGold(selectedCandidate, 'CONFIRME')">
+                      <i class="fas me-1"
+                         [ngClass]="goldBusyId === selectedCandidate.id ? 'fa-spinner fa-spin' : 'fa-star'"></i>Confirmer
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            [disabled]="goldBusyId === selectedCandidate.id"
+                            (click)="decideGold(selectedCandidate, 'REJETE')">Écarter
+                    </button>
                   </div>
                 </div>
 

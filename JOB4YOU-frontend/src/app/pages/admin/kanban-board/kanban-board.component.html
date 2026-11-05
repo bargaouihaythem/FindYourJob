@@ -37,6 +37,11 @@
                   [title]="candidate.humanReviewReason || 'Décision humaine requise avant poursuite'">
               <i class="fas fa-exclamation-triangle me-1"></i>Arbitrage RH
             </span>
+            <span class="badge" *ngIf="candidate.goldStatus === 'CONFIRME'"
+                  style="background-color: #fef3c7; color: #92400e; border: 1px solid #f59e0b;"
+                  [title]="candidatGoldTitre(candidate)">
+              <i class="fas fa-star me-1"></i>Profil Gold
+            </span>
           </div>
         </div>
 

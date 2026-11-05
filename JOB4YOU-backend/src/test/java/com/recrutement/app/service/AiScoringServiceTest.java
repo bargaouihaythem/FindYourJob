@@ -43,6 +43,9 @@ class AiScoringServiceTest {
         ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightTechnical", 0.5);
         ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightCommunication", 0.2);
         ReflectionTestUtils.setField(scoringWeightProfileService, "defaultWeightSeniority", 0.3);
+        // Idem pour le seuil de décision : sans injection, il resterait à 0 et les bandes de
+        // recommandation monteraient toutes en GOOD_MATCH.
+        ReflectionTestUtils.setField(scoringWeightProfileService, "defaultDecisionThreshold", 60);
 
         aiScoringService = new AiScoringService(cohereClient, scoringWeightProfileService,
                 new SkillNormalizationService());

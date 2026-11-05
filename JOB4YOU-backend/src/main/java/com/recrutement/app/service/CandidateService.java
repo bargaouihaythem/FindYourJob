@@ -56,6 +56,9 @@ public class CandidateService {
     private AiScoringService aiScoringService;
 
     @Autowired
+    private ScoringWeightProfileService scoringWeightProfileService;
+
+    @Autowired
     private CvTextExtractionService cvTextExtractionService;
 
     @Autowired
@@ -1239,12 +1242,34 @@ public class CandidateService {
      * Sauvegarde le score IA calculé par l'Agent 1 n8n
      */
     /**
-     * Score IA seuil : >= 60 → CV_REVIEWED automatique (Agent 2 notifie manager)
-     *                  < 60  → REJECTED automatique    (Agent 3 envoie email refus)
-     *                  55-65 → zone grise : CV_REVIEWED avec needsHumanReview, jamais de rejet
-     *                  automatique (cf. AiScoringService.isGreyZone)
+     * Seuil de décision effectif du dossier : celui calibré sur le Gold Set pour le profil
+     * (famille × séniorité) de l'offre, sinon le seuil par défaut de l'application.
+     * Au-dessus → CV_REVIEWED (l'Agent 2 notifie le manager) ; en dessous → AUTO_REJECTED
+     * (l'Agent 3 envoie le refus) ; à ±5 points → zone grise, jamais de rejet automatique.
      */
-    private static final int AI_SCORE_THRESHOLD = 60;
+    private int decisionThresholdFor(Candidate candidate) {
+        return scoringWeightProfileService.resolveDecisionThreshold(
+                candidate != null ? candidate.getJobOffer() : null);
+    }
+
+    /**
+     * Étiquette « Profil Gold » : la machine propose, le RH dispose. Une proposition naît d'un
+     * score à la barre d'excellence sur un dossier que l'IA ne signale pas comme incertain ou
+     * dégradé ; une décision RH (CONFIRME / REJETE) ne sera jamais effacée par un recalcul.
+     */
+    private void applyGoldProposal(Candidate candidate, int score, int threshold, boolean uncertain) {
+        Candidate.GoldStatus current = candidate.getGoldStatus();
+        if (current == Candidate.GoldStatus.CONFIRME || current == Candidate.GoldStatus.REJETE) {
+            return;
+        }
+        int excellentBar = Math.max(AiScoringService.EXCELLENT_SCORE, threshold);
+        // La barre s'applique au score retenu — celui que le RH voit et qui décide. Un score IA
+        // excellent ne rallume pas une proposition qu'une correction manuelle a éteinte.
+        int retainedScore = candidate.getManualScore() != null ? candidate.getManualScore() : score;
+        candidate.setGoldStatus(!uncertain && retainedScore >= excellentBar
+                ? Candidate.GoldStatus.PROPOSE
+                : Candidate.GoldStatus.AUCUN);
+    }
 
     /**
      * Applique la décision de statut qui découle d'un score (IA ou arbitrage RH), sans jamais
@@ -1264,7 +1289,7 @@ public class CandidateService {
                 Integer score = candidate.getManualScore() != null
                         ? candidate.getManualScore() : candidate.getAiScore();
                 reason = "Réintégration dans le pipeline par un nouveau score (" + score + "/100, seuil "
-                        + AI_SCORE_THRESHOLD + ")";
+                        + decisionThresholdFor(candidate) + ")";
             }
             return updateCandidateStatus(candidate.getId(), newStatus, reason);
         }
@@ -1284,15 +1309,17 @@ public class CandidateService {
         if (summary != null) candidate.setAiSummary(summary);
         if (recommendation != null) candidate.setAiRecommendation(recommendation);
 
+        int threshold = decisionThresholdFor(candidate);
         // Un score transmis de l'extérieur arbitre comme un score recalculé ici : la zone
         // grise ne peut déboucher sur aucun rejet automatique, sinon ce endpoint court-circuite
         // le human-in-the-loop que recomputeAiScore impose.
-        boolean greyZone = AiScoringService.isGreyZone(score);
+        boolean greyZone = AiScoringService.isGreyZone(score, threshold);
         candidate.setNeedsHumanReview(greyZone);
         candidate.setHumanReviewReason(greyZone
-                ? "Score transmis en zone grise incertaine (" + score + "/100, seuil critique = "
-                        + AI_SCORE_THRESHOLD + ") : arbitrage humain recommandé."
+                ? "Score transmis en zone grise incertaine (" + score + "/100, seuil de décision = "
+                        + threshold + ") : arbitrage humain recommandé."
                 : null);
+        applyGoldProposal(candidate, score, threshold, greyZone);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
@@ -1302,13 +1329,13 @@ public class CandidateService {
         if (greyZone) {
             newStatus = Candidate.CandidateStatus.CV_REVIEWED;
             scoreReason = "En attente de révision humaine RH : score transmis en zone grise";
-        } else if (score >= AI_SCORE_THRESHOLD) {
+        } else if (score >= threshold) {
             newStatus = Candidate.CandidateStatus.CV_REVIEWED;  // bon score → notifie manager (Agent 2)
             scoreReason = null;
         } else {
             newStatus = Candidate.CandidateStatus.AUTO_REJECTED; // score bas → rejeté par IA (Agent 3)
             scoreReason = "Rejet automatique : score IA (" + score + "/100) inférieur au seuil ("
-                    + AI_SCORE_THRESHOLD + ")";
+                    + threshold + ")";
         }
 
         // Déléguer le choix de statut au garde-fou commun : un dossier déjà engagé ne revient pas
@@ -1341,6 +1368,7 @@ public class CandidateService {
         candidate.setMissingSkills(result.missingSkills);
         candidate.setNeedsHumanReview(result.needsHumanReview);
         candidate.setHumanReviewReason(result.humanReviewReason);
+        applyGoldProposal(candidate, result.finalScore, result.decisionThreshold, result.needsHumanReview);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
@@ -1348,14 +1376,17 @@ public class CandidateService {
         // (erreur technique ou zone grise), on évite le rejet automatique et on transmet aux RH (CV_REVIEWED)
         Candidate.CandidateStatus newStatus;
         String statusReason = null;
+        int threshold = result.decisionThreshold;
+
         if (Boolean.TRUE.equals(result.needsHumanReview)) {
             newStatus = Candidate.CandidateStatus.CV_REVIEWED;
             statusReason = "En attente de révision humaine RH : " + result.humanReviewReason;
-        } else if (result.finalScore >= AI_SCORE_THRESHOLD) {
+        } else if (result.finalScore >= threshold) {
             newStatus = Candidate.CandidateStatus.CV_REVIEWED;
         } else {
             newStatus = Candidate.CandidateStatus.AUTO_REJECTED;
-            statusReason = "Rejet automatique : score IA (" + result.finalScore + "/100) inférieur au seuil (" + AI_SCORE_THRESHOLD + ")";
+            statusReason = "Rejet automatique : score IA (" + result.finalScore + "/100) inférieur au seuil ("
+                    + threshold + ")";
         }
 
         return applyScoreDrivenStatus(saved, newStatus, statusReason);
@@ -1387,17 +1418,51 @@ public class CandidateService {
         // L'intervention humaine est validée
         candidate.setNeedsHumanReview(false);
         candidate.setHumanReviewReason("Arbitrage humain effectué par " + correctedBy + " : " + reason);
+        int threshold = decisionThresholdFor(candidate);
+        // L'arbitrage RH remplace l'avis de la machine, y compris sur l'étiquette Gold :
+        // une note manuelle n'est plus « incertaine » par définition.
+        applyGoldProposal(candidate, manualScore, threshold, false);
         candidate.setLastUpdated(LocalDateTime.now());
         Candidate saved = candidateRepository.save(candidate);
 
         auditLogService.log("CANDIDATE", saved.getId(), "SCORE_OVERRIDE",
                 previousScore, manualScore + " (motif : " + reason + ")");
 
-        Candidate.CandidateStatus newStatus = manualScore >= AI_SCORE_THRESHOLD
+        Candidate.CandidateStatus newStatus = manualScore >= threshold
                 ? Candidate.CandidateStatus.CV_REVIEWED
                 : Candidate.CandidateStatus.AUTO_REJECTED;
 
         return applyScoreDrivenStatus(saved, newStatus, "Décision RH post-arbitrage : " + reason);
+    }
+
+    /**
+     * Tranche l'étiquette « Profil Gold » d'un dossier : CONFIRME la rend visible du manager,
+     * REJETE éteint la proposition et empêche un recalcul de la ressortir. La machine propose,
+     * le RH dispose — c'est le seul chemin qui fait passer un dossier de l'un à l'autre.
+     */
+    @Transactional
+    public CandidateResponse decideGoldStatus(Long id, Candidate.GoldStatus decision, String actingUser) {
+        if (decision != Candidate.GoldStatus.CONFIRME && decision != Candidate.GoldStatus.REJETE) {
+            throw new IllegalArgumentException(
+                    "La décision RH sur une étiquette « Profil Gold » ne peut être que CONFIRME ou REJETE");
+        }
+        Candidate candidate = candidateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Candidat non trouvé avec l'ID: " + id));
+        if (candidate.getGoldStatus() != Candidate.GoldStatus.PROPOSE
+                && candidate.getGoldStatus() != Candidate.GoldStatus.CONFIRME) {
+            throw new IllegalArgumentException("Aucune proposition « Profil Gold » à trancher sur ce dossier (score "
+                    + candidate.getAiScore() + "/100, barre " + AiScoringService.EXCELLENT_SCORE + ")");
+        }
+
+        Candidate.GoldStatus previous = candidate.getGoldStatus();
+        candidate.setGoldStatus(decision);
+        candidate.setGoldStatusBy(actingUser);
+        candidate.setGoldStatusAt(LocalDateTime.now());
+        Candidate saved = candidateRepository.save(candidate);
+
+        auditLogService.log("CANDIDATE", saved.getId(), "GOLD_STATUS_" + decision,
+                previous, "score " + saved.getAiScore() + "/100 par " + actingUser);
+        return new CandidateResponse(saved);
     }
 
     /**

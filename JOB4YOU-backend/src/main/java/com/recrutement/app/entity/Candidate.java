@@ -103,6 +103,32 @@ public class Candidate {
     @Column(name = "human_review_reason", columnDefinition = "TEXT")
     private String humanReviewReason;
 
+    // ── Étiquette « Profil Gold » ──
+    // La machine propose, le RH dispose : PROPOSE est une suggestion de l'IA sur un dossier
+    // qu'elle ne signale pas elle-même comme incertain. CONFIRME est la seule valeur visible
+    // par le manager ; REJETE est une décision RH qui ne se répète plus à chaque recalcul.
+    public enum GoldStatus {
+        AUCUN,
+        PROPOSE,
+        CONFIRME,
+        REJETE
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "gold_status", length = 16)
+    private GoldStatus goldStatus = GoldStatus.AUCUN;
+
+    /** Les 81 dossiers déjà en base avant cette colonne arrivent avec la valeur nulle. */
+    public GoldStatus getGoldStatus() {
+        return goldStatus == null ? GoldStatus.AUCUN : goldStatus;
+    }
+
+    @Column(name = "gold_status_by")
+    private String goldStatusBy;
+
+    @Column(name = "gold_status_at")
+    private LocalDateTime goldStatusAt;
+
     // ── Correction manuelle du score IA par le RH ──
     @Column(name = "manual_score")
     private Integer manualScore;

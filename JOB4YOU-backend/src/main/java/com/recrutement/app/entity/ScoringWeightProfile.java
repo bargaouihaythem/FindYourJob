@@ -41,6 +41,21 @@ public class ScoringWeightProfile {
     @Column(name = "weight_seniority", nullable = false)
     private double weightSeniority;
 
+    /**
+     * Seuil de décision calibré sur le Gold Set de ce profil (famille × séniorité).
+     * NULL tant que le profil n'a pas été calibré : la décision retombe alors sur le
+     * seuil par défaut de l'application, jamais sur une valeur inventée ici.
+     */
+    @Column(name = "decision_threshold")
+    private Integer decisionThreshold;
+
+    /** F1 mesuré sur le Gold Set au moment où le seuil ci-dessus a été retenu. */
+    @Column(name = "calibrated_f1")
+    private Double calibratedF1;
+
+    @Column(name = "calibrated_at")
+    private LocalDateTime calibratedAt;
+
     @Column(name = "updated_by")
     private String updatedBy;
 
