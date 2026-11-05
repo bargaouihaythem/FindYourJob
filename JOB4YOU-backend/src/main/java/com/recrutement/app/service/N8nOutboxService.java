@@ -1,6 +1,7 @@
 package com.recrutement.app.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.recrutement.app.entity.N8nOutboxEvent;
 import com.recrutement.app.repository.N8nOutboxEventRepository;
@@ -12,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,7 +111,18 @@ public class N8nOutboxService {
             if (apiKey != null && !apiKey.isBlank()) {
                 headers.set("X-N8N-API-Key", apiKey);
             }
-            restTemplate.postForEntity(event.getWebhookUrl(), new HttpEntity<>(payload, headers), String.class);
+            ResponseEntity<String> reponse = restTemplate.postForEntity(
+                    event.getWebhookUrl(), new HttpEntity<>(payload, headers), String.class);
+            String rejet = motifRejetN8n(reponse.getBody());
+            if (rejet != null) {
+                event.setAttempts(event.getAttempts() + 1);
+                event.setStatus(N8nOutboxEvent.Status.FAILED);
+                event.setLastError(tronque(rejet));
+                repository.save(event);
+                log.warn("[N8N outbox] {} : le webhook a repondu sans envoyer — {}, aucune relance automatique",
+                        event.getAgentName(), rejet);
+                return;
+            }
             event.setStatus(N8nOutboxEvent.Status.SENT);
             event.setSentAt(LocalDateTime.now());
             event.setLastError(null);
@@ -155,11 +168,47 @@ public class N8nOutboxService {
         return false;
     }
 
+    /**
+     * Les webhooks des agents répondent en mode « lastNode » : quand le nœud Gmail échoue —
+     * jeton d'autorisation expiré, par exemple — n8n renvoie HTTP 200 avec un corps
+     * {@code {"error": …}} et l'exécution s'arrête sans message parti. Sans ce contrôle,
+     * l'événement passerait pour envoyé et l'écran RH n'afficherait jamais la panne.
+     *
+     * Le workflow a pourtant tourné : une relance automatique doublonnerait les envois déjà
+     * partis dans les branches à plusieurs destinataires. L'événement est donc marqué
+     * FAILED, à relancer manuellement par le RH.
+     *
+     * @return le motif remonté par n8n, null si la réponse n'est pas un refus
+     */
+    private String motifRejetN8n(String corps) {
+        if (corps == null || corps.isBlank() || !corps.trim().startsWith("{")) {
+            return null;
+        }
+        try {
+            JsonNode erreur = objectMapper.readTree(corps).get("error");
+            if (erreur == null || erreur.isNull()) {
+                return null;
+            }
+            if (erreur.isTextual()) {
+                return erreur.asText();
+            }
+            String message = erreur.path("message").asText("");
+            return message.isBlank() ? erreur.toString() : message;
+        } catch (Exception e) {
+            // Réponse non conforme : on n'annule pas une remise pour un détail de format.
+            return null;
+        }
+    }
+
+    private String tronque(String message) {
+        return message.length() > 900 ? message.substring(0, 900) : message;
+    }
+
     private String safeError(Exception e) {
         String message = e.getMessage();
         if (message == null || message.isBlank()) {
             return e.getClass().getSimpleName();
         }
-        return message.length() > 900 ? message.substring(0, 900) : message;
+        return tronque(message);
     }
 }
