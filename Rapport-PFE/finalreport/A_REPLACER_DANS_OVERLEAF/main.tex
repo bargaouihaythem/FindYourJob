@@ -410,57 +410,26 @@
     
     \frontmatter
        % ======== tpl/title_page ========
-\thispagestyle{cover}%
+\thispagestyle{empty}%
 \newgeometry{bottom=25mm,left=20mm,top=15mm,right=20mm}
 
-% Garde reprise du modele officiel de l'ecole (1-Page de garde PFE.doc) :
-% bandeau SESAME en tete, puis les rubriques du modele, dans son ordre,
-% chacune portee par son pointille. Les valeurs saisies sont celles du rapport.
-% Le bandeau remplace a lui seul le logo SESAME et le bloc « Republique
-% Tunisienne / Ministere » : il porte deja le logo et le nom complet de l'ecole.
-% Les deux macros evitent de recopier six fois le meme empilement ;
-% 0,86\textwidth est la largeur du pointille mesuree sur le modele.
-% Le pointille est une hbox de largeur fixe centree par deux \hfil : laisse en
-% colle directe sous un \centering, un \dotfill ne remplirait que le tiers
-% central de la ligne, le reste etant absorbe par \leftskip et \rightskip.
-\newcommand{\gardeLibelle}[1]{{\large #1}\par\vspace{1.2mm}}
-\newcommand{\gardeValeur}[1]{%
-  \parbox[t]{0.86\textwidth}{\centering\large\textbf{#1}\par}\par
-  \vspace{0.6mm}%
-  \hbox to \textwidth{\hfil\hbox to 0.86\textwidth{\dotfill}\hfil}\par}
-
-{\centering\setlength{\parindent}{0pt}
-\includegraphics[width=\textwidth,keepaspectratio]{garde_bandeau_sesame}\par
-\vspace{1.8cm}
-
-{\Large RAPPORT DE STAGE DE PROJET DE FIN D'\'ETUDES}\par
-\vspace{1.6cm}
-
-\gardeLibelle{Intitulé du stage}
-\gardeValeur{\@title}
-\vspace{0.9cm}
-
-\gardeLibelle{Réalisé par}
-\gardeValeur{\@author}
-\vspace{1.3cm}
-
-\gardeLibelle{Entreprise d'accueil}
-\vspace{1.5mm}
-{\includegraphics[width=52mm,keepaspectratio]{sohr}}\par
-\vspace{2.5mm}
-\gardeValeur{\@companyName}
-\vspace{1.7cm}
-
-\gardeLibelle{Encadrant Entreprise}
-\gardeValeur{\@proFramerName}
-\vspace{0.9cm}
-
-\gardeLibelle{Encadrant SESAME}
-\gardeValeur{\@academicFramerName}
-\par}
-
-% « Année Universitaire » n'est plus recopié dans le corps : le style de page
-% cover (isipfe.cls, ligne 316) l'imprime déjà au pied de page, avec \@collegeYear.
+% Garde = replique fidele du modele officiel (1-Page de garde PFE.doc), composee
+% a partir du fichier de l'ecole : fond geometrique et bandeau SESAME repris
+% tels quels, filets, libelles et pointilles aux cotes mesurees sur le modele
+% (page 595,3 x 841,9 pt ; titre 18 pt, libelles 14,04 pt, champs 15,96 pt,
+% annee 11,04 pt en gras, le tout en Calibri Light noir), le « [logo] » du
+% modele remplace par le logo Sopra HR. Les donnees du rapport y sont saisies.
+% L'ensemble est livre en une seule image pleine page (300 dpi) pour que la
+% page 1 ne puisse pas bouger d'un point d'une version a l'autre.
+% Le style de page est « empty » et non « cover » : l'annee universitaire est
+% deja imprimee dans l'image, et le style cover en aurait delivre une seconde.
+% Le \raisebox declare une boite de hauteur et profondeur nulles : l'image
+% deborde dans les marges sans jamais pousser le contenu, la geometrie du
+% corps reste donc exactement celle des autres pages.
+\noindent\hspace*{-\dimexpr\oddsidemargin+1in\relax}%
+\raisebox{\dimexpr\topskip+1in+\topmargin+\headheight+\headsep-\paperheight\relax}[0pt][0pt]{%
+\includegraphics[width=\paperwidth,height=\paperheight]{garde_page1_officielle}}%
+\par
 \afterpage{\blankpage}
        % ======== fin tpl/title_page ========
         % ======== tpl/signatures ========
@@ -1944,7 +1913,8 @@ Chaque carte porte l’heure, le jour, le candidat, le poste, le type d’entret
 \end{figure}
 \endgroup
 
-La grille mensuelle (figure~ef{fig_4_16b}) colore chaque créneau : l’ambre, marqué d’un sablier, signale un avis qui attend encore le contreseing du RH ; le gris, une décision déjà prise. Seules les colonnes mardi, mercredi et jeudi sont reproduites, les quatre autres jours de la semaine ne portant aucun rendez-vous dans cette base de démonstration. Le titre « Novembre 2026 » et les boutons de changement de mois restent également hors cadre.
+La grille mensuelle (figure~
+ef{fig_4_16b}) colore chaque créneau : l’ambre, marqué d’un sablier, signale un avis qui attend encore le contreseing du RH ; le gris, une décision déjà prise. Seules les colonnes mardi, mercredi et jeudi sont reproduites, les quatre autres jours de la semaine ne portant aucun rendez-vous dans cette base de démonstration. Le titre « Novembre 2026 » et les boutons de changement de mois restent également hors cadre.
 
 % figure 4.16c
 \setcounter{figure}{15}
