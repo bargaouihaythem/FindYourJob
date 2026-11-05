@@ -1,0 +1,24 @@
+{
+  "fait_le": "2026-11-05T13:48:14.925Z",
+  "note": "creneaux de novembre re-ancre hors des dossiers du rejeu — rollback : --rollback",
+  "mouvements": [
+    {
+      "interviewId": 66,
+      "candidateIdAvant": 167,
+      "interviewerIdAvant": 9,
+      "vers": 24
+    },
+    {
+      "interviewId": 67,
+      "candidateIdAvant": 168,
+      "interviewerIdAvant": 9,
+      "vers": 33
+    },
+    {
+      "interviewId": 68,
+      "candidateIdAvant": 174,
+      "interviewerIdAvant": 9,
+      "vers": 51
+    }
+  ]
+}

@@ -1,0 +1,254 @@
+{
+  "fait_le": "2026-11-05T13:36:33.830Z",
+  "note": "contentieux des 20 dossiers du rejeu Gold Set + 3 creneaux de novembre, avant purge",
+  "dossiers": [
+    {
+      "id": 159,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold01@gmail.com",
+      "nom": "Alexandre Mercier",
+      "offreId": 115,
+      "score": 89
+    },
+    {
+      "id": 160,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold02@gmail.com",
+      "nom": "Camille Bernard",
+      "offreId": 115,
+      "score": 85
+    },
+    {
+      "id": 161,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold03@gmail.com",
+      "nom": "Julien Rouve",
+      "offreId": 115,
+      "score": 84
+    },
+    {
+      "id": 162,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold04@gmail.com",
+      "nom": "Guillaume Delorme",
+      "offreId": 115,
+      "score": 59
+    },
+    {
+      "id": 163,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold05@gmail.com",
+      "nom": "Sébastien Vasseur",
+      "offreId": 117,
+      "score": 91
+    },
+    {
+      "id": 164,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold06@gmail.com",
+      "nom": "Nadia Khemir",
+      "offreId": 117,
+      "score": 88
+    },
+    {
+      "id": 165,
+      "lu": true,
+      "status": "AUTO_REJECTED",
+      "email": "bargaouihaythem1+gold07@gmail.com",
+      "nom": "Thierry Gauthier",
+      "offreId": 117,
+      "score": 54
+    },
+    {
+      "id": 166,
+      "lu": true,
+      "status": "AUTO_REJECTED",
+      "email": "bargaouihaythem1+gold08@gmail.com",
+      "nom": "Éléonore Faure",
+      "offreId": 117,
+      "score": 30
+    },
+    {
+      "id": 167,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold09@gmail.com",
+      "nom": "Marc Lemaire",
+      "offreId": 122,
+      "score": 85
+    },
+    {
+      "id": 168,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold10@gmail.com",
+      "nom": "Sophie Moreau",
+      "offreId": 122,
+      "score": 88
+    },
+    {
+      "id": 169,
+      "lu": true,
+      "status": "AUTO_REJECTED",
+      "email": "bargaouihaythem1+gold11@gmail.com",
+      "nom": "Valérie Dubois",
+      "offreId": 122,
+      "score": 47
+    },
+    {
+      "id": 170,
+      "lu": true,
+      "status": "AUTO_REJECTED",
+      "email": "bargaouihaythem1+gold12@gmail.com",
+      "nom": "Karim Belhadj",
+      "offreId": 122,
+      "score": 52
+    },
+    {
+      "id": 171,
+      "lu": true,
+      "status": "AUTO_REJECTED",
+      "email": "bargaouihaythem1+gold13@gmail.com",
+      "nom": "Lucas Pires",
+      "offreId": 115,
+      "score": 52
+    },
+    {
+      "id": 172,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold14@gmail.com",
+      "nom": "Manon Girard",
+      "offreId": 115,
+      "score": 71
+    },
+    {
+      "id": 173,
+      "lu": true,
+      "status": "PHONE_SCREENING",
+      "email": "bargaouihaythem1+gold15@gmail.com",
+      "nom": "Romain Mercier",
+      "offreId": 117,
+      "score": 44
+    },
+    {
+      "id": 174,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold16@gmail.com",
+      "nom": "Inès Benali",
+      "offreId": 122,
+      "score": 81
+    },
+    {
+      "id": 175,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold17@gmail.com",
+      "nom": "Hugo Delaunay",
+      "offreId": 115,
+      "score": 81
+    },
+    {
+      "id": 176,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold18@gmail.com",
+      "nom": "Nadia Ostermann",
+      "offreId": 117,
+      "score": 81
+    },
+    {
+      "id": 177,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold19@gmail.com",
+      "nom": "Claire Fontaine",
+      "offreId": 122,
+      "score": 78
+    },
+    {
+      "id": 178,
+      "lu": true,
+      "status": "CV_REVIEWED",
+      "email": "bargaouihaythem1+gold20@gmail.com",
+      "nom": "Yanis Moureaux",
+      "offreId": 122,
+      "score": 57
+    }
+  ],
+  "entretiens": [
+    {
+      "id": 66,
+      "interviewDate": "2026-11-10T10:00:00",
+      "type": "TECHNICAL",
+      "status": "SCHEDULED",
+      "notes": "",
+      "durationMinutes": 45,
+      "location": "Google Meet",
+      "meetLink": "https://meet.jit.si/Job4You-66-2026-11-10",
+      "createdAt": "2026-11-05T13:12:39.226572",
+      "updatedAt": "2026-11-05T13:12:39.264537",
+      "candidateId": 167,
+      "candidateName": "Marc Lemaire",
+      "candidateEmail": "bargaouihaythem1+gold09@gmail.com",
+      "interviewerId": 9,
+      "interviewerName": "manager.devops",
+      "interviewerEmail": "manager.devops@job4you.com",
+      "jobOfferTitle": "Business Analyst - CDD 18 mois",
+      "feedbacksCount": 0,
+      "candidateStatus": "CV_REVIEWED",
+      "advicePossible": false
+    },
+    {
+      "id": 67,
+      "interviewDate": "2026-11-12T14:30:00",
+      "type": "TECHNICAL",
+      "status": "SCHEDULED",
+      "notes": "",
+      "durationMinutes": 45,
+      "location": "Google Meet",
+      "meetLink": "https://meet.jit.si/Job4You-67-2026-11-12",
+      "createdAt": "2026-11-05T13:12:39.286277",
+      "updatedAt": "2026-11-05T13:12:39.307851",
+      "candidateId": 168,
+      "candidateName": "Sophie Moreau",
+      "candidateEmail": "bargaouihaythem1+gold10@gmail.com",
+      "interviewerId": 9,
+      "interviewerName": "manager.devops",
+      "interviewerEmail": "manager.devops@job4you.com",
+      "jobOfferTitle": "Business Analyst - CDD 18 mois",
+      "feedbacksCount": 0,
+      "candidateStatus": "CV_REVIEWED",
+      "advicePossible": false
+    },
+    {
+      "id": 68,
+      "interviewDate": "2026-11-17T09:00:00",
+      "type": "TECHNICAL",
+      "status": "SCHEDULED",
+      "notes": "",
+      "durationMinutes": 45,
+      "location": "Google Meet",
+      "meetLink": "https://meet.jit.si/Job4You-68-2026-11-17",
+      "createdAt": "2026-11-05T13:12:39.365298",
+      "updatedAt": "2026-11-05T13:12:39.434993",
+      "candidateId": 174,
+      "candidateName": "Inès Benali",
+      "candidateEmail": "bargaouihaythem1+gold16@gmail.com",
+      "interviewerId": 9,
+      "interviewerName": "manager.devops",
+      "interviewerEmail": "manager.devops@job4you.com",
+      "jobOfferTitle": "Business Analyst - CDD 18 mois",
+      "feedbacksCount": 0,
+      "candidateStatus": "CV_REVIEWED",
+      "advicePossible": false
+    }
+  ]
+}

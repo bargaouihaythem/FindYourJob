@@ -1,0 +1,22 @@
+dossiers : 81 — embauches : 12
+personnes embauchees deux fois (meme e-mail ET meme nom) : 0
+boites partageant l adresse avec des noms differents (jeux de test) : 0
+
+Test 1 — une personne ne peut occuper qu un seul poste
+  temoin #155 aligne sur « testbargaoui testbargaoui » <candidat@email.com> (dossier embauche #138) : HTTP 200
+  OK    embauche croisee sur #155 — attendu 400 « déjà embauchée » : HTTP 400 — Cette personne est déjà embauchée sur l'offre « dev full stack js » (dossier #138). Une personne ne peut occuper qu'un seul poste : clôturez d'abord ce dossier, ou validez celui-ci par un refus.
+  OK    statut de #155 inchange — attendu ACCEPTED : statut lu : ACCEPTED
+  OK    nom du temoin #155 restitue — attendu test ing test ing : lu : test ing test ing / ACCEPTED
+
+Test 2 — une personne en poste ne depose pas une nouvelle candidature
+  OK    postuler sur l offre 136 — attendu 400 « déjà embauché » : HTTP 400 — Erreur lors de la soumission de la candidature: Vous êtes déjà embauché sur l'offre « dev full stack js » (dossier #138). Une personne en poste ne dépose pas de nouvelle candidature : contactez le RH si vous souhaitez changer de poste.
+  OK    dossiers de candidat@email.com — attendu 12 (aucun ajout) : lus : 12
+
+Test 3 — un entretien ne peut etre pose que sur un manager destinataire
+  managers proposes : Pierre Durand (Manager CS) <manager.cs@job4you.com>, Marwen Demmo <bargaouihaythem1+manager@gmail.com>, Paul Martin (Manager R&D) <manager.rd@job4you.com>, Karim DevOps (Manager DevOps) <manager.devops@job4you.com>, Khaled Gharbi (Manager QA) <manager.qa@job4you.com>, Marc ProdOps (Manager ProdOps) <manager.prodops@job4you.com>, Manager CS (Consulting) <manager1@exemple.com>
+  OK    entretien sur Pierre Durand (Manager CS) (non destinataire) — attendu 400 : HTTP 400 — manager.cs n'est pas destinataire de ce dossier : cet entretien n'apparaîtrait jamais dans son agenda. Intervieweurs possibles : manager.devops@job4you.com. À défaut, faites d'abord transmettre le dossier au manager voulu.
+  OK    entretien sur Karim DevOps (Manager DevOps) (destinataire) — attendu 201 : HTTP 201 entretien #77 a 2026-12-06T11:00:00
+  OK    replanification du meme couple — attendu 200 : HTTP 200 — {"id":77,"interviewDate":"2026-12-06T15:00:00","type":"TECHNICAL","status":"SCHEDULED","notes":"Replanifie sans changer l intervieweur.","durationMinutes":45,"location":"Google Meet","meetLink":"https
+  rollback : entretien #77 supprime (HTTP 200)
+
+bilan : 3/3 refus comme attendu, entretien destinataire accepte
