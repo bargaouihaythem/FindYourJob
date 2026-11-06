@@ -82,7 +82,12 @@ public class WebSecurityConfig {
                 ).permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/job-offers/public/**").permitAll()
-                .requestMatchers("/api/matching/**").permitAll()
+                // Le « job idéal » est public : un visiteur sans compte dépose son CV et voit
+                // des suggestions d'offres déjà publiques. L'harnais d'évaluation du Gold Set,
+                // lui, note un CV contre une offre choisie et renvoie les détails du calcul :
+                // il reste réservé aux comptes authentifiés.
+                .requestMatchers("/api/matching/upload-cv").permitAll()
+                .requestMatchers("/api/matching/**").authenticated()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 // Les fichiers, scores, statuts et notifications n8n exigent

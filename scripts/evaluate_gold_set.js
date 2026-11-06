@@ -15,13 +15,25 @@
 
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 // Base URL surchargable : la mesure doit pouvoir viser une instance de benchmark
 // (autre port, autre base) sans toucher à l'instance de développement.
 const API_URL = process.env.GOLD_SET_API_URL || 'http://localhost:8080/api/matching/evaluate-gold-set';
+const API_BASE = API_URL.replace(/\/api\/.*$/, '/api');
 const GROUND_TRUTH_FILE = path.join(__dirname, '..', 'gold_set', 'ground_truth.json');
 const CVS_DIR = path.join(__dirname, '..', 'gold_set', 'cvs');
 const REPORT_FILE = path.join(__dirname, '..', 'gold_set', 'benchmark_report.md');
+
+// /api/matching/evaluate-gold-set est désormais protégé : le harnais se connecte comme
+// les autres scripts de vérification (jeton mis en cache, borne anti-brute-force ménagée).
+let jeton = process.env.GOLD_SET_TOKEN || null;
+async function authentifier() {
+  if (jeton) return jeton;
+  const { signinCached } = await import(pathToFileURL(path.join(__dirname, 'session_cache.mjs')).href);
+  jeton = await signinCached(API_BASE, process.env.GOLD_SET_USER || 'rh', process.env.GOLD_SET_PW || 'password123');
+  return jeton;
+}
 
 async function evaluateCandidate(record) {
   const pdfPath = path.join(CVS_DIR, record.filename);
@@ -37,6 +49,7 @@ async function evaluateCandidate(record) {
 
   const response = await fetch(API_URL, {
     method: 'POST',
+    headers: { Authorization: `Bearer ${await authentifier()}` },
     body: formData
   });
 
