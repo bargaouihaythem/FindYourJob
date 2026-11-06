@@ -1288,10 +1288,16 @@ export class CandidatesComponent implements OnInit, OnDestroy {
    * kind : 'status' → updateCandidateStatus ; 'accept'/'reject' → managerDecision ;
    *        'final-hire'/'final-reject' → finalValidation (endpoint dédié RH).
    */
-  getAvailableTransitions(status: string): { key: string; label: string; icon: string; kind: 'status' | 'accept' | 'reject' | 'final-hire' | 'final-reject' }[] {
+  getAvailableTransitions(status: string): { key: string; label: string; icon: string; kind: 'status' | 'accept' | 'reject' | 'hr-reject' | 'final-hire' | 'final-reject' }[] {
     const step = (key: string, label: string, icon: string) => ({ key, label, icon, kind: 'status' as const });
-    const accept = { key: 'ACCEPT', label: 'Émettre un avis favorable', icon: 'fas fa-user-check text-success', kind: 'accept' as const };
-    const reject = { key: 'REJECT', label: 'Refuser', icon: 'fas fa-user-times text-danger', kind: 'reject' as const };
+    // L'avis favorable n'existe qu'à partir de la transmission au manager : le serveur le
+    // refuse avant (Candidate#isAwaitingManagerAdvice), il ne doit donc pas être proposé.
+    const accept = { key: 'ACCEPT', label: 'Saisir un avis favorable',
+      icon: 'fas fa-user-check text-success', kind: 'accept' as const };
+    // Le refus du RH est une décision finale, pas un avis : il emprunte la transition de
+    // statut, que la machine admet dès « CV examiné ». Passer par l'avis manager produirait
+    // un refus que le RH devrait se contre-signer à lui-même, et un 400 avant la transmission.
+    const reject = { key: 'REJECTED', label: 'Refuser', icon: 'fas fa-user-times text-danger', kind: 'hr-reject' as const };
     const hire = { key: 'HIRED', label: "Valider l'embauche", icon: 'fas fa-file-signature text-success', kind: 'final-hire' as const };
     const confirmReject = { key: 'REJECTED', label: 'Confirmer le refus', icon: 'fas fa-user-times text-danger', kind: 'final-reject' as const };
     const withdraw = step('WITHDRAWN', 'Candidature retirée', 'fas fa-user-minus text-secondary');
@@ -1304,18 +1310,20 @@ export class CandidatesComponent implements OnInit, OnDestroy {
         // ou retiré sans attendre cet entretien.
         return [step('PHONE_SCREENING', 'Entretien téléphonique', 'fas fa-phone text-warning'), reject, withdraw];
       case 'PHONE_SCREENING':
-        return [step('TECHNICAL_TEST', 'Valider → transmettre au manager (Test technique)', 'fas fa-user-check text-success'), accept, reject, withdraw];
+        return [step('TECHNICAL_TEST', 'Valider → transmettre au manager (Test technique)', 'fas fa-user-check text-success'), reject, withdraw];
       case 'TECHNICAL_TEST':
         return [step('INTERVIEW', 'Entretien', 'fas fa-comments text-primary'), accept, reject, withdraw];
       case 'INTERVIEW':
-        return [step('FINAL_INTERVIEW', 'Entretien final', 'fas fa-handshake text-primary'), accept, reject, withdraw];
+        return [accept, reject, withdraw];
       case 'FINAL_INTERVIEW':
+        // État hérité de l'ancien pipeline : plus aucun flux ne le produit, mais un dossier
+        // qui le porte encore reste instruisible comme un entretien ordinaire.
         return [accept, reject, withdraw];
       case 'ACCEPTED':
-        // Avis favorable du manager : le RH contresigne (embauche), confirme l'agenda de
-        // l'entretien avant de trancher, ou renverse l'avis en refus.
-        return [step('INTERVIEW_SCHEDULED', "Confirmer l'entretien planifié", 'fas fa-calendar-check text-info'),
-                hire, confirmReject, withdraw];
+        // Avis favorable du manager : le RH n'a que deux issues, contre-signer (embauche) ou
+        // renverser l'avis (refus). « Confirmer l'entretien planifié » a été retiré ici :
+        // l'état INTERVIEW_SCHEDULED n'est produit par aucun flux et l'embauche ne l'exige pas.
+        return [hire, confirmReject, withdraw];
       case 'MANAGER_REJECTED':
         // Refus proposé par le manager : le RH le confirme ou remet le dossier dans le pipeline.
         return [confirmReject,
@@ -1323,6 +1331,8 @@ export class CandidatesComponent implements OnInit, OnDestroy {
                 step('PHONE_SCREENING', 'Ramener en entretien téléphonique', 'fas fa-phone text-warning'),
                 withdraw];
       case 'INTERVIEW_SCHEDULED':
+        // Plus aucun bouton ne mène ici, mais un dossier portant encore cet état (posé par
+        // l'API ou l'ancien pipeline) doit pouvoir être contre-signé ou clos.
         return [hire, confirmReject, withdraw];
       case 'AUTO_REJECTED':
         // Le RH arbitre la décision de l'IA : soit il la confirme après examen (le refus
@@ -1358,9 +1368,10 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   }
 
   /** Applique la transition choisie dans la liste contextuelle. */
-  onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' | 'final-hire' | 'final-reject' }): void {
+  onTransition(candidate: Candidate, t: { key: string; kind: 'status' | 'accept' | 'reject' | 'hr-reject' | 'final-hire' | 'final-reject' }): void {
     if (t.kind === 'accept') { this.acceptCandidate(candidate); }
     else if (t.kind === 'reject') { this.rejectCandidate(candidate); }
+    else if (t.kind === 'hr-reject') { this.hrRejectCandidate(candidate); }
     else if (t.kind === 'final-hire') { this.openFinalValidation(candidate, 'HIRED'); }
     else if (t.kind === 'final-reject') { this.openFinalValidation(candidate, 'REJECTED'); }
     // La transmission au manager passe toujours par la modale : le destinataire est
@@ -1375,6 +1386,16 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       this.updateCandidateStatus(candidate, t.key, motif.trim());
     }
     else { this.updateCandidateStatus(candidate, t.key); }
+  }
+
+  /**
+   * Note affichée là où l'avis du manager n'est pas encore recevable : elle nomme la
+   * condition au lieu de proposer une commande que le serveur refuserait.
+   */
+  adviceGuardHint(status: string): string | null {
+    if (status !== 'CV_REVIEWED' && status !== 'PHONE_SCREENING') return null;
+    return 'L’avis du manager n’est demandé qu’après la transmission en « Test technique ». '
+      + 'À cette étape : faire avancer le dossier, refuser ou retirer.';
   }
 
   /**
@@ -1516,6 +1537,20 @@ export class CandidatesComponent implements OnInit, OnDestroy {
       return 'Candidature retirée par le candidat — processus arrêté avant la validation RH';
     }
     return 'Validation RH effectuée — Agent 2 déclenché pour la planification de l’entretien';
+  }
+
+  /**
+   * Refus prononcé par le RH ou l'Administrateur : décision finale (REJECTED), motif
+   * obligatoire, e-mail de réponse au candidat. C'est la seule voie de refus ouverte au RH
+   * avant la transmission au manager, l'avis restant réservé aux dossiers transmis.
+   */
+  hrRejectCandidate(candidate: Candidate): void {
+    const motif = window.prompt('Motif obligatoire du refus (journalisé, et communiqué au candidat) :');
+    if (!motif?.trim()) {
+      this.toastrNotification.showCandidateError('Le motif du refus est obligatoire');
+      return;
+    }
+    this.updateCandidateStatus(candidate, 'REJECTED', motif.trim());
   }
 
   acceptCandidate(candidate: Candidate): void {

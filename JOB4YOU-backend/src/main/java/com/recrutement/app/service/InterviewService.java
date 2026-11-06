@@ -217,10 +217,11 @@ public class InterviewService {
             case TECHNICAL:
                 return Candidate.CandidateStatus.TECHNICAL_TEST;
             case FINAL:
-                return Candidate.CandidateStatus.FINAL_INTERVIEW;
             case HR:
             case MANAGER:
             case GROUP:
+                // Un seul état d'entretien pour le dossier : le type « final » reste porté par
+                // l'entretien (invitation, calendrier, e-mail), le pipeline ne le duplique plus.
                 return Candidate.CandidateStatus.INTERVIEW;
             default:
                 return null;

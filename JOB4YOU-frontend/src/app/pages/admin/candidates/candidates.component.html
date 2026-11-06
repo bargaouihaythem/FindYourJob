@@ -94,9 +94,7 @@
             <option value="PHONE_SCREENING">Entretien téléphonique</option>
             <option value="TECHNICAL_TEST">Test technique</option>
             <option value="INTERVIEW">Entretien</option>
-            <option value="FINAL_INTERVIEW">Entretien final</option>
             <option value="ACCEPTED">Avis favorable (à valider)</option>
-            <option value="INTERVIEW_SCHEDULED">Entretien planifié (à valider)</option>
             <option value="HIRED">Embauché (validé RH)</option>
             <option value="REJECTED">Rejeté (décision finale)</option>
             <option value="AUTO_REJECTED">Rejeté (IA)</option>
@@ -276,7 +274,9 @@
                                  : t.kind === 'final-reject' ? (candidate.status === 'AUTO_REJECTED'
                                      ? 'Confirmer la décision de l’IA après examen — motif obligatoire, le candidat a déjà été notifié'
                                      : 'Confirmer le refus — motif demandé, e-mail d\'envoi au candidat')
-                                 : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH'
+                                 : t.kind === 'hr-reject' ? 'Refus du RH — décision finale, motif obligatoire, e-mail au candidat'
+                                 : t.kind === 'accept' ? 'Avis favorable enregistré sur le dossier — la décision finale reste à prendre par le RH'
+                                : t.kind !== 'status' ? 'Avis manager — la décision finale appartient au RH'
                                  : t.key === 'TECHNICAL_TEST' ? 'Ouvre la modale de transmission — vous désignez le manager destinataire'
                                  : ''">
                         <i [class]="t.icon + ' me-2'"></i>{{ t.label }}
@@ -290,6 +290,10 @@
                     <li *ngIf="iaArbitrationHint(candidate.status) as iaHint">
                       <span class="dropdown-item-text small text-muted"
                             style="border-top: 1px solid #e9ecef;">{{ iaHint }}</span>
+                    </li>
+                    <li *ngIf="adviceGuardHint(candidate.status) as gardeHint">
+                      <span class="dropdown-item-text small text-muted"
+                            style="border-top: 1px solid #e9ecef;">{{ gardeHint }}</span>
                     </li>
                     <li *ngIf="getAvailableTransitions(candidate.status).length === 0">
                       <span class="dropdown-item-text text-muted small">Aucune transition possible</span>

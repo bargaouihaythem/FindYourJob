@@ -1018,13 +1018,15 @@ public class CandidateService {
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case INTERVIEW:
-                allowed = to == Candidate.CandidateStatus.FINAL_INTERVIEW
-                        || to == Candidate.CandidateStatus.ACCEPTED
+                allowed = to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
                         || to == Candidate.CandidateStatus.REJECTED
                         || to == Candidate.CandidateStatus.WITHDRAWN;
                 break;
             case FINAL_INTERVIEW:
+                // État retiré du pipeline depuis la fusion des entretiens : plus aucun flux ne
+                // le produit. La branche reste pour qu'un dossier hérité de ce statut puisse
+                // être instruit plutôt que bloqué par le cas « terminal ».
                 allowed = to == Candidate.CandidateStatus.ACCEPTED
                         || to == Candidate.CandidateStatus.MANAGER_REJECTED
                         || to == Candidate.CandidateStatus.REJECTED
@@ -1032,7 +1034,9 @@ public class CandidateService {
                 break;
             case ACCEPTED:
                 // Avis favorable du manager : le RH le contresigne (HIRED) ou le renverse
-                // (REJECTED). INTERVIEW_SCHEDULED matérialise l'agenda confirmé après avis.
+                // (REJECTED). INTERVIEW_SCHEDULED matérialise l'agenda confirmé après avis :
+                // l'arc reste ouvert (API, historique) mais l'ui RH ne le propose plus, car
+                // aucun flux ne le produit et l'embauche ne l'exige pas.
                 allowed = to == Candidate.CandidateStatus.INTERVIEW_SCHEDULED
                         || to == Candidate.CandidateStatus.HIRED
                         || to == Candidate.CandidateStatus.REJECTED

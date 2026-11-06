@@ -13,7 +13,6 @@ const STATUTS_LABELS: Record<string, string> = {
   PHONE_SCREENING: 'Pré-sélection téléphonique',
   TECHNICAL_TEST: 'Test technique',
   INTERVIEW: 'Entretien',
-  FINAL_INTERVIEW: 'Entretien final',
   ACCEPTED: 'Avis favorable — contreseing RH attendu',
   INTERVIEW_SCHEDULED: 'Convocation envoyée',
   HIRED: 'Embauché',
@@ -26,7 +25,7 @@ const STATUTS_LABELS: Record<string, string> = {
 /** Statuts d'où l'on sort un dossier refusé, et étapes de pipeline où le ramener. */
 const STATUTS_APRES_REFUS: Candidate['status'][] = ['AUTO_REJECTED', 'MANAGER_REJECTED'];
 const ETAPES_PIPELINE: Candidate['status'][] = [
-  'CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW', 'FINAL_INTERVIEW',
+  'CV_REVIEWED', 'PHONE_SCREENING', 'TECHNICAL_TEST', 'INTERVIEW',
   'ACCEPTED', 'INTERVIEW_SCHEDULED'
 ];
 
@@ -71,7 +70,6 @@ export class KanbanBoardComponent implements OnInit {
       { status: 'PHONE_SCREENING', label: 'Pré-sélection tél.' },
       { status: 'TECHNICAL_TEST', label: 'Test technique' },
       { status: 'INTERVIEW', label: 'Entretien' },
-      { status: 'FINAL_INTERVIEW', label: 'Entretien final' },
       // ACCEPTED n'est pas l'embauche : c'est l'avis favorable, en attente du contreseing RH.
       // Sans cette précision, une carte « Accepté » avec un score de 30/100 passait pour un bug.
       {

@@ -204,7 +204,7 @@ public class Candidate {
         PHONE_SCREENING,      // Entretien téléphonique
         TECHNICAL_TEST,       // Test technique
         INTERVIEW,            // Entretien
-        FINAL_INTERVIEW,      // Entretien final
+        FINAL_INTERVIEW,      // Entretien final — état retiré du pipeline, conservé pour l'historique
         ACCEPTED,             // Avis favorable du manager — en attente de validation RH
         REJECTED,             // Refus final validé par le RH
         AUTO_REJECTED,        // Rejeté automatiquement par l'IA (score < seuil)
