@@ -1244,7 +1244,7 @@ Ce premier volet concentre les cinq entités du parcours de recrutement, auxquel
 
 Un candidat dépose au plus un CV et peut passer plusieurs entretiens ; chaque entretien donne lieu à un retour, rattaché à la fois à l’entretien et au dossier ; une offre reçoit plusieurs candidatures.
 
-Les deux scores conservés sur le dossier (\texttt{aiScore}, calculé par l’agent d’évaluation, et \texttt{manualScore}, saisi par le RH) traduisent une règle de conception : la décision reste traçable, chaque score portant son auteur et son horodatage.
+Les deux scores conservés sur le dossier (\texttt{aiScore}, calculé par l’agent d’évaluation, et \texttt{manual\allowbreak{}Score}, saisi par le RH) traduisent une règle de conception : la décision reste traçable, chaque score portant son auteur et son horodatage.
 
 % figure 3_2
 \setcounter{figure}{1}
@@ -1651,8 +1651,6 @@ Les captures sont regroupées par acteur : l’accès public et l’espace candi
 
 Les captures pleine page sont présentées en paysage : à contenu identique, leur texte passe d’environ 5,9 pt à 8,5-9,6 pt imprimés après recadrage sur la zone utile (figures~\ref{fig_4_15a}, \ref{fig_4_15b} et \ref{fig_4_17}). Le plancher de lisibilité retenu est de 8,5 pt ; les figures les plus chargées ont été découpées ou recadrées pour ne pas descendre sous ce seuil.
 
-\subsection{Accès public et espace candidat}
-\label{sec_4_3_1}
 % figure 4.1
 \setcounter{figure}{0}
 \begin{landscape}
@@ -1665,7 +1663,8 @@ Les captures pleine page sont présentées en paysage : à contenu identique, le
 \end{figure}
 \clearpage
 \end{landscape}
-
+\subsection{Accès public et espace candidat}
+\label{sec_4_3_1}
 Accessible sans authentification, la page d’accueil de la figure~\ref{fig_4_1} propose un cartouche de « Recherche rapide » par mot-clé et par localisation. Elle affiche aussi les offres les plus récemment publiées sous le titre « Offres en vedette ». Chaque carte porte l’intitulé du poste, le contrat, le lieu, l’expérience demandée, les compétences clés, la date et un bouton « Voir les détails ».
 
 % figure 4.2
@@ -1690,6 +1689,8 @@ La page de connexion de la figure~\ref{fig_4_2} est le point d’entrée des esp
 
 Comme le montre la figure~\ref{fig_4_3}, un candidat connecté postule depuis une offre : le formulaire pré-remplit son e-mail, valide le format du CV (PDF, DOC, DOCX) et confirme la sélection avant l’envoi. Ce dépôt déclenche la chaîne de la section~\ref{sec_3_5_3} (extraction du texte par le back-end, analyse par l’API de Cohere, score automatique).
 
+Comme l’illustre la figure~\ref{fig_4_4}, un visiteur qui ne postule à aucune offre précise peut déposer son CV. La plateforme lui renvoie les offres actives classées par pourcentage de compatibilité, calculé par l’API de Cohere et signalé par le badge « Analyse IA (Cohere) ». Si l’IA est indisponible, un repli automatique classe les offres par mots-clés.
+
 % figure 4.4
 \setcounter{figure}{3}
 \begin{landscape}
@@ -1702,8 +1703,6 @@ Comme le montre la figure~\ref{fig_4_3}, un candidat connecté postule depuis un
 \end{figure}
 \clearpage
 \end{landscape}
-
-Comme l’illustre la figure~\ref{fig_4_4}, un visiteur qui ne postule à aucune offre précise peut déposer son CV. La plateforme lui renvoie les offres actives classées par pourcentage de compatibilité, calculé par l’API de Cohere et signalé par le badge « Analyse IA (Cohere) ». Si l’IA est indisponible, un repli automatique classe les offres par mots-clés.
 
 % figure 4.5
 \setcounter{figure}{4}
