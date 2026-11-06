@@ -431,6 +431,12 @@ export class CandidatesComponent implements OnInit, OnDestroy {
   applyFilters(): void {
     const { searchTerm, status, jobOffer } = this.searchForm.value;
 
+    // Un statut choisi dans la liste est plus précis que l'onglet : on bascule l'onglet avec
+    // lui, sinon « Rejeté (IA) » depuis l'onglet par défaut affichait un tableau vide.
+    if (status) {
+      this.visibilityFilter = this.tabForStatus(status);
+    }
+
     this.filteredCandidates = this.candidates.filter(candidate => {
       const matchesSearch = !searchTerm ||
         candidate.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -502,6 +508,15 @@ export class CandidatesComponent implements OnInit, OnDestroy {
 
   isAwaitingHrValidation(status: string): boolean {
     return status === 'ACCEPTED' || status === 'MANAGER_REJECTED' || status === 'INTERVIEW_SCHEDULED';
+  }
+
+  /** L'onglet d'affichage qui héberge un statut donné. */
+  tabForStatus(status: string): 'active' | 'rejected' | 'withdrawn' | 'hired' | 'awaiting' {
+    if (status === 'REJECTED' || status === 'AUTO_REJECTED') return 'rejected';
+    if (status === 'WITHDRAWN') return 'withdrawn';
+    if (status === 'HIRED') return 'hired';
+    if (this.isAwaitingHrValidation(status)) return 'awaiting';
+    return 'active';
   }
 
   getWithdrawnCount(): number {
