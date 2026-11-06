@@ -1081,7 +1081,7 @@ Le tableau~\ref{tab_2_2} détaille le scénario nominal de deux cas d’utilisat
 \hline
 Acteur principal & Candidat & Manager (avis), puis Responsable RH (contreseing) \\
 \hline
-Pré-condition & L’offre est publiée & Le dossier a été transmis au manager pour évaluation technique : un avis favorable comme un refus proposé sont admis sur les seuls statuts « test technique », « entretien » et « entretien final », c’est-à-dire après le pré-filtrage téléphonique du RH. \\
+Pré-condition & L’offre est publiée & Le dossier a été transmis au manager pour évaluation technique : un avis favorable comme un refus proposé sont admis sur les seuls statuts « test technique » et « entretien », c’est-à-dire après le pré-filtrage téléphonique du RH. \\
 \hline
 Scénario nominal & Le candidat consulte l’offre, remplit le formulaire de candidature et dépose son CV. Le système enregistre la candidature, envoie un e-mail de confirmation et déclenche l’analyse IA du CV. & Le manager consulte le dossier du candidat, ses scores et ses éventuels retours, puis émet un avis — favorable, ou refus proposé accompagné d’un motif. Le RH, averti par e-mail et dans sa liste de candidats, contresigne cet avis : « retenu » avec date de présentation des documents, ou « refusé » motivé. \\
 \hline
@@ -1392,7 +1392,7 @@ Les figures~\ref{fig_3_7a} et~\ref{fig_3_7b} détaillent destination et notifica
 
 \section{Diagramme d’états — Cycle de vie d’une candidature}
 \label{sec_3_6}
-La figure~\ref{fig_3_8} donne la machine à états du dossier. Elle ne dessine que les transitions les plus représentatives ; les autres, autorisées par le garde-fou métier, sont détaillées dans la suite de cette section. Chaque statut y porte un libellé français, que le code rend par une constante — de \texttt{APPLIED} à \texttt{WITHDRAWN}, treize au total.
+La figure~\ref{fig_3_8} donne la machine à états du dossier. Elle ne dessine que les transitions les plus représentatives ; les autres, autorisées par le garde-fou métier, sont détaillées dans la suite de cette section. Chaque statut y porte un libellé français, que le code rend par une constante — de \texttt{APPLIED} à \texttt{WITHDRAWN}, treize au total, dont onze dessinées ici.
 
 % figure 3.8
 \setcounter{figure}{7}
@@ -1403,7 +1403,7 @@ La figure~\ref{fig_3_8} donne la machine à états du dossier. Elle ne dessine q
 \label{fig_3_8}
 \end{figure}
 
-Le statut « entretien programmé » suit l’avis favorable : il matérialise la confirmation de l’agenda et précède la décision finale, sans désigner une étape d’évaluation. Planifier un entretien fait avancer le dossier à l’étape du type retenu (téléphonique, test, entretien, entretien final) ; si la machine à états refuse cette avancée, le dossier reste en place et l’entretien n’est pas annulé.
+Planifier un entretien fait avancer le dossier à l’étape du type retenu (téléphonique, test, entretien) ; si la machine à états refuse cette avancée, le dossier reste en place et l’entretien n’est pas annulé. Deux constantes ont quitté le diagramme. « Entretien final » est fondu dans « entretien » : une seule évaluation technique conduit le dossier, le type du créneau ne change pas le statut. « Entretien programmé » n’était produit par aucun flux et l’embauche ne l’exige pas. Les deux restent dans le code pour que les dossiers qui les portent encore demeurent lisibles et contre-signables.
 
 Un embranchement dépend du score : « CV validé » au-dessus du seuil du profil (60/100 par défaut), « écarté d’office » en dessous. Les dossiers signalés (CV inexploitable, écart de séniorité sévère, zone grise autour du seuil, service indisponible) échappent au rejet automatique et rejoignent l’examen humain (section~\ref{sec_4_4_6}). Le signalement et son motif, pas le statut, distinguent les deux cas.
 
